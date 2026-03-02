@@ -175,33 +175,3 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure handle_new_user();
-
--- ── Task Comments ─────────────────────────────────────────────
--- Run this to enable the comments feature
-create table if not exists task_comments (
-  id         uuid primary key default gen_random_uuid(),
-  task_id    uuid references tasks(id) on delete cascade not null,
-  user_id    uuid references auth.users(id) on delete cascade not null,
-  body       text not null,
-  created_at timestamptz default now()
-);
-
-alter table task_comments enable row level security;
-
-create policy "Members can view comments"
-  on task_comments for select
-  using (task_id in (
-    select id from tasks where workspace_id in (
-      select workspace_id from workspace_members where user_id = auth.uid()
-    )
-  ));
-
-create policy "Members can add comments"
-  on task_comments for insert
-  with check (user_id = auth.uid());
-
-create policy "Authors and admins can delete comments"
-  on task_comments for delete
-  using (user_id = auth.uid());
-
-alter publication supabase_realtime add table task_comments;

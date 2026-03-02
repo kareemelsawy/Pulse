@@ -1,10 +1,12 @@
-// ─── OverviewPage ─────────────────────────────────────────────────────────────
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useData } from '../contexts/DataContext'
-import { COLORS, STATUS, PRIORITY, ALL_TAGS, PROJECT_COLORS, NOTIFICATION_TRIGGERS } from '../lib/constants'
+import { useAuth } from '../contexts/AuthContext'
+import { COLORS, STATUS, STATUS_FLOW, PRIORITY, PROJECT_COLORS, NOTIFICATION_TRIGGERS } from '../lib/constants'
 import { Avatar, Badge, ProgressBar, Modal, Toggle, Btn, iStyle, lStyle } from '../components/UI'
 import { startGmailOAuth, parseOAuthToken, getGmailAddress } from '../lib/gmail'
+import { getComments, addComment, deleteComment } from '../lib/db'
 
+// ─── OverviewPage ─────────────────────────────────────────────────────────────
 export function OverviewPage({ onOpenProject, onNewProject }) {
   const { projects, tasks, getProjectTasks } = useData()
   const byStatus = Object.keys(STATUS).map(s => ({ s, count: tasks.filter(t => t.status === s).length }))
@@ -14,26 +16,25 @@ export function OverviewPage({ onOpenProject, onNewProject }) {
     <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
       <div style={{ maxWidth: 1100 }}>
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: '-0.03em', marginBottom: 4 }}>
+          <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: '-0.03em', marginBottom: 6, paddingBottom: 2 }}>
             Good {hour()} ✦
           </h1>
           <p style={{ color: COLORS.textMuted }}>{projects.length} projects · {tasks.length} tasks total</p>
         </div>
 
-        {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 28 }}>
           {byStatus.map(({ s, count }) => (
             <div key={s} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: '16px 18px', borderTop: `3px solid ${STATUS[s].color}` }}>
-              <div style={{ fontSize: 28, fontFamily: 'Syne', fontWeight: 800, marginBottom: 4 }}>{count}</div>
+              <div style={{ fontSize: 28, fontFamily: 'Syne', fontWeight: 800, marginBottom: 6, lineHeight: 1.2 }}>{count}</div>
               <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, letterSpacing: '0.04em' }}>{STATUS[s].label}</div>
             </div>
           ))}
         </div>
 
         {overdue.length > 0 && (
-          <div style={{ background: '#450a0a', border: `1px solid ${COLORS.red}44`, borderRadius: 12, padding: '12px 18px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ background: COLORS.red + '18', border: `1px solid ${COLORS.red}44`, borderRadius: 12, padding: '12px 18px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span>⚠</span>
-            <span style={{ color: '#fca5a5', fontSize: 13 }}><strong>{overdue.length}</strong> task{overdue.length > 1 ? 's are' : ' is'} overdue</span>
+            <span style={{ color: COLORS.red, fontSize: 13 }}><strong>{overdue.length}</strong> task{overdue.length > 1 ? 's are' : ' is'} overdue</span>
           </div>
         )}
 
@@ -57,7 +58,7 @@ export function OverviewPage({ onOpenProject, onNewProject }) {
               return (
                 <div key={p.id} onClick={() => onOpenProject(p)}
                   style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, cursor: 'pointer', borderLeft: `4px solid ${p.color}`, transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.3)' }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = COLORS.cardShadow }}
                   onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}>
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{p.name}</div>
                   {p.description && <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12, lineHeight: 1.5 }}>{p.description}</div>}
@@ -76,13 +77,14 @@ export function OverviewPage({ onOpenProject, onNewProject }) {
 // ─── MyTasksPage ─────────────────────────────────────────────────────────────
 export function MyTasksPage() {
   const { myTasks, projects } = useData()
-  const overdue  = myTasks.filter(t => t.due_date && new Date(t.due_date) < new Date())
-  const rest     = myTasks.filter(t => !t.due_date || new Date(t.due_date) >= new Date())
+  const { user } = useAuth()
+  const overdue = myTasks.filter(t => t.due_date && new Date(t.due_date) < new Date())
+  const rest    = myTasks.filter(t => !t.due_date || new Date(t.due_date) >= new Date())
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
       <div style={{ maxWidth: 800 }}>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, marginBottom: 22, letterSpacing: '-0.03em' }}>My Tasks</h1>
+        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, marginBottom: 22, letterSpacing: '-0.03em', paddingBottom: 2 }}>My Tasks</h1>
         {myTasks.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: COLORS.textMuted }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>✓</div>
@@ -117,13 +119,16 @@ export function MyTasksPage() {
 
 // ─── ProjectView ─────────────────────────────────────────────────────────────
 export function ProjectView({ project, toast }) {
-  const { getProjectTasks, addTask, editTask, removeTask, editProject, removeProject } = useData()
+  const { getProjectTasks, addTask, editTask, removeTask, editProject, removeProject, workspace } = useData()
+  const { user } = useAuth()
+  const isAdmin = workspace?.role === 'owner' || workspace?.owner_id === user?.id
   const tasks = getProjectTasks(project.id)
   const [view, setView]     = useState('board')
   const [search, setSearch] = useState('')
   const [filterS, setFilterS] = useState('all')
   const [taskModal, setTaskModal] = useState(null)
   const [editProjOpen, setEditProjOpen] = useState(false)
+  const [csvOpen, setCsvOpen] = useState(false)
 
   const filtered = tasks.filter(t => {
     if (filterS !== 'all' && t.status !== filterS) return false
@@ -133,11 +138,10 @@ export function ProjectView({ project, toast }) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Header */}
       <div style={{ padding: '0 22px', height: 54, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 10, background: COLORS.surface, flexShrink: 0 }}>
         <div style={{ width: 11, height: 11, borderRadius: '50%', background: project.color }} />
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, letterSpacing: '-0.02em' }}>{project.name}</h1>
-        <button onClick={() => setEditProjOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 13 }}>✎</button>
+        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, letterSpacing: '-0.02em', paddingBottom: 1 }}>{project.name}</h1>
+        <button onClick={() => setEditProjOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 13, padding: '2px 6px' }}>✎</button>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '5px 10px', width: 180 }}>
           <span style={{ color: COLORS.textMuted, fontSize: 12 }}>⌕</span>
@@ -148,13 +152,13 @@ export function ProjectView({ project, toast }) {
             <button key={v} onClick={() => setView(v)} style={{ padding: '5px 11px', background: view===v ? COLORS.border : 'none', color: view===v ? COLORS.text : COLORS.textMuted, fontSize: 14, border: 'none', cursor: 'pointer' }}>{ic}</button>
           ))}
         </div>
+        <Btn size="sm" variant="secondary" onClick={() => setCsvOpen(true)}>↑ CSV</Btn>
         <Btn size="sm" onClick={() => setTaskModal('new')}>+ Add Task</Btn>
       </div>
 
-      {/* Filter bar */}
       <div style={{ padding: '8px 22px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 8, alignItems: 'center', background: COLORS.surface, flexShrink: 0 }}>
         <span style={{ fontSize: 12, color: COLORS.textMuted }}>Status:</span>
-        <select value={filterS} onChange={e => setFilterS(e.target.value)} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '4px 8px', fontSize: 12, outline: 'none' }}>
+        <select value={filterS} onChange={e => setFilterS(e.target.value)} style={{ background: COLORS.inputBg, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '4px 8px', fontSize: 12, outline: 'none' }}>
           <option value="all">All</option>
           {Object.entries(STATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
@@ -169,6 +173,7 @@ export function ProjectView({ project, toast }) {
         <TaskModal
           task={taskModal === 'new' ? null : taskModal}
           projectId={project.id}
+          isAdmin={isAdmin}
           onClose={() => setTaskModal(null)}
           toast={toast}
         />
@@ -176,11 +181,13 @@ export function ProjectView({ project, toast }) {
       {editProjOpen && (
         <EditProjectModal
           project={project}
+          isAdmin={isAdmin}
           onSave={async d => { await editProject(project.id, d); setEditProjOpen(false); toast('Project updated', 'success') }}
           onDelete={async () => { await removeProject(project.id); setEditProjOpen(false); toast('Project deleted') }}
           onClose={() => setEditProjOpen(false)}
         />
       )}
+      {csvOpen && <CsvImportModal projectId={project.id} onClose={() => setCsvOpen(false)} toast={toast} />}
     </div>
   )
 }
@@ -207,15 +214,12 @@ function BoardView({ tasks, onTaskClick }) {
                     <span style={{ fontWeight: 500, fontSize: 13, lineHeight: 1.4 }}>{t.title}</span>
                     <span style={{ color: PRIORITY[t.priority]?.color, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{PRIORITY[t.priority]?.icon}</span>
                   </div>
-                  {t.tags?.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-                      {t.tags.map(tag => <span key={tag} style={{ background: '#2A3F6F88', color: COLORS.accent, borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 600 }}>{tag}</span>)}
-                    </div>
-                  )}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     {t.assignee_name ? <Avatar name={t.assignee_name} size={20} /> : <span />}
                     {t.due_date && <span style={{ fontSize: 10, color: COLORS.textMuted }}>{t.due_date}</span>}
                   </div>
+                  {/* Next step button */}
+                  {sm.next && <NextStepButton task={t} />}
                 </div>
               ))}
             </div>
@@ -223,6 +227,21 @@ function BoardView({ tasks, onTaskClick }) {
         )
       })}
     </div>
+  )
+}
+
+function NextStepButton({ task }) {
+  const { editTask } = useData()
+  const next = STATUS[task.status]?.next
+  if (!next) return null
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); editTask(task.id, { status: next }, task) }}
+      style={{ marginTop: 8, width: '100%', background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 0', fontSize: 11, color: COLORS.textMuted, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+      onMouseEnter={e => { e.currentTarget.style.background = COLORS.accent + '22'; e.currentTarget.style.color = COLORS.accent; e.currentTarget.style.borderColor = COLORS.accent }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = COLORS.textMuted; e.currentTarget.style.borderColor = COLORS.border }}>
+      → {STATUS[next].label}
+    </button>
   )
 }
 
@@ -252,23 +271,53 @@ function ListView({ tasks, onTaskClick }) {
 }
 
 // ─── TaskModal ───────────────────────────────────────────────────────────────
-function TaskModal({ task, projectId, onClose, toast }) {
-  const { addTask, editTask, removeTask } = useData()
-  const [title,   setTitle]   = useState(task?.title || '')
-  const [status,  setStatus]  = useState(task?.status || 'todo')
-  const [priority,setPriority]= useState(task?.priority || 'medium')
-  const [assignee,setAssignee]= useState(task?.assignee_name || '')
-  const [email,   setEmail]   = useState(task?.assignee_email || '')
-  const [due,     setDue]     = useState(task?.due_date || '')
-  const [tags,    setTags]    = useState(task?.tags || [])
-  const [saving,  setSaving]  = useState(false)
+function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
+  const { addTask, editTask, removeTask, members } = useData()
+  const { user } = useAuth()
+  const [tab,      setTab]      = useState('details')
+  const [title,    setTitle]    = useState(task?.title || '')
+  const [status,   setStatus]   = useState(task?.status || 'new')
+  const [priority, setPriority] = useState(task?.priority || 'medium')
+  const [assignee, setAssignee] = useState(task?.assignee_name || '')
+  const [email,    setEmail]    = useState(task?.assignee_email || '')
+  const [due,      setDue]      = useState(task?.due_date || '')
+  const [saving,   setSaving]   = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
+
+  // Comments
+  const [comments, setComments] = useState([])
+  const [commentText, setCommentText] = useState('')
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [savingComment, setSavingComment] = useState(false)
+
+  useEffect(() => {
+    if (task && tab === 'comments') {
+      setLoadingComments(true)
+      getComments(task.id).then(c => { setComments(c); setLoadingComments(false) }).catch(() => setLoadingComments(false))
+    }
+  }, [task, tab])
+
+  function handleMemberSelect(e) {
+    const val = e.target.value
+    if (!val) { setAssignee(''); setEmail(''); return }
+    const member = members.find(m => m.user_id === val)
+    if (member) { setAssignee(member.full_name || member.email || val); setEmail(member.email || '') }
+  }
+
+  const selectedMemberId = members.find(m =>
+    (m.full_name && m.full_name === assignee) || (m.email && m.email === email)
+  )?.user_id || ''
+
+  // For existing tasks: only allow moving to the next status in sequence
+  const allowedStatuses = task
+    ? STATUS_FLOW.slice(0, STATUS_FLOW.indexOf(task.status) + 2) // current + next only
+    : ['new'] // new tasks always start as 'new'
 
   async function handleSave() {
     if (!title.trim()) return
     setSaving(true)
     try {
-      const data = { title: title.trim(), status, priority, assignee_name: assignee, assignee_email: email, due_date: due, tags }
+      const data = { title: title.trim(), status: task ? status : 'new', priority, assignee_name: assignee, assignee_email: email, due_date: due }
       if (task) { await editTask(task.id, data, task); toast?.('Task updated', 'success') }
       else      { await addTask(projectId, data);     toast?.('Task created', 'success') }
       onClose()
@@ -281,56 +330,141 @@ function TaskModal({ task, projectId, onClose, toast }) {
     catch(e) { toast?.(e.message, 'error') } finally { setSaving(false) }
   }
 
+  async function handleAddComment() {
+    if (!commentText.trim()) return
+    setSavingComment(true)
+    try {
+      const c = await addComment(task.id, user.id, commentText.trim())
+      const authorName = user?.user_metadata?.full_name || user?.email || 'You'
+      setComments(prev => [...prev, { ...c, author_name: authorName }])
+      setCommentText('')
+    } catch(e) { toast?.(e.message, 'error') } finally { setSavingComment(false) }
+  }
+
+  async function handleDeleteComment(id) {
+    try {
+      await deleteComment(id)
+      setComments(prev => prev.filter(c => c.id !== id))
+    } catch(e) { toast?.(e.message, 'error') }
+  }
+
   return (
-    <Modal onClose={onClose}>
-      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 20 }}>{task ? 'Edit Task' : 'New Task'}</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <Modal onClose={onClose} width={560}>
+      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 16, paddingBottom: 2 }}>{task ? 'Edit Task' : 'New Task'}</h2>
+
+      {task && (
+        <div style={{ display: 'flex', gap: 2, marginBottom: 18, background: COLORS.bg, borderRadius: 8, padding: 3 }}>
+          {[['details','Details'],['comments',`Comments (${comments.length})`],['attachments','Attachments']].map(([k,l]) => (
+            <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 600, background: tab===k ? COLORS.surface : 'none', color: tab===k ? COLORS.text : COLORS.textMuted, border: tab===k ? `1px solid ${COLORS.border}` : '1px solid transparent', cursor: 'pointer' }}>{l}</button>
+          ))}
+        </div>
+      )}
+
+      {tab === 'details' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={lStyle}>Title *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="What needs to be done?" autoFocus onKeyDown={e => e.key === 'Enter' && handleSave()} style={{ ...iStyle, fontSize: 15, fontWeight: 500 }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {task && (
+              <div>
+                <label style={lStyle}>Status {!isAdmin && <span style={{ color: COLORS.amber }}>(sequential)</span>}</label>
+                <select value={status} onChange={e => setStatus(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }}>
+                  {allowedStatuses.map(k => <option key={k} value={k}>{STATUS[k].label}</option>)}
+                </select>
+                {!isAdmin && <p style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>Tasks move forward one step at a time</p>}
+              </div>
+            )}
+            <div>
+              <label style={lStyle}>Priority</label>
+              <select value={priority} onChange={e => setPriority(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }}>
+                {Object.entries(PRIORITY).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lStyle}>Assignee</label>
+              {members.length > 0 ? (
+                <>
+                  <select value={selectedMemberId} onChange={handleMemberSelect} style={{ ...iStyle, background: COLORS.inputBg, marginBottom: 6 }}>
+                    <option value="">— Unassigned —</option>
+                    {members.map(m => <option key={m.user_id} value={m.user_id}>{m.full_name || m.email || m.user_id.slice(0, 8)}</option>)}
+                  </select>
+                  {!selectedMemberId && <input value={assignee} onChange={e => setAssignee(e.target.value)} placeholder="Or type a name" style={{ ...iStyle, fontSize: 12, background: COLORS.inputBg }} />}
+                </>
+              ) : (
+                <input value={assignee} onChange={e => setAssignee(e.target.value)} placeholder="e.g. Alex K." style={{ ...iStyle, background: COLORS.inputBg }} />
+              )}
+            </div>
+            <div>
+              <label style={lStyle}>Assignee Email</label>
+              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="alex@company.com" type="email" style={{ ...iStyle, background: COLORS.inputBg }} />
+            </div>
+            <div>
+              <label style={lStyle}>Due Date</label>
+              <input type="date" value={due} onChange={e => setDue(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }} />
+            </div>
+          </div>
+
+          {!task && (
+            <div style={{ background: COLORS.accentDim + '44', border: `1px solid ${COLORS.accent}33`, borderRadius: 8, padding: '8px 12px', fontSize: 12, color: COLORS.textMuted }}>
+              ℹ New tasks start as <strong style={{ color: COLORS.text }}>New</strong> and move through: New → In Progress → Review → Done
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'comments' && (
         <div>
-          <label style={lStyle}>Title *</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="What needs to be done?" autoFocus onKeyDown={e => e.key === 'Enter' && handleSave()} style={{ ...iStyle, fontSize: 15, fontWeight: 500 }} />
+          <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+            {loadingComments ? (
+              <div style={{ textAlign: 'center', color: COLORS.textMuted, padding: 24 }}>Loading…</div>
+            ) : comments.length === 0 ? (
+              <div style={{ textAlign: 'center', color: COLORS.textMuted, padding: 24 }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>💬</div>
+                No comments yet
+              </div>
+            ) : comments.map(c => (
+              <div key={c.id} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <Avatar name={c.author_name} size={22} />
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{c.author_name}</span>
+                  <span style={{ fontSize: 11, color: COLORS.textMuted, marginLeft: 'auto' }}>{new Date(c.created_at).toLocaleString()}</span>
+                  {(c.user_id === user?.id || isAdmin) && (
+                    <button onClick={() => handleDeleteComment(c.id)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 12, padding: '0 4px' }}>✕</button>
+                  )}
+                </div>
+                <p style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{c.body}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <textarea value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Add a comment…" rows={2}
+              onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleAddComment() }}
+              style={{ ...iStyle, flex: 1, resize: 'none', lineHeight: 1.5, background: COLORS.inputBg }} />
+            <Btn onClick={handleAddComment} disabled={savingComment || !commentText.trim()}>Post</Btn>
+          </div>
+          <p style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>⌘+Enter to post</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={lStyle}>Status</label>
-            <select value={status} onChange={e => setStatus(e.target.value)} style={iStyle}>
-              {Object.entries(STATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lStyle}>Priority</label>
-            <select value={priority} onChange={e => setPriority(e.target.value)} style={iStyle}>
-              {Object.entries(PRIORITY).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={lStyle}>Assignee Name</label>
-            <input value={assignee} onChange={e => setAssignee(e.target.value)} placeholder="e.g. Alex K." style={iStyle} />
-          </div>
-          <div>
-            <label style={lStyle}>Assignee Email</label>
-            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="alex@company.com" type="email" style={iStyle} />
-          </div>
-          <div>
-            <label style={lStyle}>Due Date</label>
-            <input type="date" value={due} onChange={e => setDue(e.target.value)} style={iStyle} />
-          </div>
+      )}
+
+      {tab === 'attachments' && (
+        <div style={{ textAlign: 'center', padding: '32px 20px', color: COLORS.textMuted }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>📎</div>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>File Attachments</div>
+          <p style={{ fontSize: 12, lineHeight: 1.7, maxWidth: 300, margin: '0 auto 16px' }}>
+            To enable file attachments, create a Supabase Storage bucket named <code style={{ background: COLORS.border, padding: '1px 5px', borderRadius: 3 }}>task-attachments</code> and set it to public. Files will be linked to this task.
+          </p>
+          <Btn size="sm" variant="secondary" onClick={() => window.open('https://supabase.com/dashboard', '_blank')}>Open Supabase Storage →</Btn>
         </div>
-        <div>
-          <label style={lStyle}>Tags</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {ALL_TAGS.map(tag => {
-              const on = tags.includes(tag)
-              return <button key={tag} onClick={() => setTags(on ? tags.filter(t => t !== tag) : [...tags, tag])} style={{ background: on ? COLORS.accentDim : COLORS.bg, border: `1px solid ${on ? COLORS.accent : COLORS.border}`, color: on ? COLORS.accent : COLORS.textMuted, borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}>{tag}</button>
-            })}
-          </div>
-        </div>
-      </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
-        {task && !confirmDel && <Btn variant="danger" onClick={() => setConfirmDel(true)}>Delete</Btn>}
-        {task && confirmDel  && <Btn variant="danger" onClick={handleDelete} disabled={saving}>Confirm Delete</Btn>}
+        {tab === 'details' && task && isAdmin && !confirmDel && <Btn variant="danger" onClick={() => setConfirmDel(true)}>Delete</Btn>}
+        {tab === 'details' && task && isAdmin && confirmDel  && <Btn variant="danger" onClick={handleDelete} disabled={saving}>Confirm Delete</Btn>}
         <div style={{ flex: 1 }} />
-        <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
-        <Btn onClick={handleSave} disabled={saving || !title.trim()}>{saving ? '…' : task ? 'Save' : 'Create Task'}</Btn>
+        <Btn variant="secondary" onClick={onClose} disabled={saving}>Close</Btn>
+        {tab === 'details' && <Btn onClick={handleSave} disabled={saving || !title.trim()}>{saving ? '…' : task ? 'Save' : 'Create Task'}</Btn>}
       </div>
     </Modal>
   )
@@ -339,9 +473,9 @@ function TaskModal({ task, projectId, onClose, toast }) {
 // ─── NewProjectModal ─────────────────────────────────────────────────────────
 export function NewProjectModal({ onClose, toast }) {
   const { addProject } = useData()
-  const [name, setName]   = useState('')
-  const [desc, setDesc]   = useState('')
-  const [color, setColor] = useState(PROJECT_COLORS[0])
+  const [name,   setName]   = useState('')
+  const [desc,   setDesc]   = useState('')
+  const [color,  setColor]  = useState(PROJECT_COLORS[0])
   const [saving, setSaving] = useState(false)
 
   async function handleCreate() {
@@ -353,15 +487,15 @@ export function NewProjectModal({ onClose, toast }) {
 
   return (
     <Modal onClose={onClose}>
-      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 20 }}>New Project</h2>
+      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 20, paddingBottom: 2 }}>New Project</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div>
           <label style={lStyle}>Project Name *</label>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Website Redesign" autoFocus onKeyDown={e => e.key === 'Enter' && handleCreate()} style={iStyle} />
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Website Redesign" autoFocus onKeyDown={e => e.key === 'Enter' && handleCreate()} style={{ ...iStyle, background: COLORS.inputBg }} />
         </div>
         <div>
           <label style={lStyle}>Description</label>
-          <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What is this project about?" rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5 }} />
+          <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What is this project about?" rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5, background: COLORS.inputBg }} />
         </div>
         <div>
           <label style={lStyle}>Color</label>
@@ -380,7 +514,7 @@ export function NewProjectModal({ onClose, toast }) {
 }
 
 // ─── EditProjectModal ────────────────────────────────────────────────────────
-function EditProjectModal({ project, onSave, onDelete, onClose }) {
+function EditProjectModal({ project, isAdmin, onSave, onDelete, onClose }) {
   const [name,  setName]  = useState(project.name)
   const [desc,  setDesc]  = useState(project.description || '')
   const [color, setColor] = useState(project.color)
@@ -388,10 +522,10 @@ function EditProjectModal({ project, onSave, onDelete, onClose }) {
 
   return (
     <Modal onClose={onClose}>
-      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 20 }}>Edit Project</h2>
+      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 20, paddingBottom: 2 }}>Edit Project</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div><label style={lStyle}>Name</label><input value={name} onChange={e => setName(e.target.value)} style={iStyle} /></div>
-        <div><label style={lStyle}>Description</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5 }} /></div>
+        <div><label style={lStyle}>Name</label><input value={name} onChange={e => setName(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }} /></div>
+        <div><label style={lStyle}>Description</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5, background: COLORS.inputBg }} /></div>
         <div>
           <label style={lStyle}>Color</label>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -400,7 +534,9 @@ function EditProjectModal({ project, onSave, onDelete, onClose }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
-        {!confirmDel ? <Btn variant="danger" onClick={() => setConfirmDel(true)}>Delete</Btn> : <Btn variant="danger" onClick={onDelete}>Confirm Delete</Btn>}
+        {isAdmin && !confirmDel && <Btn variant="danger" onClick={() => setConfirmDel(true)}>Delete Project</Btn>}
+        {isAdmin && confirmDel  && <Btn variant="danger" onClick={onDelete}>Confirm Delete</Btn>}
+        {!isAdmin && <span style={{ fontSize: 12, color: COLORS.textMuted, alignSelf: 'center' }}>Only admins can delete projects</span>}
         <div style={{ flex: 1 }} />
         <Btn variant="secondary" onClick={onClose}>Cancel</Btn>
         <Btn onClick={() => name.trim() && onSave({ name, description: desc, color })}>Save</Btn>
@@ -409,149 +545,119 @@ function EditProjectModal({ project, onSave, onDelete, onClose }) {
   )
 }
 
-// ─── NotifModal ──────────────────────────────────────────────────────────────
-export function NotifModal({ onClose, toast }) {
-  const { notifSettings, notifLogs, updateNotifSettings, sendNotification, tasks, projects } = useData()
-  const [tab, setTab]   = useState('setup')
-  const [clientId, setClientId] = useState(notifSettings?.gmail_client_id || '')
-  const [token,    setToken]    = useState(notifSettings?.gmail_access_token || null)
-  const [email,    setEmail]    = useState(notifSettings?.gmail_email || null)
-  const [triggers, setTriggers] = useState(notifSettings?.enabled_triggers || { task_assigned: true, status_changed: true, task_completed: true, new_task: false })
-  const [notifyAssignee, setNotifyAssignee] = useState(notifSettings?.notify_assignee ?? true)
-  const [extraEmails, setExtraEmails] = useState(notifSettings?.extra_emails || '')
-  const [saving, setSaving] = useState(false)
+// ─── CSV Import Modal ─────────────────────────────────────────────────────────
+function CsvImportModal({ projectId, onClose, toast }) {
+  const { importTasks, projects } = useData()
+  const [mode,     setMode]     = useState('tasks') // 'tasks'
+  const [preview,  setPreview]  = useState(null)
+  const [importing, setImporting] = useState(false)
+  const fileRef = useRef()
 
-  // Handle OAuth return after Gmail redirect
-  useEffect(() => {
-    const t = parseOAuthToken()
-    if (t) {
-      getGmailAddress(t).then(addr => {
-        setToken(t); setEmail(addr)
-        toast?.(`Gmail connected: ${addr}`, 'success')
-      })
+  const project = projects.find(p => p.id === projectId)
+
+  function handleFile(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const text = ev.target.result
+      const rows = parseCsv(text)
+      setPreview(rows)
     }
-  }, [])
-
-  async function handleSave() {
-    setSaving(true)
-    try {
-      await updateNotifSettings({ gmail_client_id: clientId, gmail_access_token: token, gmail_email: email, enabled_triggers: triggers, notify_assignee: notifyAssignee, extra_emails: extraEmails })
-      toast?.('Settings saved', 'success')
-    } catch(e) { toast?.(e.message, 'error') } finally { setSaving(false) }
+    reader.readAsText(file)
   }
 
-  async function handleTest() {
-    const task = tasks[0]; const project = projects[0]
-    if (!task || !project) { toast?.('No tasks to test with', 'error'); return }
-    const result = await sendNotification({ trigger: 'task_assigned', task, projectName: project.name, actorName: 'Pulse Test', extraInfo: 'This is a test notification' })
-    if (result) toast?.(`Test sent to ${result.successes} recipient(s)`, 'success')
-    else toast?.('Gmail not connected yet', 'error')
+  function parseCsv(text) {
+    const lines = text.trim().split('\n')
+    if (lines.length < 2) return []
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''))
+    return lines.slice(1).map(line => {
+      const vals = line.split(',').map(v => v.trim().replace(/"/g, ''))
+      const row = {}
+      headers.forEach((h, i) => { row[h] = vals[i] || '' })
+      return row
+    }).filter(r => r.title || r.name)
+  }
+
+  async function handleImport() {
+    if (!preview?.length) return
+    setImporting(true)
+    try {
+      const projectMap = { [project?.name || '']: projectId }
+      const normalized = preview.map(r => ({
+        title: r.title || r.name || 'Untitled',
+        priority: ['high','medium','low'].includes(r.priority?.toLowerCase()) ? r.priority.toLowerCase() : 'medium',
+        assignee_name: r.assignee_name || r.assignee || '',
+        assignee_email: r.assignee_email || r.email || '',
+        due_date: r.due_date || r.due || '',
+        project_name: project?.name || '',
+      }))
+      const created = await importTasks(normalized, projectMap)
+      toast(`${created.length} tasks imported!`, 'success')
+      onClose()
+    } catch(e) { toast(e.message, 'error') } finally { setImporting(false) }
   }
 
   return (
-    <Modal onClose={onClose} width={540}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-        <GoogleIcon />
-        <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17 }}>Gmail Notifications</h2>
-        {email && <span style={{ marginLeft: 'auto', background: COLORS.green + '22', color: COLORS.green, border: `1px solid ${COLORS.green}44`, borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 600 }}>Connected</span>}
+    <Modal onClose={onClose} width={560}>
+      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 6, paddingBottom: 2 }}>📥 CSV Import</h2>
+      <p style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Import tasks into <strong style={{ color: COLORS.text }}>{project?.name}</strong></p>
+
+      <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14, marginBottom: 18, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.8 }}>
+        <strong style={{ color: COLORS.textDim }}>Expected CSV columns:</strong><br />
+        <code style={{ color: COLORS.accent }}>title, priority, assignee_name, assignee_email, due_date</code><br />
+        <span>• <strong>title</strong> — required</span><br />
+        <span>• <strong>priority</strong> — high / medium / low (default: medium)</span><br />
+        <span>• <strong>due_date</strong> — YYYY-MM-DD format</span><br />
+        <span>• All tasks start as <strong>New</strong></span>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: COLORS.bg, borderRadius: 8, padding: 4 }}>
-        {[['setup','Setup'],['triggers','Triggers'],['recipients','Recipients'],['log',`Log (${notifLogs.length})`]].map(([k,l]) => (
-          <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 600, background: tab===k ? COLORS.surface : 'none', color: tab===k ? COLORS.text : COLORS.textMuted, border: tab===k ? `1px solid ${COLORS.border}` : '1px solid transparent', cursor: 'pointer' }}>{l}</button>
-        ))}
+      <div
+        onClick={() => fileRef.current?.click()}
+        style={{ border: `2px dashed ${COLORS.border}`, borderRadius: 10, padding: '24px 20px', textAlign: 'center', cursor: 'pointer', marginBottom: 16, transition: 'all 0.15s' }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
+        onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
+        <div style={{ fontSize: 28, marginBottom: 8 }}>📂</div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>Click to select CSV file</div>
+        <div style={{ fontSize: 12, color: COLORS.textMuted }}>or drag and drop</div>
+        <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }} />
       </div>
 
-      {tab === 'setup' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.8 }}>
-            <strong style={{ color: COLORS.textDim }}>How to set up:</strong>
-            <ol style={{ paddingLeft: 18, marginTop: 6 }}>
-              <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" style={{ color: COLORS.accent }}>Google Cloud Console</a></li>
-              <li>Enable <strong style={{ color: COLORS.textDim }}>Gmail API</strong></li>
-              <li>Create OAuth 2.0 credentials → Web App</li>
-              <li>Add <code style={{ background: COLORS.border, padding: '1px 4px', borderRadius: 3 }}>{window.location.origin}</code> as authorized origin</li>
-              <li>Paste Client ID below → Connect</li>
-            </ol>
-          </div>
-          {!email ? (
-            <>
-              <div><label style={lStyle}>Google OAuth Client ID</label><input value={clientId} onChange={e => setClientId(e.target.value)} placeholder="xxxxxx.apps.googleusercontent.com" style={iStyle} /></div>
-              <button onClick={() => { if (!clientId.trim()) { toast?.('Enter Client ID first', 'error'); return } startGmailOAuth(clientId.trim()) }} style={{ background: '#4285F4', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                <GoogleIcon white /> Sign in with Google
-              </button>
-            </>
-          ) : (
-            <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.green}44`, borderRadius: 12, padding: 16 }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>✉ Gmail Connected</div>
-              <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12 }}>{email}</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Btn size="sm" onClick={handleTest}>Send Test Email</Btn>
-                <Btn size="sm" variant="danger" onClick={() => { setToken(null); setEmail(null) }}>Disconnect</Btn>
+      {preview && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, marginBottom: 8 }}>✓ {preview.length} rows detected</div>
+          <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden', maxHeight: 200, overflowY: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 80px 120px 100px', padding: '7px 12px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span>Title</span><span>Priority</span><span>Assignee</span><span>Due</span>
+            </div>
+            {preview.slice(0, 10).map((r, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 80px 120px 100px', padding: '7px 12px', borderBottom: i < Math.min(preview.length, 10) - 1 ? `1px solid ${COLORS.border}` : 'none', fontSize: 12 }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title || r.name}</span>
+                <span style={{ color: PRIORITY[r.priority?.toLowerCase()]?.color || COLORS.textMuted }}>{r.priority || 'medium'}</span>
+                <span style={{ color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.assignee_name || r.assignee || '—'}</span>
+                <span style={{ color: COLORS.textMuted }}>{r.due_date || r.due || '—'}</span>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === 'triggers' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 4 }}>Choose which events send an email.</p>
-          {Object.entries(NOTIFICATION_TRIGGERS).map(([k, { label, desc }]) => (
-            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-              <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 13 }}>{label}</div><div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{desc}</div></div>
-              <Toggle value={triggers[k]} onChange={v => setTriggers(t => ({ ...t, [k]: v }))} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {tab === 'recipients' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-            <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 13 }}>Notify task assignee</div><div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>Email whoever the task is assigned to</div></div>
-            <Toggle value={notifyAssignee} onChange={setNotifyAssignee} />
+            ))}
+            {preview.length > 10 && <div style={{ padding: '6px 12px', fontSize: 11, color: COLORS.textMuted }}>…and {preview.length - 10} more rows</div>}
           </div>
-          <div><label style={lStyle}>Additional Emails (comma-separated)</label><input value={extraEmails} onChange={e => setExtraEmails(e.target.value)} placeholder="manager@co.com, ceo@co.com" style={iStyle} /></div>
         </div>
       )}
 
-      {tab === 'log' && (
-        <div>
-          {notifLogs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: COLORS.textMuted }}><div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>No emails sent yet</div>
-          ) : notifLogs.map(l => (
-            <div key={l.id} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <Badge color={l.failures === 0 ? COLORS.green : COLORS.amber}>{l.successes}✓{l.failures > 0 ? ` ${l.failures}✕` : ''}</Badge>
-                <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{l.task_title}</span>
-                <span style={{ fontSize: 11, color: COLORS.textMuted }}>{new Date(l.created_at).toLocaleTimeString()}</span>
-              </div>
-              <div style={{ fontSize: 11, color: COLORS.textMuted }}>{NOTIFICATION_TRIGGERS[l.trigger]?.label} · {(l.recipients || []).join(', ')}</div>
-            </div>
-          ))}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
+        <a href="data:text/csv;charset=utf-8,title,priority,assignee_name,assignee_email,due_date%0AExample Task,high,John Doe,john@co.com,2025-12-31%0AAnother Task,medium,Jane Smith,jane@co.com," download="pulse-tasks-template.csv" style={{ fontSize: 12, color: COLORS.accent }}>⬇ Download template</a>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn variant="secondary" onClick={onClose}>Cancel</Btn>
+          <Btn onClick={handleImport} disabled={!preview?.length || importing}>{importing ? 'Importing…' : `Import ${preview?.length || 0} Tasks`}</Btn>
         </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 22, justifyContent: 'flex-end' }}>
-        <Btn variant="secondary" onClick={onClose}>Close</Btn>
-        {tab !== 'log' && <Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Settings'}</Btn>}
       </div>
     </Modal>
   )
 }
 
-function GoogleIcon({ white }) {
-  if (white) return <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24">
-      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-    </svg>
-  )
+// ─── NotifModal (kept for backward compat) ───────────────────────────────────
+export function NotifModal({ onClose, toast }) {
+  onClose()
+  return null
 }
 
 function hour() { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening' }

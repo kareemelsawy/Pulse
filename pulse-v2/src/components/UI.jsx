@@ -6,11 +6,10 @@ export function Avatar({ name = '?', size = 28 }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
-      background: `hsl(${hue},55%,42%)`,
+      background: `hsl(${hue},55%,32%)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.36, fontWeight: 700, color: '#fff',
-      flexShrink: 0, userSelect: 'none', lineHeight: 1,
-      paddingBottom: 1, // fix baseline clipping
+      fontSize: size * 0.38, fontWeight: 700, color: '#fff',
+      flexShrink: 0, userSelect: 'none',
     }}>{initials}</div>
   )
 }
@@ -19,8 +18,7 @@ export function Badge({ color, children }) {
   return (
     <span style={{
       background: color + '22', color, border: `1px solid ${color}44`,
-      borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600,
-      whiteSpace: 'nowrap', lineHeight: 1.4, display: 'inline-flex', alignItems: 'center',
+      borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
     }}>{children}</span>
   )
 }
@@ -31,8 +29,8 @@ export function ProgressBar({ tasks = [] }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-        <span style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.4 }}>{done}/{tasks.length} tasks</span>
-        <span style={{ fontSize: 11, color: COLORS.textDim, fontWeight: 600, lineHeight: 1.4 }}>{pct}%</span>
+        <span style={{ fontSize: 11, color: COLORS.textMuted }}>{done}/{tasks.length} tasks</span>
+        <span style={{ fontSize: 11, color: COLORS.textDim, fontWeight: 600 }}>{pct}%</span>
       </div>
       <div style={{ height: 4, borderRadius: 2, background: COLORS.border }}>
         <div style={{
@@ -48,7 +46,7 @@ export function ProgressBar({ tasks = [] }) {
 export function Modal({ children, onClose, width = 500 }) {
   return (
     <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 200,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
       backdropFilter: 'blur(4px)',
     }}>
@@ -56,8 +54,7 @@ export function Modal({ children, onClose, width = 500 }) {
         background: COLORS.surface, border: `1px solid ${COLORS.border}`,
         borderRadius: 14, padding: 28, width, maxWidth: '100%',
         maxHeight: '90vh', overflowY: 'auto',
-        boxShadow: `0 24px 64px ${COLORS.shadow}`,
-        animation: 'slideUp 0.2s ease',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
       }}>
         {children}
       </div>
@@ -93,7 +90,7 @@ export function Toggle({ value, onChange }) {
 }
 
 export function Btn({ children, onClick, variant = 'primary', size = 'md', disabled, style: x }) {
-  const bg = { primary: COLORS.accent, secondary: COLORS.bg, danger: COLORS.red + '22', ghost: 'transparent' }
+  const bg = { primary: COLORS.accent, secondary: COLORS.bg, danger: '#450a0a', ghost: 'transparent' }
   const co = { primary: '#fff', secondary: COLORS.textDim, danger: COLORS.red, ghost: COLORS.textMuted }
   const bo = { primary: 'none', secondary: `1px solid ${COLORS.border}`, danger: `1px solid ${COLORS.red}44`, ghost: 'none' }
   const pd = { sm: '5px 12px', md: '8px 16px', lg: '11px 22px' }
@@ -103,7 +100,7 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', disab
       background: bg[variant], color: co[variant], border: bo[variant],
       borderRadius: 8, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.5 : 1, padding: pd[size], fontSize: fs[size],
-      display: 'inline-flex', alignItems: 'center', gap: 6, lineHeight: 1.4,
+      display: 'inline-flex', alignItems: 'center', gap: 6,
       transition: 'opacity 0.15s', ...x,
     }}>{children}</button>
   )
@@ -114,15 +111,13 @@ export function Toast({ toasts, onRemove }) {
     <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 300, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {toasts.map(t => (
         <div key={t.id} onClick={() => onRemove(t.id)} style={{
-          background: t.type === 'error' ? COLORS.red + '18' : t.type === 'success' ? COLORS.green + '18' : COLORS.surface,
+          background: t.type === 'error' ? '#450a0a' : t.type === 'success' ? '#052e16' : COLORS.surface,
           border: `1px solid ${t.type === 'error' ? COLORS.red : t.type === 'success' ? COLORS.green : COLORS.border}`,
           borderRadius: 10, padding: '12px 16px', color: COLORS.text, fontSize: 13,
           display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', maxWidth: 320,
-          boxShadow: `0 8px 32px ${COLORS.shadow}`, animation: 'slideIn 0.2s ease',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)', animation: 'slideIn 0.2s ease',
         }}>
-          <span style={{ color: t.type === 'error' ? COLORS.red : t.type === 'success' ? COLORS.green : COLORS.textMuted }}>
-            {t.type === 'error' ? '✕' : t.type === 'success' ? '✓' : 'ℹ'}
-          </span>
+          <span>{t.type === 'error' ? '✕' : t.type === 'success' ? '✓' : 'ℹ'}</span>
           {t.message}
         </div>
       ))}
@@ -131,12 +126,10 @@ export function Toast({ toasts, onRemove }) {
 }
 
 export const iStyle = {
-  width: '100%', background: COLORS.inputBg, border: `1px solid ${COLORS.border}`,
+  width: '100%', background: COLORS.bg, border: `1px solid ${COLORS.border}`,
   borderRadius: 8, padding: '8px 12px', color: COLORS.text, fontSize: 13, outline: 'none',
-  lineHeight: 1.5,
 }
 export const lStyle = {
   fontSize: 11, fontWeight: 700, color: COLORS.textMuted,
   letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6,
-  lineHeight: 1.4,
 }

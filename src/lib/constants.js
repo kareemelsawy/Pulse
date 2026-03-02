@@ -1,4 +1,5 @@
-export const COLORS = {
+// ─── Theme system ─────────────────────────────────────────────────────────────
+export const DARK_THEME = {
   bg: '#0D0F14',
   surface: '#141720',
   surfaceHover: '#1C2030',
@@ -12,6 +13,34 @@ export const COLORS = {
   text: '#E2E8F0',
   textMuted: '#64748B',
   textDim: '#94A3B8',
+  inputBg: '#0D0F14',
+  shadow: 'rgba(0,0,0,0.5)',
+  cardShadow: '0 8px 32px rgba(0,0,0,0.3)',
+}
+
+export const LIGHT_THEME = {
+  bg: '#F1F5F9',
+  surface: '#FFFFFF',
+  surfaceHover: '#F8FAFC',
+  border: '#E2E8F0',
+  accent: '#3B82F6',
+  accentDim: '#DBEAFE',
+  green: '#16A34A',
+  amber: '#D97706',
+  red: '#DC2626',
+  purple: '#7C3AED',
+  text: '#0F172A',
+  textMuted: '#94A3B8',
+  textDim: '#475569',
+  inputBg: '#F8FAFC',
+  shadow: 'rgba(0,0,0,0.08)',
+  cardShadow: '0 4px 16px rgba(0,0,0,0.08)',
+}
+
+export let COLORS = { ...DARK_THEME }
+export function setThemeColors(isDark) {
+  const t = isDark ? DARK_THEME : LIGHT_THEME
+  Object.keys(t).forEach(k => { COLORS[k] = t[k] })
 }
 
 export const PRIORITY = {
@@ -21,16 +50,13 @@ export const PRIORITY = {
 }
 
 export const STATUS = {
-  todo:       { label: 'To Do',       color: '#475569' },
-  inprogress: { label: 'In Progress', color: '#4F8EF7' },
-  review:     { label: 'Review',      color: '#A78BFA' },
-  done:       { label: 'Done',        color: '#22C55E' },
+  new:        { label: 'New',         color: '#475569', next: 'inprogress' },
+  inprogress: { label: 'In Progress', color: '#4F8EF7', next: 'review'     },
+  review:     { label: 'Review',      color: '#A78BFA', next: 'done'       },
+  done:       { label: 'Done',        color: '#22C55E', next: null         },
 }
 
-export const ALL_TAGS = [
-  'Design', 'Frontend', 'Backend', 'Engineering',
-  'Content', 'Marketing', 'Research', 'Strategy',
-]
+export const STATUS_FLOW = ['new', 'inprogress', 'review', 'done']
 
 export const PROJECT_COLORS = [
   '#4F8EF7', '#A78BFA', '#22C55E', '#F59E0B',

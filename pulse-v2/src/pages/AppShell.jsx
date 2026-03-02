@@ -1,21 +1,21 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
-import { useTheme } from '../contexts/ThemeContext'
 import { COLORS } from '../lib/constants'
 import { Avatar, Spinner } from '../components/UI'
-import { OverviewPage, MyTasksPage, ProjectView, NewProjectModal } from './Pages'
+import WorkspaceSettings from '../components/WorkspaceSettings'
+import { OverviewPage, MyTasksPage, ProjectView, NewProjectModal, NotifModal } from './Pages'
 import SettingsPage from './SettingsPage'
-import AnalyticsPage from './AnalyticsPage'
 
 export default function AppShell({ toast }) {
   const { user, signOut } = useAuth()
   const { workspace, projects, getProjectTasks, loading } = useData()
-  const { isDark, toggleTheme } = useTheme()
-  const [view, setView]             = useState('overview')
+  const [view, setView]                   = useState('overview')
   const [activeProject, setActiveProject] = useState(null)
   const [sidebarOpen, setSidebarOpen]     = useState(true)
   const [newProjectOpen, setNewProjectOpen] = useState(false)
+  const [notifOpen, setNotifOpen]         = useState(false)
+  const [wsSettingsOpen, setWsSettingsOpen] = useState(false)
   const [userMenu, setUserMenu]           = useState(false)
 
   const displayName = user?.user_metadata?.full_name || user?.email || 'You'
@@ -45,14 +45,14 @@ export default function AppShell({ toast }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{workspace?.name || 'Pulse'}</div>
               </div>
+              <button onClick={() => setWsSettingsOpen(true)} title="Workspace Settings" style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 15, padding: '2px 4px', borderRadius: 6, flexShrink: 0 }}>⚙</button>
             </div>
           </div>
 
           {/* Nav */}
           <nav style={{ padding: '10px 8px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <NavItem icon="⊞" label="Overview"  active={view === 'overview'}   onClick={openOverview} />
-            <NavItem icon="✦" label="My Tasks"  active={view === 'mytasks'}    onClick={openMyTasks} />
-            <NavItem icon="📊" label="Analytics" active={view === 'analytics'}  onClick={() => { setActiveProject(null); setView('analytics') }} />
+            <NavItem icon="⊞" label="Overview" active={view === 'overview'} onClick={openOverview} />
+            <NavItem icon="✦" label="My Tasks" active={view === 'mytasks'} onClick={openMyTasks} />
           </nav>
 
           {/* Projects */}
@@ -94,7 +94,7 @@ export default function AppShell({ toast }) {
                 </div>
               </div>
               {userMenu && (
-                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 6, marginBottom: 4, zIndex: 50, boxShadow: `0 8px 32px ${COLORS.shadow}` }}>
+                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 6, marginBottom: 4, zIndex: 50, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
                   <button onClick={() => { setUserMenu(false); setView('settings') }} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: COLORS.textDim, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}>⚙ Settings</button>
                   <button onClick={() => { setUserMenu(false); signOut() }} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: COLORS.red, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>Sign out</button>
                 </div>
@@ -106,29 +106,23 @@ export default function AppShell({ toast }) {
 
       {/* Main */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-        <header style={{ height: 52, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 10, flexShrink: 0 }}>
+        <header style={{ height: 52, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', padding: '0 20px', flexShrink: 0 }}>
           <button onClick={() => setSidebarOpen(p => !p)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 20, cursor: 'pointer', padding: '4px 6px', borderRadius: 6 }}>☰</button>
-          <span style={{ fontSize: 12, color: COLORS.textMuted }}>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: COLORS.textMuted }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </span>
-          <div style={{ marginLeft: 'auto' }} />
-          {/* Theme toggle */}
-          <button onClick={toggleTheme} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 15, color: COLORS.textDim, display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}>
-            {isDark ? '☀' : '🌙'}
-            <span style={{ fontSize: 12, fontWeight: 600 }}>{isDark ? 'Light' : 'Dark'}</span>
-          </button>
         </header>
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {view === 'overview'  && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} />}
-          {view === 'mytasks'   && <MyTasksPage />}
-          {view === 'analytics' && <AnalyticsPage />}
-          {view === 'project'   && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
-          {view === 'settings'  && <SettingsPage toast={toast} />}
+          {view === 'overview' && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} />}
+          {view === 'mytasks'  && <MyTasksPage />}
+          {view === 'project'  && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
+          {view === 'settings' && <SettingsPage toast={toast} />}
         </main>
       </div>
 
-      {newProjectOpen && <NewProjectModal onClose={() => setNewProjectOpen(false)} toast={toast} />}
+      {newProjectOpen  && <NewProjectModal      onClose={() => setNewProjectOpen(false)}  toast={toast} />}
+      {notifOpen       && <NotifModal           onClose={() => setNotifOpen(false)}        toast={toast} />}
+      {wsSettingsOpen  && <WorkspaceSettings    onClose={() => setWsSettingsOpen(false)}   toast={toast} />}
     </div>
   )
 }
