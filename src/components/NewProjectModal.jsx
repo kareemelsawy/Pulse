@@ -1,5 +1,1 @@
-export { OverviewPage } from '../pages/Pages'
-export { MyTasksPage }  from '../pages/Pages'
-export { ProjectView }  from '../pages/Pages'
 export { NewProjectModal } from '../pages/Pages'
-export { NotifModal }   from '../pages/Pages'

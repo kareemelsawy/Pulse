@@ -1,14 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import {
-  subscribeProjects, subscribeTask, subscribeTasks,
+  subscribeProjects, subscribeTasks,
   createProject, updateProject, deleteProject,
   createTask, updateTask, deleteTask,
   getNotifSettings, saveNotifSettings,
   getNotifLogs, insertNotifLog,
 } from '../lib/db'
 import { sendGmail, buildNotificationEmail } from '../lib/gmail'
-import { NOTIFICATION_TRIGGERS } from '../lib/constants'
 
 const DataContext = createContext(null)
 

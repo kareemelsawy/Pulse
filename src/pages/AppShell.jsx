@@ -3,11 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
 import { COLORS } from '../lib/constants'
 import { Avatar, Spinner } from '../components/UI'
-import OverviewPage from './OverviewPage'
-import MyTasksPage from './MyTasksPage'
-import ProjectView from './ProjectView'
-import NewProjectModal from '../components/NewProjectModal'
-import NotifModal from '../components/NotifModal'
+import { OverviewPage, MyTasksPage, ProjectView, NewProjectModal, NotifModal } from './Pages'
 
 export default function AppShell({ toast }) {
   const { user, signOut } = useAuth()
@@ -44,10 +40,8 @@ export default function AppShell({ toast }) {
         @keyframes slideIn { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
       `}</style>
 
-      {/* ── Sidebar ── */}
       {sidebarOpen && (
         <aside style={{ width: 240, background: COLORS.surface, borderRight: `1px solid ${COLORS.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-          {/* Logo */}
           <div style={{ padding: '18px 16px 14px', borderBottom: `1px solid ${COLORS.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>◈</div>
@@ -55,13 +49,11 @@ export default function AppShell({ toast }) {
             </div>
           </div>
 
-          {/* Nav */}
           <nav style={{ padding: '10px 8px', borderBottom: `1px solid ${COLORS.border}` }}>
-            <NavItem icon="⊞" label="Overview"  active={view === 'overview'} onClick={openOverview} />
-            <NavItem icon="✦" label="My Tasks"  active={view === 'mytasks'} onClick={openMyTasks} />
+            <NavItem icon="⊞" label="Overview" active={view === 'overview'} onClick={openOverview} />
+            <NavItem icon="✦" label="My Tasks" active={view === 'mytasks'} onClick={openMyTasks} />
           </nav>
 
-          {/* Projects */}
           <div style={{ flex: 1, padding: '10px 8px', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 10px 8px' }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Projects</span>
@@ -73,12 +65,12 @@ export default function AppShell({ toast }) {
             {projects.map(p => {
               const ptasks = getProjectTasks(p.id)
               const done   = ptasks.filter(t => t.status === 'done').length
+              const isActive = activeProject?.id === p.id && view === 'project'
               return (
                 <div key={p.id} onClick={() => openProject(p)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 1, background: activeProject?.id === p.id && view === 'project' ? COLORS.surfaceHover : 'transparent', transition: 'background 0.15s' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 1, background: isActive ? COLORS.surfaceHover : 'transparent', transition: 'background 0.15s' }}
                   onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
-                  onMouseLeave={e => e.currentTarget.style.background = activeProject?.id === p.id && view === 'project' ? COLORS.surfaceHover : 'transparent'}
-                >
+                  onMouseLeave={e => e.currentTarget.style.background = isActive ? COLORS.surfaceHover : 'transparent'}>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                   <span style={{ fontSize: 11, color: COLORS.textMuted }}>{done}/{ptasks.length}</span>
@@ -87,7 +79,6 @@ export default function AppShell({ toast }) {
             })}
           </div>
 
-          {/* Bottom */}
           <div style={{ padding: 8, borderTop: `1px solid ${COLORS.border}` }}>
             <NavItem icon="✉" label="Email Notifications" active={false} onClick={() => setNotifOpen(true)} />
             <div style={{ position: 'relative' }}>
@@ -111,11 +102,10 @@ export default function AppShell({ toast }) {
         </aside>
       )}
 
-      {/* ── Main ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         <header style={{ height: 52, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', padding: '0 20px', flexShrink: 0 }}>
           <button onClick={() => setSidebarOpen(p => !p)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 20, cursor: 'pointer', padding: '4px 6px', borderRadius: 6 }}>☰</button>
-          <span style={{ marginLeft: 12, fontSize: 12, color: COLORS.textMuted, marginLeft: 'auto' }}>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: COLORS.textMuted }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </span>
         </header>
@@ -135,7 +125,8 @@ export default function AppShell({ toast }) {
 
 function NavItem({ icon, label, active, onClick }) {
   return (
-    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: active ? COLORS.surfaceHover : 'transparent', color: active ? COLORS.text : COLORS.textDim, marginBottom: 1, transition: 'all 0.15s' }}
+    <div onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: active ? COLORS.surfaceHover : 'transparent', color: active ? COLORS.text : COLORS.textDim, marginBottom: 1, transition: 'all 0.15s' }}
       onMouseEnter={e => { if (!active) e.currentTarget.style.background = COLORS.surfaceHover }}
       onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
       <span style={{ fontSize: 14, width: 18, textAlign: 'center', flexShrink: 0 }}>{icon}</span>

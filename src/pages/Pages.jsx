@@ -1,8 +1,8 @@
 // ─── OverviewPage ─────────────────────────────────────────────────────────────
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useData } from '../contexts/DataContext'
 import { COLORS, STATUS, PRIORITY, ALL_TAGS, PROJECT_COLORS, NOTIFICATION_TRIGGERS } from '../lib/constants'
-import { Avatar, Badge, ProgressBar, Modal, Spinner, Toggle, Btn, Toast, iStyle, lStyle } from '../components/UI'
+import { Avatar, Badge, ProgressBar, Modal, Toggle, Btn, iStyle, lStyle } from '../components/UI'
 import { startGmailOAuth, parseOAuthToken, getGmailAddress } from '../lib/gmail'
 
 export function OverviewPage({ onOpenProject, onNewProject }) {
@@ -421,8 +421,8 @@ export function NotifModal({ onClose, toast }) {
   const [extraEmails, setExtraEmails] = useState(notifSettings?.extra_emails || '')
   const [saving, setSaving] = useState(false)
 
-  // Handle OAuth return
-  useState(() => {
+  // Handle OAuth return after Gmail redirect
+  useEffect(() => {
     const t = parseOAuthToken()
     if (t) {
       getGmailAddress(t).then(addr => {
@@ -430,7 +430,7 @@ export function NotifModal({ onClose, toast }) {
         toast?.(`Gmail connected: ${addr}`, 'success')
       })
     }
-  })
+  }, [])
 
   async function handleSave() {
     setSaving(true)

@@ -1,1 +1,1 @@
-export { NotifModal as default } from '../pages/Pages'
+export { NotifModal } from '../pages/Pages'
