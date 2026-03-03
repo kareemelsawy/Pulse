@@ -15,44 +15,35 @@ export async function getMyWorkspace(userId) {
 }
 
 export async function getWorkspaceMembers(workspaceId) {
-  // Try with profiles join first
-  const { data, error } = await supabase
-    .from('workspace_members')
-    .select('user_id, role, joined_at, profiles(full_name, email)')
-    .eq('workspace_id', workspaceId)
-
-  if (!error && data) {
-    const members = data.map(m => ({
-      user_id: m.user_id,
-      role: m.role,
-      joined_at: m.joined_at,
-      full_name: m.profiles?.full_name || null,
-      email: m.profiles?.email || null,
-    }))
-
-    // If profiles table gave us nothing, try fetching current user's own profile
-    // to at least show something useful in the dropdown
-    const anyHasName = members.some(m => m.full_name || m.email)
-    if (!anyHasName) {
-      // Try getting current user from supabase auth session
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        return members.map(m => m.user_id === user.id ? {
-          ...m,
-          full_name: user.user_metadata?.full_name || null,
-          email: user.email || null,
-        } : m)
-      }
-    }
-    return members
-  }
-
-  // Fallback: no profiles table
-  const { data: fallback } = await supabase
+  // Step 1: get member list
+  const { data: memberRows, error } = await supabase
     .from('workspace_members')
     .select('user_id, role, joined_at')
     .eq('workspace_id', workspaceId)
-  return (fallback || []).map(m => ({ ...m, full_name: null, email: null }))
+
+  if (error || !memberRows) return []
+
+  // Step 2: try profiles join for names
+  const { data: profileRows } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .in('id', memberRows.map(m => m.user_id))
+
+  // Step 3: get current user from auth session as a guaranteed fallback
+  const { data: { user: currentUser } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+
+  return memberRows.map(m => {
+    const profile = profileRows?.find(p => p.id === m.user_id)
+    // Prefer profile data, fall back to current user's auth data, then short UUID
+    const isCurrentUser = currentUser?.id === m.user_id
+    const full_name = profile?.full_name
+      || (isCurrentUser ? currentUser?.user_metadata?.full_name : null)
+      || null
+    const email = profile?.email
+      || (isCurrentUser ? currentUser?.email : null)
+      || null
+    return { user_id: m.user_id, role: m.role, joined_at: m.joined_at, full_name, email }
+  })
 }
 
 export async function joinWorkspaceByCode(code, userId) {

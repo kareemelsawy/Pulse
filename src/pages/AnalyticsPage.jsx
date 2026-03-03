@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useData } from '../contexts/DataContext'
 import { COLORS, STATUS, PRIORITY } from '../lib/constants'
+import { Icon } from '../components/UI'
 
 function StatCard({ title, value, sub, color, icon }) {
   return (
@@ -138,8 +139,8 @@ export default function AnalyticsPage() {
         {/* Top KPI row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
           <StatCard title="Total Tasks"       value={tasks.length}               sub={`across ${projects.length} projects`}    color={COLORS.accent}  icon="📋" />
-          <StatCard title="Completion Rate"   value={`${stats.completionRate}%`} sub={`${stats.done.length} tasks done`}       color={COLORS.green}   icon="✓" />
-          <StatCard title="Overdue"           value={stats.overdue.length}       sub="need attention"                          color={stats.overdue.length > 0 ? COLORS.red : COLORS.green} icon="⚠" />
+          <StatCard title="Completion Rate"   value={`${stats.completionRate}%`} sub={`${stats.done.length} tasks done`}       color={COLORS.green}   icon={<Icon name="check" size={13} />} />
+          <StatCard title="Overdue"           value={stats.overdue.length}       sub="need attention"                          color={stats.overdue.length > 0 ? COLORS.red : COLORS.green} icon={<Icon name="warning" size={13} />} />
           <StatCard title="Due This Week"     value={stats.dueSoon.length}       sub="tasks approaching deadline"              color={COLORS.amber}   icon="📅" />
         </div>
 
@@ -269,7 +270,7 @@ export default function AnalyticsPage() {
         {/* Overdue tasks list */}
         {stats.overdue.length > 0 && (
           <div style={card}>
-            <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 14, paddingBottom: 2, color: COLORS.red }}>⚠ Overdue Tasks ({stats.overdue.length})</h3>
+            <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 14, paddingBottom: 2, color: COLORS.red }}>Overdue Tasks ({stats.overdue.length})</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {stats.overdue.slice(0, 8).map(t => {
                 const daysAgo = Math.floor((new Date() - new Date(t.due_date)) / (1000 * 60 * 60 * 24))

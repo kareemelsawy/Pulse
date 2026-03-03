@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { joinWorkspaceByCode } from '../lib/db'
 import { COLORS } from '../lib/constants'
+import { Icon } from '../components/UI'
 import { Spinner } from '../components/UI'
 
 const C = COLORS
@@ -34,7 +35,7 @@ export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }
       <div style={card}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>◈</div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="logo" size={20} color="#fff" /></div>
           <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: '-0.03em', color: C.text }}>Pulse</span>
         </div>
 

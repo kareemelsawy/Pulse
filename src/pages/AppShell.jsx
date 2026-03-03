@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { COLORS } from '../lib/constants'
-import { Avatar, Spinner } from '../components/UI'
+import { Avatar, Spinner , Icon } from '../components/UI'
 import { OverviewPage, MyTasksPage, ProjectView, NewProjectModal } from './Pages'
 import SettingsPage from './SettingsPage'
 import AnalyticsPage from './AnalyticsPage'
@@ -30,7 +30,7 @@ export default function AppShell({ toast }) {
 
   if (loading) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: COLORS.bg, gap: 16 }}>
-      <div style={{ fontSize: 36 }}>◈</div>
+      <Icon name="logo" size={32} color={COLORS.accent} />
       <Spinner size={28} />
     </div>
   )
@@ -44,7 +44,7 @@ export default function AppShell({ toast }) {
           {/* Workspace header */}
           <div style={{ padding: '14px 16px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>◈</div>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="logo" size={18} color="#fff" /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{workspace?.name || 'Pulse'}</div>
               </div>
@@ -53,9 +53,9 @@ export default function AppShell({ toast }) {
 
           {/* Nav */}
           <nav style={{ padding: '10px 8px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <NavItem icon="⊞" label="Overview"  active={view === 'overview'}   onClick={openOverview} />
-            <NavItem icon="✦" label="My Tasks"  active={view === 'mytasks'}    onClick={openMyTasks} />
-            <NavItem icon="📊" label="Analytics" active={view === 'analytics'}  onClick={() => { setActiveProjectId(null); setView('analytics') }} />
+            <NavItem icon={<Icon name="grid" size={15} />} label="Overview"  active={view === 'overview'}   onClick={openOverview} />
+            <NavItem icon={<Icon name="tasks" size={15} />} label="My Tasks"  active={view === 'mytasks'}    onClick={openMyTasks} />
+            <NavItem icon={<Icon name="barChart" size={15} />} label="Analytics" active={view === 'analytics'}  onClick={() => { setActiveProjectId(null); setView('analytics') }} />
           </nav>
 
           {/* Projects */}
@@ -84,7 +84,7 @@ export default function AppShell({ toast }) {
 
           {/* Bottom */}
           <div style={{ padding: 8, borderTop: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <NavItem icon="⚙" label="Settings" active={view === 'settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
+            <NavItem icon={<Icon name="settings" size={15} />} label="Settings" active={view === 'settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
             <div style={{ position: 'relative' }}>
               <div onClick={() => setUserMenu(p => !p)}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer' }}
@@ -118,7 +118,7 @@ export default function AppShell({ toast }) {
           {/* Theme toggle */}
           <button onClick={toggleTheme} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 15, color: COLORS.textDim, display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}>
-            {isDark ? '☀' : '🌙'}
+            {isDark ? <Icon name="sun" size={15} color={COLORS.textMuted} /> : <Icon name="moon" size={15} color={COLORS.textMuted} />}
             <span style={{ fontSize: 12, fontWeight: 600 }}>{isDark ? 'Light' : 'Dark'}</span>
           </button>
         </header>
@@ -142,7 +142,7 @@ function NavItem({ icon, label, active, onClick }) {
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: active ? COLORS.surfaceHover : 'transparent', color: active ? COLORS.text : COLORS.textDim, marginBottom: 1, transition: 'all 0.15s' }}
       onMouseEnter={e => { if (!active) e.currentTarget.style.background = COLORS.surfaceHover }}
       onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
-      <span style={{ fontSize: 14, width: 18, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+      <span style={{ width: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</span>
       <span style={{ fontWeight: 500, fontSize: 13 }}>{label}</span>
     </div>
   )

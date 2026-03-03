@@ -3,8 +3,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { DataProvider, useData } from './contexts/DataContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { useToast } from './hooks/useToast'
-import { Toast, Spinner } from './components/UI'
-import { COLORS, DARK_THEME, LIGHT_THEME } from './lib/constants'
+import { Toast, Spinner, Icon } from './components/UI'
+import { DARK_THEME, LIGHT_THEME } from './lib/constants'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoginPage, { SignupPage, ResetPage, NewPasswordPage } from './pages/LoginPage'
 import WorkspaceSetup from './pages/WorkspaceSetup'
@@ -32,7 +32,7 @@ function AuthGate({ toast }) {
 
   if (authLoading) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.bg, gap: 16 }}>
-      <div style={{ fontSize: 40 }}>◈</div>
+      <Icon name="logo" size={36} color={C.accent} />
       <Spinner size={28} />
     </div>
   )
@@ -64,7 +64,7 @@ function WorkspaceGate({ toast }) {
 
   if (loading) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.bg, gap: 16 }}>
-      <div style={{ fontSize: 40 }}>◈</div>
+      <Icon name="logo" size={36} color={C.accent} />
       <Spinner size={28} />
       <span style={{ color: C.textMuted, fontSize: 13 }}>Loading workspace…</span>
     </div>
@@ -84,10 +84,10 @@ function WorkspaceGate({ toast }) {
 
 function Inner() {
   const { toasts, toast, removeToast } = useToast()
-  const { isDark } = useTheme()
-  // Re-render whole tree when theme changes so COLORS object is consumed fresh
+  // No key trick here — that caused full unmount/remount on theme toggle + tab refocus.
+  // Theme is handled via CSS variables and COLORS mutation in ThemeContext instead.
   return (
-    <div key={isDark ? 'dark' : 'light'}>
+    <div>
       <AuthGate toast={toast} />
       <Toast toasts={toasts} onRemove={removeToast} />
     </div>

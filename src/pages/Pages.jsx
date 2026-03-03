@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
 import { COLORS, STATUS, STATUS_FLOW, PRIORITY, PROJECT_COLORS } from '../lib/constants'
-import { Avatar, Badge, ProgressBar, Modal, Btn, iStyle, lStyle } from '../components/UI'
+import { Avatar, Badge, ProgressBar, Modal, Btn, iStyle, lStyle, Icon } from '../components/UI'
 import { getComments, addComment, deleteComment } from '../lib/db'
 
 // ─── OverviewPage ─────────────────────────────────────────────────────────────
@@ -16,7 +16,7 @@ export function OverviewPage({ onOpenProject, onNewProject }) {
       <div style={{ maxWidth: 1100 }}>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: '-0.03em', marginBottom: 6, paddingBottom: 2 }}>
-            Good {hour()} ✦
+            Good {hour()}
           </h1>
           <p style={{ color: COLORS.textMuted }}>{projects.length} projects · {tasks.length} tasks total</p>
         </div>
@@ -32,7 +32,7 @@ export function OverviewPage({ onOpenProject, onNewProject }) {
 
         {overdue.length > 0 && (
           <div style={{ background: COLORS.red + '18', border: `1px solid ${COLORS.red}44`, borderRadius: 12, padding: '12px 18px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span>⚠</span>
+            <Icon name="warning" size={16} color={COLORS.red} />
             <span style={{ color: COLORS.red, fontSize: 13 }}><strong>{overdue.length}</strong> task{overdue.length > 1 ? 's are' : ' is'} overdue</span>
           </div>
         )}
@@ -44,7 +44,7 @@ export function OverviewPage({ onOpenProject, onNewProject }) {
 
         {projects.length === 0 ? (
           <div style={{ background: COLORS.surface, border: `2px dashed ${COLORS.border}`, borderRadius: 16, padding: 48, textAlign: 'center' }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>◈</div>
+            <Icon name="folder" size={36} color={COLORS.border} style={{ marginBottom: 10 }} />
             <div style={{ fontWeight: 600, marginBottom: 6 }}>No projects yet</div>
             <div style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Create your first project to get started</div>
             <Btn onClick={onNewProject}>+ Create Project</Btn>
@@ -62,7 +62,7 @@ export function OverviewPage({ onOpenProject, onNewProject }) {
                   <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{p.name}</div>
                   {p.description && <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12, lineHeight: 1.5 }}>{p.description}</div>}
                   <ProgressBar tasks={ptasks} />
-                  {ov > 0 && <div style={{ marginTop: 8, fontSize: 11, color: COLORS.red, fontWeight: 600 }}>⚠ {ov} overdue</div>}
+                  {ov > 0 && <div style={{ marginTop: 8, fontSize: 11, color: COLORS.red, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><Icon name="warning" size={11} color={COLORS.red} /> {ov} overdue</div>}
                 </div>
               )
             })}
@@ -86,13 +86,13 @@ export function MyTasksPage() {
         <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, marginBottom: 22, letterSpacing: '-0.03em', paddingBottom: 2 }}>My Tasks</h1>
         {myTasks.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: COLORS.textMuted }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>✓</div>
+            <Icon name="check" size={36} color={COLORS.green} style={{ marginBottom: 10 }} />
             <div style={{ fontWeight: 600, fontSize: 15 }}>All caught up!</div>
           </div>
         ) : (
-          [['⚠ Overdue', overdue], ['Upcoming', rest]].map(([label, list]) => list.length === 0 ? null : (
+          [['Overdue', overdue], ['Upcoming', rest]].map(([label, list]) => list.length === 0 ? null : (
             <div key={label} style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: label.includes('Overdue') ? COLORS.red : COLORS.textMuted, marginBottom: 8 }}>{label}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: label === 'Overdue' ? COLORS.red : COLORS.textMuted, marginBottom: 8 }}>{label}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {list.map(t => {
                   const proj = projects.find(p => p.id === t.project_id)
@@ -140,15 +140,15 @@ export function ProjectView({ project, toast }) {
       <div style={{ padding: '0 22px', height: 54, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 10, background: COLORS.surface, flexShrink: 0 }}>
         <div style={{ width: 11, height: 11, borderRadius: '50%', background: project.color }} />
         <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, letterSpacing: '-0.02em', paddingBottom: 1 }}>{project.name}</h1>
-        <button onClick={() => setEditProjOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 13, padding: '2px 6px' }}>✎</button>
+        <button onClick={() => setEditProjOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: '2px 6px', display: 'flex', alignItems: 'center' }}><Icon name="edit" size={14} color={COLORS.textMuted} /></button>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '5px 10px', width: 180 }}>
           <span style={{ color: COLORS.textMuted, fontSize: 12 }}>⌕</span>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ background: 'none', border: 'none', color: COLORS.text, fontSize: 13, width: '100%', outline: 'none' }} />
         </div>
         <div style={{ display: 'flex', background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden' }}>
-          {[['⊟','list'],['⊞','board']].map(([ic,v]) => (
-            <button key={v} onClick={() => setView(v)} style={{ padding: '5px 11px', background: view===v ? COLORS.border : 'none', color: view===v ? COLORS.text : COLORS.textMuted, fontSize: 14, border: 'none', cursor: 'pointer' }}>{ic}</button>
+          {[['list','list'],['board','board']].map(([ic,v]) => (
+            <button key={v} onClick={() => setView(v)} style={{ padding: '5px 9px', background: view===v ? COLORS.border : 'none', color: view===v ? COLORS.text : COLORS.textMuted, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Icon name={ic} size={14} color={view===v ? COLORS.text : COLORS.textMuted} /></button>
           ))}
         </div>
         <Btn size="sm" variant="secondary" onClick={() => setCsvOpen(true)}>↑ CSV</Btn>
@@ -211,7 +211,7 @@ function BoardView({ tasks, onTaskClick }) {
                   onMouseLeave={e => { e.currentTarget.style.background = COLORS.bg; e.currentTarget.style.transform = '' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginBottom: 8 }}>
                     <span style={{ fontWeight: 500, fontSize: 13, lineHeight: 1.4 }}>{t.title}</span>
-                    <span style={{ color: PRIORITY[t.priority]?.color, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{PRIORITY[t.priority]?.icon}</span>
+                    <span style={{ color: PRIORITY[t.priority]?.color, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{t.priority === 'high' ? <Icon name="priorityHigh" size={12} color={PRIORITY[t.priority]?.color} /> : t.priority === 'low' ? <Icon name="priorityLow" size={12} color={PRIORITY[t.priority]?.color} /> : <Icon name="priorityMed" size={12} color={PRIORITY[t.priority]?.color} />}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     {t.assignee_name ? <Avatar name={t.assignee_name} size={20} /> : <span />}
@@ -239,7 +239,7 @@ function NextStepButton({ task }) {
       style={{ marginTop: 8, width: '100%', background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 0', fontSize: 11, color: COLORS.textMuted, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
       onMouseEnter={e => { e.currentTarget.style.background = COLORS.accent + '22'; e.currentTarget.style.color = COLORS.accent; e.currentTarget.style.borderColor = COLORS.accent }}
       onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = COLORS.textMuted; e.currentTarget.style.borderColor = COLORS.border }}>
-      → {STATUS[next].label}
+      <><Icon name="arrowRight" size={11} color={COLORS.textMuted} style={{ marginRight: 4 }} />{STATUS[next].label}</>
     </button>
   )
 }
@@ -260,7 +260,7 @@ function ListView({ tasks, onTaskClick }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             {t.assignee_name && <><Avatar name={t.assignee_name} size={20} /><span style={{ fontSize: 12, color: COLORS.textDim }}>{t.assignee_name.split(' ')[0]}</span></>}
           </div>
-          <span style={{ color: PRIORITY[t.priority]?.color, fontSize: 12, fontWeight: 600 }}>{PRIORITY[t.priority]?.icon} {PRIORITY[t.priority]?.label}</span>
+          <span style={{ color: PRIORITY[t.priority]?.color, fontSize: 12, fontWeight: 600 }}>{t.priority === 'high' ? <Icon name="priorityHigh" size={12} color={PRIORITY[t.priority]?.color} /> : t.priority === 'low' ? <Icon name="priorityLow" size={12} color={PRIORITY[t.priority]?.color} /> : <Icon name="priorityMed" size={12} color={PRIORITY[t.priority]?.color} />} {PRIORITY[t.priority]?.label}</span>
           <span style={{ fontSize: 12, color: t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done' ? COLORS.red : COLORS.textMuted }}>{t.due_date}</span>
         </div>
       ))}
@@ -370,7 +370,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
           </h2>
           {task && <span style={{ fontSize: 11, color: COLORS.textMuted }}>#{task.id.slice(0,8)}</span>}
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 4, marginTop: -2 }}>✕</button>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: 4, marginTop: -2, display: 'flex', alignItems: 'center' }}><Icon name="x" size={18} color={COLORS.textMuted} /></button>
       </div>
 
       {/* ── Scrollable body ── */}
@@ -420,7 +420,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
           <label style={lStyle}>Priority</label>
           <div style={{ display: 'flex', gap: 8 }}>
             {Object.entries(PRIORITY).map(([k, v]) => {
-              const dot = k === 'high' ? '🔴' : k === 'medium' ? '🟡' : '🟢'
+              const iconName = k === 'high' ? 'priorityHigh' : k === 'medium' ? 'priorityMed' : 'priorityLow'
               const active = priority === k
               return (
                 <button key={k} onClick={() => setPriority(k)} style={{
@@ -432,7 +432,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   transition: 'all 0.15s',
                 }}>
-                  <span style={{ fontSize: 14 }}>{dot}</span>
+                  <Icon name={iconName} size={14} color={active ? v.color : COLORS.textMuted} />
                   {v.label}
                 </button>
               )
@@ -445,7 +445,13 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
           <label style={lStyle}>Assignee</label>
           {localMembers.length > 0 ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {[{ user_id: '', display: 'Unassigned' }, ...localMembers.map(m => ({ user_id: m.user_id, display: m.full_name || m.email || m.user_id.slice(0,8) }))].map(m => {
+              {[{ user_id: '', display: 'Unassigned', isUnassigned: true },
+                ...localMembers.map(m => {
+                  const isMe = m.user_id === user?.id
+                  const display = m.full_name || m.email || (isMe ? 'Me' : 'Team Member')
+                  return { user_id: m.user_id, display, isUnassigned: false }
+                })
+              ].map(m => {
                 const active = assigneeId === m.user_id
                 return (
                   <button key={m.user_id} onClick={() => setAssigneeId(m.user_id)} style={{
@@ -456,16 +462,16 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
                     cursor: 'pointer', fontFamily: 'inherit', fontWeight: active ? 700 : 400,
                     fontSize: 12, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6,
                   }}>
-                    {m.user_id && <Avatar name={m.display} size={16} />}
+                    {!m.isUnassigned && <Avatar name={m.display} size={16} />}
                     {m.display}
                   </button>
                 )
               })}
             </div>
           ) : (
-            <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }}>
-              <option value="">— Unassigned —</option>
-            </select>
+            <div style={{ fontSize: 13, color: COLORS.textMuted, padding: '8px 0' }}>
+              Loading members… (run <code style={{ fontSize: 11 }}>fix-existing-db.sql</code> if this persists)
+            </div>
           )}
         </div>
 
@@ -528,7 +534,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
         <div style={S.sectionLabel}>Attachments</div>
         {task ? (
           <div style={{ border: `1px dashed ${COLORS.border}`, borderRadius: 10, padding: '18px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ fontSize: 24 }}>📎</span>
+            <Icon name="paperclip" size={22} color={COLORS.textMuted} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>File Attachments</div>
               <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
@@ -697,7 +703,7 @@ function CsvImportModal({ projectId, onClose, toast }) {
 
   return (
     <Modal onClose={onClose} width={560}>
-      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 6, paddingBottom: 2 }}>📥 CSV Import</h2>
+      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 6, paddingBottom: 2 }}>CSV Import</h2>
       <p style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Import tasks into <strong style={{ color: COLORS.text }}>{project?.name}</strong></p>
 
       <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14, marginBottom: 18, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.8 }}>
@@ -717,7 +723,7 @@ function CsvImportModal({ projectId, onClose, toast }) {
         style={{ border: `2px dashed ${COLORS.border}`, borderRadius: 10, padding: '24px 20px', textAlign: 'center', cursor: 'pointer', marginBottom: 16, transition: 'all 0.15s' }}
         onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
         onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
-        <div style={{ fontSize: 28, marginBottom: 8 }}>📂</div>
+        <Icon name="folder" size={28} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
         <div style={{ fontWeight: 600, marginBottom: 4 }}>Click to select or drag & drop a CSV</div>
         <div style={{ fontSize: 12, color: COLORS.textMuted }}>Accepts .csv files</div>
         <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }} />
@@ -725,7 +731,7 @@ function CsvImportModal({ projectId, onClose, toast }) {
 
       {preview && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, marginBottom: 8 }}>✓ {preview.length} rows detected</div>
+          <div style={{ fontSize: 12, color: COLORS.green, fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="check" size={13} color={COLORS.green} /> {preview.length} rows detected</div>
           <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden', maxHeight: 200, overflowY: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 80px 120px 100px', padding: '7px 12px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               <span>Title</span><span>Priority</span><span>Assignee</span><span>Due</span>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase, configError } from '../lib/supabase'
 import { COLORS } from '../lib/constants'
+import { Icon } from '../components/UI'
 import { Spinner } from '../components/UI'
 
 const C = COLORS
@@ -18,7 +19,7 @@ function Glows() {
 function Logo() {
   return (
     <>
-      <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 16, boxShadow: '0 8px 24px rgba(79,142,247,0.3)' }}>◈</div>
+      <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, boxShadow: '0 8px 24px rgba(79,142,247,0.3)' }}><Icon name="logo" size={26} color="#fff" /></div>
       <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 30, letterSpacing: '-0.04em', marginBottom: 6, color: C.text }}>Pulse</h1>
       <p style={{ color: C.textMuted, fontSize: 14, textAlign: 'center', marginBottom: 28, lineHeight: 1.6 }}>Project management for teams that ship fast.</p>
     </>
@@ -60,7 +61,7 @@ export default function LoginPage({ onGoSignup, onGoReset }) {
       <Glows />
       <div style={card}>
         <Logo />
-        {configError && <div style={{ background: '#1c0a00', border: `1px solid ${C.amber}55`, borderRadius: 10, padding: 14, width: '100%', marginBottom: 20, fontSize: 12, color: '#d97706' }}>⚠ {configError}</div>}
+        {configError && <div style={{ background: '#1c0a00', border: `1px solid ${C.amber}55`, borderRadius: 10, padding: 14, width: '100%', marginBottom: 20, fontSize: 12, color: '#d97706' }}><Icon name="warning" size={13} color="#d97706" /> {configError}</div>}
         <ErrorBox msg={error} />
         <div style={{ width: '100%' }}>
           <label style={lbl}>Email</label>
