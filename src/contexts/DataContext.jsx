@@ -45,7 +45,7 @@ export function DataProvider({ children }) {
     })
 
     return () => { clearTimeout(timeout); window.__pulseUnsub?.() }
-  }, [user])
+  }, [user?.id])
 
   // ─── Notifications ────────────────────────────────────────────────────────
   const sendNotification = useCallback(async ({ trigger, task, projectName, actorName, extraInfo }) => {

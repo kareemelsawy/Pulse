@@ -19,7 +19,7 @@ function Glows() {
 function Logo() {
   return (
     <>
-      <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, boxShadow: '0 8px 24px rgba(79,142,247,0.3)' }}><Icon name="logo" size={26} color="#fff" /></div>
+      <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, boxShadow: '0 8px 24px rgba(79,142,247,0.3)', fontSize: 26, color: '#fff' }}>✦</div>
       <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 30, letterSpacing: '-0.04em', marginBottom: 6, color: C.text }}>Pulse</h1>
       <p style={{ color: C.textMuted, fontSize: 14, textAlign: 'center', marginBottom: 28, lineHeight: 1.6 }}>Project management for teams that ship fast.</p>
     </>
@@ -110,7 +110,7 @@ export function SignupPage({ onGoLogin }) {
       <Glows />
       <div style={{ ...card, textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>✉</div>
-        <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, color: C.text, marginBottom: 10 }}>Account created!</h2>
+        <h2 style={{ fontWeight: 700, fontSize: 22, color: C.text, marginBottom: 10 }}>Account created!</h2>
         <p style={{ color: C.textMuted, fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>
           Your account is ready. Click below to sign in.
         </p>
@@ -174,7 +174,7 @@ export function ResetPage({ onGoLogin }) {
       <Glows />
       <div style={card}>
         <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 16, boxShadow: '0 8px 24px rgba(79,142,247,0.3)' }}>🔑</div>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: '-0.04em', marginBottom: 6, color: C.text }}>Reset Password</h1>
+        <h1 style={{ fontWeight: 700, fontSize: 24, letterSpacing: '-0.02em', marginBottom: 6, color: C.text }}>Reset Password</h1>
         <p style={{ color: C.textMuted, fontSize: 14, textAlign: 'center', marginBottom: 28, lineHeight: 1.6 }}>Enter your email and we'll send you a reset link.</p>
         <ErrorBox msg={error} />
         <SuccessBox msg={success} />
@@ -217,7 +217,7 @@ export function NewPasswordPage({ onGoLogin }) {
       <Glows />
       <div style={{ ...card, textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>✓</div>
-        <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, color: C.text, marginBottom: 10 }}>Password updated!</h2>
+        <h2 style={{ fontWeight: 700, fontSize: 22, color: C.text, marginBottom: 10 }}>Password updated!</h2>
         <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 24 }}>You can now sign in with your new password.</p>
         <button onClick={onGoLogin} style={{ ...btn, width: 'auto', padding: '10px 28px' }}>Sign In</button>
       </div>
@@ -229,7 +229,7 @@ export function NewPasswordPage({ onGoLogin }) {
       <Glows />
       <div style={card}>
         <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 16 }}>🔑</div>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: '-0.04em', marginBottom: 6, color: C.text }}>New Password</h1>
+        <h1 style={{ fontWeight: 700, fontSize: 24, letterSpacing: '-0.02em', marginBottom: 6, color: C.text }}>New Password</h1>
         <p style={{ color: C.textMuted, fontSize: 14, textAlign: 'center', marginBottom: 28 }}>Choose a strong new password.</p>
         <ErrorBox msg={error} />
         <div style={{ width: '100%' }}>

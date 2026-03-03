@@ -10,7 +10,7 @@ function StatCard({ title, value, sub, color, icon }) {
         <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{title}</div>
         {icon && <span style={{ fontSize: 18 }}>{icon}</span>}
       </div>
-      <div style={{ fontSize: 32, fontFamily: 'Syne', fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{value}</div>
+      <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: COLORS.textMuted }}>{sub}</div>}
     </div>
   )
@@ -133,7 +133,7 @@ export default function AnalyticsPage() {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
       <div style={{ maxWidth: 1100 }}>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: '-0.03em', marginBottom: 6, paddingBottom: 2 }}>Analytics</h1>
+        <h1 style={{ fontWeight: 700, fontSize: 24, letterSpacing: '-0.02em', marginBottom: 6, paddingBottom: 2 }}>Analytics</h1>
         <p style={{ color: COLORS.textMuted, fontSize: 14, marginBottom: 28 }}>Task completion insights, workload distribution, and trends.</p>
 
         {/* Top KPI row */}
@@ -250,19 +250,19 @@ export default function AnalyticsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 24 }}>
           <div style={{ ...card, borderTop: `3px solid ${COLORS.purple}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Avg Task Age</div>
-            <div style={{ fontSize: 28, fontFamily: 'Syne', fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{stats.avgAge}d</div>
+            <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{stats.avgAge}d</div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>average days open tasks have been open</div>
           </div>
           <div style={{ ...card, borderTop: `3px solid ${COLORS.amber}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Unassigned Tasks</div>
-            <div style={{ fontSize: 28, fontFamily: 'Syne', fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>
+            <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>
               {tasks.filter(t => !t.assignee_name && t.status !== 'done').length}
             </div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>open tasks with no assignee</div>
           </div>
           <div style={{ ...card, borderTop: `3px solid ${COLORS.green}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Team Members</div>
-            <div style={{ fontSize: 28, fontFamily: 'Syne', fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{members.length}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{members.length}</div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>{Math.round(tasks.length / Math.max(members.length, 1))} tasks per member avg</div>
           </div>
         </div>

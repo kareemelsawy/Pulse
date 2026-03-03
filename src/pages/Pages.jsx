@@ -6,7 +6,7 @@ import { Avatar, Badge, ProgressBar, Modal, Btn, iStyle, lStyle, Icon } from '..
 import { getComments, addComment, deleteComment } from '../lib/db'
 
 // ─── OverviewPage ─────────────────────────────────────────────────────────────
-export function OverviewPage({ onOpenProject, onNewProject }) {
+export function OverviewPage({ onOpenProject, onNewProject, workspaceName }) {
   const { projects, tasks, getProjectTasks } = useData()
   const byStatus = Object.keys(STATUS).map(s => ({ s, count: tasks.filter(t => t.status === s).length }))
   const overdue  = tasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date())
@@ -15,16 +15,22 @@ export function OverviewPage({ onOpenProject, onNewProject }) {
     <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
       <div style={{ maxWidth: 1100 }}>
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: '-0.03em', marginBottom: 6, paddingBottom: 2 }}>
-            Good {hour()}
-          </h1>
-          <p style={{ color: COLORS.textMuted }}>{projects.length} projects · {tasks.length} tasks total</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+            <span style={{ fontSize: 22 }}>{hourIcon()}</span>
+            <h1 style={{ fontWeight: 700, fontSize: 24, letterSpacing: '-0.02em', paddingBottom: 2, margin: 0 }}>
+              Good {hour()}
+            </h1>
+          </div>
+          {workspaceName && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted, marginBottom: 4, letterSpacing: '-0.01em' }}>{workspaceName}</div>
+          )}
+          <p style={{ color: COLORS.textMuted, fontSize: 13 }}>{projects.length} projects · {tasks.length} tasks total</p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 28 }}>
           {byStatus.map(({ s, count }) => (
             <div key={s} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: '16px 18px', borderTop: `3px solid ${STATUS[s].color}` }}>
-              <div style={{ fontSize: 28, fontFamily: 'Syne', fontWeight: 800, marginBottom: 6, lineHeight: 1.2 }}>{count}</div>
+              <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 6, lineHeight: 1.2 }}>{count}</div>
               <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, letterSpacing: '0.04em' }}>{STATUS[s].label}</div>
             </div>
           ))}
@@ -38,7 +44,7 @@ export function OverviewPage({ onOpenProject, onNewProject }) {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ fontWeight: 700, fontSize: 14, color: COLORS.textDim }}>All Projects</h2>
+          <h2 style={{ fontWeight: 600, fontSize: 13, color: COLORS.textDim, letterSpacing: '0.04em', textTransform: 'uppercase' }}>All Projects</h2>
           <Btn size="sm" onClick={onNewProject}>+ New Project</Btn>
         </div>
 
@@ -83,7 +89,7 @@ export function MyTasksPage() {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
       <div style={{ maxWidth: 800 }}>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, marginBottom: 22, letterSpacing: '-0.03em', paddingBottom: 2 }}>My Tasks</h1>
+        <h1 style={{ fontWeight: 700, fontSize: 22, marginBottom: 22, letterSpacing: '-0.02em', paddingBottom: 2 }}>My Tasks</h1>
         {myTasks.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: COLORS.textMuted }}>
             <Icon name="check" size={36} color={COLORS.green} style={{ marginBottom: 10 }} />
@@ -139,7 +145,7 @@ export function ProjectView({ project, toast }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '0 22px', height: 54, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 10, background: COLORS.surface, flexShrink: 0 }}>
         <div style={{ width: 11, height: 11, borderRadius: '50%', background: project.color }} />
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, letterSpacing: '-0.02em', paddingBottom: 1 }}>{project.name}</h1>
+        <h1 style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.01em', paddingBottom: 1 }}>{project.name}</h1>
         <button onClick={() => setEditProjOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: '2px 6px', display: 'flex', alignItems: 'center' }}><Icon name="edit" size={14} color={COLORS.textMuted} /></button>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '5px 10px', width: 180 }}>
@@ -365,7 +371,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 18, letterSpacing: '-0.02em', paddingBottom: 2 }}>
+          <h2 style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.01em', paddingBottom: 2 }}>
             {task ? 'Edit Task' : 'New Task'}
           </h2>
           {task && <span style={{ fontSize: 11, color: COLORS.textMuted }}>#{task.id.slice(0,8)}</span>}
@@ -382,7 +388,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
             value={title} onChange={e => setTitle(e.target.value)}
             placeholder="Task title…" autoFocus
             onKeyDown={e => e.key === 'Enter' && e.metaKey && handleSave()}
-            style={{ width: '100%', background: 'none', border: 'none', borderBottom: `2px solid ${COLORS.border}`, borderRadius: 0, padding: '6px 0', color: COLORS.text, fontSize: 17, fontWeight: 700, fontFamily: 'Syne', outline: 'none', lineHeight: 1.4, transition: 'border-color 0.15s' }}
+            style={{ width: '100%', background: 'none', border: 'none', borderBottom: `2px solid ${COLORS.border}`, borderRadius: 0, padding: '6px 0', color: COLORS.text, fontSize: 17, fontWeight: 700, outline: 'none', lineHeight: 1.4, transition: 'border-color 0.15s' }}
             onFocus={e => e.target.style.borderBottomColor = COLORS.accent}
             onBlur={e => e.target.style.borderBottomColor = COLORS.border}
           />
@@ -578,7 +584,7 @@ export function NewProjectModal({ onClose, toast }) {
 
   return (
     <Modal onClose={onClose}>
-      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 20, paddingBottom: 2 }}>New Project</h2>
+      <h2 style={{ fontWeight: 700, fontSize: 17, marginBottom: 20, paddingBottom: 2 }}>New Project</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div>
           <label style={lStyle}>Project Name *</label>
@@ -613,7 +619,7 @@ function EditProjectModal({ project, isAdmin, onSave, onDelete, onClose }) {
 
   return (
     <Modal onClose={onClose}>
-      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 20, paddingBottom: 2 }}>Edit Project</h2>
+      <h2 style={{ fontWeight: 700, fontSize: 17, marginBottom: 20, paddingBottom: 2 }}>Edit Project</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div><label style={lStyle}>Name</label><input value={name} onChange={e => setName(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }} /></div>
         <div><label style={lStyle}>Description</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5, background: COLORS.inputBg }} /></div>
@@ -703,7 +709,7 @@ function CsvImportModal({ projectId, onClose, toast }) {
 
   return (
     <Modal onClose={onClose} width={560}>
-      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 6, paddingBottom: 2 }}>CSV Import</h2>
+      <h2 style={{ fontWeight: 700, fontSize: 17, marginBottom: 6, paddingBottom: 2 }}>CSV Import</h2>
       <p style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Import tasks into <strong style={{ color: COLORS.text }}>{project?.name}</strong></p>
 
       <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14, marginBottom: 18, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.8 }}>
@@ -767,3 +773,4 @@ export function NotifModal({ onClose, toast }) {
 }
 
 function hour() { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening' }
+function hourIcon() { const h = new Date().getHours(); return h < 12 ? '🌤' : h < 17 ? '☀️' : '🌙' }

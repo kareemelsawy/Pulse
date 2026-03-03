@@ -33,8 +33,11 @@ export function ThemeProvider({ children }) {
     setIsDark(d => !d)
   }, [])
 
+  // Expose the current color palette so SettingsPage and others can use it
+  const colors = isDark ? DARK_THEME : LIGHT_THEME
+
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={{ isDark, toggleTheme, colors }}>
       {children}
     </ThemeContext.Provider>
   )

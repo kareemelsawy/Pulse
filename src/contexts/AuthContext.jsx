@@ -24,7 +24,11 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Ignore TOKEN_REFRESHED events fired on tab focus — these don't change the user
+      // and would otherwise cause DataContext to re-initialise (loading flash).
+      if (event === 'TOKEN_REFRESHED') return
+
       const u = session?.user ?? null
       setUser(u)
       if (u) localStorage.setItem('pulse_session_user', JSON.stringify(u))

@@ -32,7 +32,7 @@ function AuthGate({ toast }) {
 
   if (authLoading) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.bg, gap: 16 }}>
-      <Icon name="logo" size={36} color={C.accent} />
+      <div style={{ fontSize: 40, color: C.accent, fontWeight: 900, lineHeight: 1 }}>✦</div>
       <Spinner size={28} />
     </div>
   )
@@ -64,7 +64,7 @@ function WorkspaceGate({ toast }) {
 
   if (loading) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.bg, gap: 16 }}>
-      <Icon name="logo" size={36} color={C.accent} />
+      <div style={{ fontSize: 40, color: C.accent, fontWeight: 900, lineHeight: 1 }}>✦</div>
       <Spinner size={28} />
       <span style={{ color: C.textMuted, fontSize: 13 }}>Loading workspace…</span>
     </div>

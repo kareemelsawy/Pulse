@@ -22,7 +22,7 @@ function Section({ children }) {
 }
 function SectionTitle({ children, danger }) {
   const { colors } = useTheme()
-  return <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, marginBottom: 4, color: danger ? colors.red : colors.text, lineHeight: 1.3 }}>{children}</div>
+  return <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, color: danger ? colors.red : colors.text, lineHeight: 1.3 }}>{children}</div>
 }
 function SectionDesc({ children }) {
   const { colors } = useTheme()
@@ -325,7 +325,7 @@ export default function SettingsPage({ toast }) {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
       <div style={{ maxWidth: 680 }}>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: '-0.03em', marginBottom: 6, lineHeight: 1.2 }}>Settings</h1>
+        <h1 style={{ fontWeight: 700, fontSize: 24, letterSpacing: '-0.02em', marginBottom: 6, lineHeight: 1.2 }}>Settings</h1>
         <p style={{ color: colors.textMuted, fontSize: 14, marginBottom: 28, lineHeight: 1.4 }}>Manage your account, workspace, and notifications.</p>
         <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 10, padding: 4 }}>
           {TABS.map(t => (
