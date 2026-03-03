@@ -95,10 +95,10 @@ export async function getProjects(workspaceId) {
   return data || []
 }
 
-export async function createProject({ name, description, color, workspaceId, userId }) {
+export async function createProject({ name, description, color, workspaceId, userId, is_pipeline }) {
   const { data, error } = await supabase
     .from('projects')
-    .insert({ name, description, color, workspace_id: workspaceId, created_by: userId })
+    .insert({ name, description, color, workspace_id: workspaceId, created_by: userId, is_pipeline: is_pipeline || false })
     .select().single()
   if (error) throw error
   return data
@@ -316,4 +316,63 @@ export function exportTasksCsv(tasks, projectName) {
   a.download = `${(projectName || 'tasks').replace(/\s+/g, '-').toLowerCase()}-tasks.csv`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+// ── Meetings ──────────────────────────────────────────────────────────────────
+export async function getMeetings(projectId) {
+  const { data, error } = await supabase
+    .from('project_meetings')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('meeting_date', { ascending: false })
+  if (error) {
+    if (error.code === '42P01') return []
+    throw error
+  }
+  return data || []
+}
+
+export async function createMeeting(projectId, workspaceId, userId, fields) {
+  const { data, error } = await supabase
+    .from('project_meetings')
+    .insert({ project_id: projectId, workspace_id: workspaceId, created_by: userId, ...fields })
+    .select().single()
+  if (error) throw error
+  return data
+}
+
+export async function updateMeeting(id, fields) {
+  const { error } = await supabase
+    .from('project_meetings').update(fields).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteMeeting(id) {
+  const { error } = await supabase.from('project_meetings').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function getMeetingActions(meetingId) {
+  const { data, error } = await supabase
+    .from('meeting_actions')
+    .select('*')
+    .eq('meeting_id', meetingId)
+    .order('created_at', { ascending: true })
+  if (error) {
+    if (error.code === '42P01') return []
+    throw error
+  }
+  return data || []
+}
+
+export async function upsertMeetingActions(meetingId, actions) {
+  // Delete existing then insert fresh — simpler than diffing
+  await supabase.from('meeting_actions').delete().eq('meeting_id', meetingId)
+  if (!actions.length) return []
+  const { data, error } = await supabase
+    .from('meeting_actions')
+    .insert(actions.map(a => ({ ...a, meeting_id: meetingId })))
+    .select()
+  if (error) throw error
+  return data || []
 }

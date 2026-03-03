@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
 import { COLORS, STATUS, STATUS_FLOW, PRIORITY, PROJECT_COLORS } from '../lib/constants'
 import { Avatar, Badge, ProgressBar, Modal, Btn, iStyle, lStyle, Icon } from '../components/UI'
-import { getComments, addComment, deleteComment, uploadAttachment, getAttachments, deleteAttachment, exportTasksCsv } from '../lib/db'
+import { getComments, addComment, deleteComment, uploadAttachment, getAttachments, deleteAttachment, exportTasksCsv, getMeetings, createMeeting, updateMeeting, deleteMeeting, getMeetingActions, upsertMeetingActions } from '../lib/db'
 
 // ─── OverviewPage ─────────────────────────────────────────────────────────────
 export function OverviewPage({ onOpenProject, onNewProject, workspaceName }) {
@@ -136,6 +136,7 @@ export function ProjectView({ project, toast }) {
   const [editProjOpen, setEditProjOpen] = useState(false)
   const [csvOpen, setCsvOpen] = useState(false)
   const [csvEditOpen, setCsvEditOpen] = useState(false)
+  const [mainTab, setMainTab] = useState('tasks')
 
   function handleExportCsv() { exportTasksCsv(filtered, project?.name) }
 
@@ -147,37 +148,48 @@ export function ProjectView({ project, toast }) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* ── Project header ── */}
       <div style={{ padding: '0 22px', height: 54, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 10, background: COLORS.surface, flexShrink: 0 }}>
-        <div style={{ width: 11, height: 11, borderRadius: '50%', background: project.color }} />
+        <div style={{ width: 11, height: 11, borderRadius: '50%', background: project.color, flexShrink: 0 }} />
         <h1 style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.01em', paddingBottom: 1 }}>{project.name}</h1>
         <button onClick={() => setEditProjOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: '2px 6px', display: 'flex', alignItems: 'center' }}><Icon name="edit" size={14} color={COLORS.textMuted} /></button>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '5px 10px', width: 180 }}>
-          <span style={{ color: COLORS.textMuted, fontSize: 12 }}>⌕</span>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ background: 'none', border: 'none', color: COLORS.text, fontSize: 13, width: '100%', outline: 'none' }} />
-        </div>
-        <div style={{ display: 'flex', background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden' }}>
-          {[['list','list'],['board','board']].map(([ic,v]) => (
-            <button key={v} onClick={() => setView(v)} style={{ padding: '5px 9px', background: view===v ? COLORS.border : 'none', color: view===v ? COLORS.text : COLORS.textMuted, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Icon name={ic} size={14} color={view===v ? COLORS.text : COLORS.textMuted} /></button>
+        {/* Main tabs */}
+        <div style={{ display: 'flex', gap: 2, marginLeft: 8, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: 3 }}>
+          {[['tasks','Tasks'],['meetings','Meetings']].map(([id, label]) => (
+            <button key={id} onClick={() => setMainTab(id)} style={{ padding: '4px 14px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: mainTab === id ? COLORS.surface : 'none', color: mainTab === id ? COLORS.text : COLORS.textMuted, transition: 'all 0.15s', boxShadow: mainTab === id ? `0 1px 3px ${COLORS.shadow}` : 'none' }}>{label}</button>
           ))}
         </div>
-        <Btn size="sm" variant="secondary" onClick={() => setCsvOpen(true)}>↑ Import CSV</Btn>
-        <Btn size="sm" variant="secondary" onClick={() => handleExportCsv()}>↓ Export CSV</Btn>
-        <Btn size="sm" variant="secondary" onClick={() => setCsvEditOpen(true)}>✎ Edit via CSV</Btn>
-        <Btn size="sm" onClick={() => setTaskModal('new')}>+ Add Task</Btn>
+        <div style={{ flex: 1 }} />
+        {mainTab === 'tasks' && (<>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '5px 10px', width: 180 }}>
+            <span style={{ color: COLORS.textMuted, fontSize: 12 }}>⌕</span>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ background: 'none', border: 'none', color: COLORS.text, fontSize: 13, width: '100%', outline: 'none' }} />
+          </div>
+          <div style={{ display: 'flex', background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden' }}>
+            {[['list','list'],['board','board']].map(([ic,v]) => (
+              <button key={v} onClick={() => setView(v)} style={{ padding: '5px 9px', background: view===v ? COLORS.border : 'none', color: view===v ? COLORS.text : COLORS.textMuted, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Icon name={ic} size={14} color={view===v ? COLORS.text : COLORS.textMuted} /></button>
+            ))}
+          </div>
+          <Btn size="sm" variant="secondary" onClick={() => setCsvOpen(true)}>↑ Import</Btn>
+          <Btn size="sm" variant="secondary" onClick={() => handleExportCsv()}>↓ Export</Btn>
+          <Btn size="sm" onClick={() => setTaskModal('new')}>+ Add Task</Btn>
+        </>)}
       </div>
 
-      <div style={{ padding: '8px 22px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 8, alignItems: 'center', background: COLORS.surface, flexShrink: 0 }}>
-        <span style={{ fontSize: 12, color: COLORS.textMuted }}>Status:</span>
-        <select value={filterS} onChange={e => setFilterS(e.target.value)} style={{ background: COLORS.inputBg, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '4px 8px', fontSize: 12, outline: 'none' }}>
-          <option value="all">All</option>
-          {Object.entries(STATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
-        <span style={{ fontSize: 12, color: COLORS.textMuted, marginLeft: 4 }}>{filtered.length} task{filtered.length !== 1 ? 's' : ''}</span>
-      </div>
+      {mainTab === 'tasks' && (
+        <div style={{ padding: '8px 22px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 8, alignItems: 'center', background: COLORS.surface, flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: COLORS.textMuted }}>Status:</span>
+          <select value={filterS} onChange={e => setFilterS(e.target.value)} style={{ background: COLORS.inputBg, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '4px 8px', fontSize: 12, outline: 'none' }}>
+            <option value="all">All</option>
+            {Object.entries(STATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+          <span style={{ fontSize: 12, color: COLORS.textMuted, marginLeft: 4 }}>{filtered.length} task{filtered.length !== 1 ? 's' : ''}</span>
+        </div>
+      )}
 
-      <div style={{ flex: 1, overflow: 'auto', padding: 22 }}>
-        {view === 'board' ? <BoardView tasks={filtered} onTaskClick={setTaskModal} /> : <ListView tasks={filtered} onTaskClick={setTaskModal} />}
+      <div style={{ flex: 1, overflow: 'auto', padding: mainTab === 'meetings' ? 0 : 22 }}>
+        {mainTab === 'tasks'    && (view === 'board' ? <BoardView tasks={filtered} onTaskClick={setTaskModal} /> : <ListView tasks={filtered} onTaskClick={setTaskModal} />)}
+        {mainTab === 'meetings' && <MeetingsTab project={project} workspace={workspace} user={user} toast={toast} />}
       </div>
 
       {taskModal && (
@@ -861,5 +873,440 @@ function AttachmentsSection({ taskId, toast }) {
   )
 }
 
+
+// ─── Meetings Tab ─────────────────────────────────────────────────────────────
+function MeetingsTab({ project, workspace, user, toast }) {
+  const [meetings, setMeetings]       = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [modalOpen, setModalOpen]     = useState(false)
+  const [editing, setEditing]         = useState(null) // meeting object or null for new
+
+  useEffect(() => {
+    getMeetings(project.id)
+      .then(data => { setMeetings(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [project.id])
+
+  function handleSaved(meeting, isNew) {
+    if (isNew) setMeetings(prev => [meeting, ...prev])
+    else setMeetings(prev => prev.map(m => m.id === meeting.id ? meeting : m))
+    setModalOpen(false); setEditing(null)
+  }
+
+  async function handleDelete(id) {
+    try {
+      await deleteMeeting(id)
+      setMeetings(prev => prev.filter(m => m.id !== id))
+      toast?.('Meeting deleted')
+    } catch(e) { toast?.(e.message, 'error') }
+  }
+
+  function openNew()     { setEditing(null);    setModalOpen(true) }
+  function openEdit(m)   { setEditing(m);       setModalOpen(true) }
+
+  const fmt = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Sub-header */}
+      <div style={{ padding: '14px 22px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: COLORS.surface, flexShrink: 0 }}>
+        <div>
+          <span style={{ fontWeight: 700, fontSize: 14 }}>Meeting Minutes</span>
+          <span style={{ fontSize: 12, color: COLORS.textMuted, marginLeft: 10 }}>{meetings.length} meeting{meetings.length !== 1 ? 's' : ''}</span>
+        </div>
+        <Btn size="sm" onClick={openNew}>+ New Meeting</Btn>
+      </div>
+
+      {/* List */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 22 }}>
+        {loading ? (
+          <div style={{ color: COLORS.textMuted, fontSize: 13 }}>Loading…</div>
+        ) : meetings.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <Icon name="messageCircle" size={36} color={COLORS.border} style={{ marginBottom: 12 }} />
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>No meetings yet</div>
+            <div style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Record your first meeting to track decisions and actions.</div>
+            <Btn onClick={openNew}>+ New Meeting</Btn>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 860 }}>
+            {meetings.map(m => (
+              <MeetingCard key={m.id} meeting={m} fmt={fmt} onEdit={() => openEdit(m)} onDelete={() => handleDelete(m.id)} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {modalOpen && (
+        <MeetingModal
+          project={project}
+          workspace={workspace}
+          user={user}
+          meeting={editing}
+          onSaved={handleSaved}
+          onClose={() => { setModalOpen(false); setEditing(null) }}
+          toast={toast}
+        />
+      )}
+    </div>
+  )
+}
+
+function MeetingCard({ meeting, fmt, onEdit, onDelete }) {
+  const [expanded, setExpanded] = useState(false)
+  const [actions, setActions]   = useState(null) // null = not loaded yet
+  const [confirmDel, setConfirmDel] = useState(false)
+
+  async function loadActions() {
+    if (actions !== null) { setExpanded(e => !e); return }
+    const data = await getMeetingActions(meeting.id).catch(() => [])
+    setActions(data)
+    setExpanded(true)
+  }
+
+  const doneCount = (actions || []).filter(a => a.done).length
+  const total     = (actions || []).length
+
+  return (
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: 'hidden', transition: 'box-shadow 0.15s' }}>
+      {/* Card header */}
+      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: COLORS.accent + '18', border: `1px solid ${COLORS.accent}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon name="messageCircle" size={18} color={COLORS.accent} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>{meeting.title}</span>
+            {meeting.meeting_date && <span style={{ fontSize: 11, color: COLORS.textMuted, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '2px 8px' }}>{fmt(meeting.meeting_date)}</span>}
+          </div>
+          {meeting.attendees && <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 4 }}>👥 {meeting.attendees}</div>}
+          {meeting.summary && <p style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.6, margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 2, WebkitBoxOrient: 'vertical' }}>{meeting.summary}</p>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {meeting.action_count > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: '2px 8px' }}>
+              {doneCount !== null && actions ? `${doneCount}/${total}` : `${meeting.action_count}`} actions
+            </span>
+          )}
+          <button onClick={loadActions} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '5px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: COLORS.textMuted, fontFamily: 'inherit' }}>
+            {expanded ? '▲ Hide' : '▼ Show'}
+          </button>
+          <button onClick={onEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: '4px 6px', display: 'flex', alignItems: 'center' }}><Icon name="edit" size={14} color={COLORS.textMuted} /></button>
+          {!confirmDel
+            ? <button onClick={() => setConfirmDel(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: '4px 6px', display: 'flex', alignItems: 'center' }}><Icon name="x" size={14} color={COLORS.textMuted} /></button>
+            : <button onClick={onDelete} style={{ background: COLORS.red + '18', border: `1px solid ${COLORS.red}44`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: COLORS.red, fontFamily: 'inherit' }}>Delete?</button>
+          }
+        </div>
+      </div>
+
+      {/* Expanded actions */}
+      {expanded && (
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+          {actions === null ? (
+            <div style={{ padding: '12px 20px', fontSize: 12, color: COLORS.textMuted }}>Loading…</div>
+          ) : actions.length === 0 ? (
+            <div style={{ padding: '12px 20px', fontSize: 12, color: COLORS.textMuted }}>No action items recorded.</div>
+          ) : (
+            <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>Action Items</div>
+              {actions.map((a, i) => (
+                <ActionRow key={i} action={a} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ActionRow({ action }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 12px', background: COLORS.surface, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
+      <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${action.done ? COLORS.green : COLORS.border}`, background: action.done ? COLORS.green : 'none', flexShrink: 0, marginTop: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {action.done && <Icon name="check" size={10} color="#fff" />}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, textDecoration: action.done ? 'line-through' : 'none', color: action.done ? COLORS.textMuted : COLORS.text }}>{action.action}</div>
+        <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
+          {action.owner && <span style={{ fontSize: 11, color: COLORS.textMuted }}>👤 {action.owner}</span>}
+          {action.due_date && <span style={{ fontSize: 11, color: COLORS.textMuted }}>📅 {action.due_date}</span>}
+        </div>
+      </div>
+      {action.priority && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: action.priority === 'high' ? COLORS.red + '18' : action.priority === 'low' ? COLORS.green + '18' : COLORS.amber + '18', color: action.priority === 'high' ? COLORS.red : action.priority === 'low' ? COLORS.green : COLORS.amber }}>{action.priority}</span>}
+    </div>
+  )
+}
+
+function MeetingModal({ project, workspace, user, meeting, onSaved, onClose, toast }) {
+  const isEdit = !!meeting
+  const [title,       setTitle]       = useState(meeting?.title || '')
+  const [date,        setDate]        = useState(meeting?.meeting_date?.slice(0,10) || new Date().toISOString().slice(0,10))
+  const [attendees,   setAttendees]   = useState(meeting?.attendees || '')
+  const [summary,     setSummary]     = useState(meeting?.summary || '')
+  const [actions,     setActions]     = useState([])
+  const [loadingActs, setLoadingActs] = useState(isEdit)
+  const [saving,      setSaving]      = useState(false)
+
+  useEffect(() => {
+    if (isEdit) {
+      getMeetingActions(meeting.id)
+        .then(data => { setActions(data.length ? data : [emptyAction()]); setLoadingActs(false) })
+        .catch(() => { setActions([emptyAction()]); setLoadingActs(false) })
+    } else {
+      setActions([emptyAction()])
+    }
+  }, [])
+
+  function emptyAction() { return { action: '', owner: '', due_date: '', priority: 'medium', done: false } }
+
+  function setAction(i, field, val) {
+    setActions(prev => prev.map((a, idx) => idx === i ? { ...a, [field]: val } : a))
+  }
+  function addAction()    { setActions(prev => [...prev, emptyAction()]) }
+  function removeAction(i){ setActions(prev => prev.filter((_, idx) => idx !== i)) }
+
+  async function handleSave() {
+    if (!title.trim()) return
+    setSaving(true)
+    try {
+      const fields = { title: title.trim(), meeting_date: date, attendees: attendees.trim(), summary: summary.trim(), action_count: actions.filter(a => a.action.trim()).length }
+      let saved
+      if (isEdit) {
+        await updateMeeting(meeting.id, fields)
+        saved = { ...meeting, ...fields }
+      } else {
+        saved = await createMeeting(project.id, workspace.id, user.id, fields)
+      }
+      const validActions = actions.filter(a => a.action.trim()).map(a => ({ action: a.action.trim(), owner: a.owner.trim(), due_date: a.due_date || null, priority: a.priority, done: a.done }))
+      await upsertMeetingActions(saved.id, validActions)
+      toast?.('Meeting saved', 'success')
+      onSaved(saved, !isEdit)
+    } catch(e) { toast?.(e.message, 'error') } finally { setSaving(false) }
+  }
+
+  return (
+    <Modal onClose={onClose} width={640}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <h2 style={{ fontWeight: 700, fontSize: 18 }}>{isEdit ? 'Edit Meeting' : 'New Meeting'}</h2>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: 4 }}><Icon name="x" size={18} color={COLORS.textMuted} /></button>
+      </div>
+
+      {/* Row 1: title + date */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label style={lStyle}>Meeting Title *</label>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Sprint Planning Q1" autoFocus style={{ ...iStyle, background: COLORS.inputBg }} />
+        </div>
+        <div>
+          <label style={lStyle}>Date</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }} />
+        </div>
+      </div>
+
+      {/* Attendees */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={lStyle}>Attendees</label>
+        <input value={attendees} onChange={e => setAttendees(e.target.value)} placeholder="e.g. Kareem, Sara, Ahmed" style={{ ...iStyle, background: COLORS.inputBg }} />
+      </div>
+
+      {/* Summary / minutes */}
+      <div style={{ marginBottom: 20 }}>
+        <label style={lStyle}>Meeting Notes / Minutes</label>
+        <textarea value={summary} onChange={e => setSummary(e.target.value)} placeholder="Key decisions, discussion points, context…" rows={4} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.6, background: COLORS.inputBg }} />
+      </div>
+
+      {/* Action items */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <label style={{ ...lStyle, marginBottom: 0 }}>Action Items</label>
+          <button onClick={addAction} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: COLORS.accent, cursor: 'pointer', fontFamily: 'inherit' }}>+ Add Action</button>
+        </div>
+        {loadingActs ? (
+          <div style={{ fontSize: 12, color: COLORS.textMuted }}>Loading…</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {actions.map((a, i) => (
+              <div key={i} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 110px 80px 28px', gap: 8, alignItems: 'center' }}>
+                  <input value={a.action} onChange={e => setAction(i, 'action', e.target.value)} placeholder="Action item…" style={{ ...iStyle, background: COLORS.surface, fontSize: 12 }} />
+                  <input value={a.owner} onChange={e => setAction(i, 'owner', e.target.value)} placeholder="Owner" style={{ ...iStyle, background: COLORS.surface, fontSize: 12 }} />
+                  <input type="date" value={a.due_date || ''} onChange={e => setAction(i, 'due_date', e.target.value)} style={{ ...iStyle, background: COLORS.surface, fontSize: 11 }} />
+                  <select value={a.priority} onChange={e => setAction(i, 'priority', e.target.value)} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '6px 6px', fontSize: 11, outline: 'none' }}>
+                    <option value="high">High</option>
+                    <option value="medium">Med</option>
+                    <option value="low">Low</option>
+                  </select>
+                  <button onClick={() => removeAction(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={13} color={COLORS.textMuted} /></button>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  <button onClick={() => setAction(i, 'done', !a.done)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${a.done ? COLORS.green : COLORS.border}`, background: a.done ? COLORS.green : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {a.done && <Icon name="check" size={9} color="#fff" />}
+                    </div>
+                    <span style={{ fontSize: 11, color: COLORS.textMuted }}>Mark done</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 16, borderTop: `1px solid ${COLORS.border}` }}>
+        <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
+        <Btn onClick={handleSave} disabled={saving || !title.trim()}>{saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Meeting'}</Btn>
+      </div>
+    </Modal>
+  )
+}
+
 function hour() { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening' }
 function hourIcon() { const h = new Date().getHours(); return h < 12 ? 'sunrise' : h < 17 ? 'sun' : 'moon' }
+
+// ─── PipelineView ─────────────────────────────────────────────────────────────
+export function PipelineView({ onConvertToProject, toast }) {
+  const { projects, addProject, editProject, removeProject } = useData()
+  const pipeline = projects.filter(p => p.is_pipeline)
+  const [newOpen,  setNewOpen]  = useState(false)
+  const [editOpen, setEditOpen] = useState(null)
+  const [converting, setConverting] = useState(null)
+
+  async function handleConvert(p) {
+    setConverting(p.id)
+    try {
+      await editProject(p.id, { is_pipeline: false })
+      toast?.(`"${p.name}" moved to Projects`, 'success')
+      onConvertToProject?.()
+    } catch(e) { toast?.(e.message, 'error') } finally { setConverting(null) }
+  }
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
+      <div style={{ maxWidth: 860 }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+          <div>
+            <h1 style={{ fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em', marginBottom: 4 }}>Pipeline</h1>
+            <p style={{ color: COLORS.textMuted, fontSize: 13 }}>Ideas and projects you want to keep in mind but haven't started yet.</p>
+          </div>
+          <Btn onClick={() => setNewOpen(true)}>+ Add to Pipeline</Btn>
+        </div>
+
+        {pipeline.length === 0 ? (
+          <div style={{ background: COLORS.surface, border: `2px dashed ${COLORS.border}`, borderRadius: 16, padding: 56, textAlign: 'center' }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🔭</div>
+            <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 8 }}>Your pipeline is empty</div>
+            <div style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 24, maxWidth: 340, margin: '0 auto 24px' }}>Add project ideas here to track them. When you're ready to kick one off, convert it to a full project.</div>
+            <Btn onClick={() => setNewOpen(true)}>+ Add to Pipeline</Btn>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+            {pipeline.map(p => (
+              <PipelineCard
+                key={p.id}
+                project={p}
+                converting={converting === p.id}
+                onEdit={() => setEditOpen(p)}
+                onConvert={() => handleConvert(p)}
+                onDelete={async () => { await removeProject(p.id); toast?.('Removed from pipeline') }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {newOpen && <NewPipelineModal onClose={() => setNewOpen(false)} toast={toast} />}
+      {editOpen && (
+        <EditProjectModal
+          project={editOpen}
+          isAdmin={true}
+          onSave={async d => { await editProject(editOpen.id, d); setEditOpen(null); toast?.('Updated', 'success') }}
+          onDelete={async () => { await removeProject(editOpen.id); setEditOpen(null); toast?.('Removed') }}
+          onClose={() => setEditOpen(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function PipelineCard({ project: p, converting, onEdit, onConvert, onDelete }) {
+  const [confirmDel, setConfirmDel] = useState(false)
+  return (
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', gap: 0, borderLeft: `4px solid ${p.color}` }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0, marginTop: 2 }} />
+          <span style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.3 }}>{p.name}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 2 }}>
+          <button onClick={onEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: '3px 5px', borderRadius: 5, display: 'flex', alignItems: 'center' }}><Icon name="edit" size={13} color={COLORS.textMuted} /></button>
+          {!confirmDel
+            ? <button onClick={() => setConfirmDel(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: '3px 5px', borderRadius: 5, display: 'flex', alignItems: 'center' }}><Icon name="x" size={13} color={COLORS.textMuted} /></button>
+            : <button onClick={onDelete} style={{ background: COLORS.red + '18', border: `1px solid ${COLORS.red}44`, borderRadius: 5, padding: '2px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: COLORS.red, fontFamily: 'inherit' }}>Remove?</button>
+          }
+        </div>
+      </div>
+
+      {p.description && <p style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.6, marginBottom: 14, flex: 1 }}>{p.description}</p>}
+
+      <div style={{ marginTop: 'auto', paddingTop: p.description ? 0 : 8 }}>
+        <button
+          onClick={onConvert}
+          disabled={converting}
+          style={{ width: '100%', padding: '9px 0', background: converting ? COLORS.border : COLORS.accent + '18', border: `1.5px solid ${converting ? COLORS.border : COLORS.accent + '55'}`, borderRadius: 9, color: converting ? COLORS.textMuted : COLORS.accent, fontWeight: 700, fontSize: 12, cursor: converting ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}
+          onMouseEnter={e => { if (!converting) { e.currentTarget.style.background = COLORS.accent; e.currentTarget.style.color = '#fff' } }}
+          onMouseLeave={e => { if (!converting) { e.currentTarget.style.background = COLORS.accent + '18'; e.currentTarget.style.color = COLORS.accent } }}>
+          <Icon name="arrowRight" size={13} color="currentColor" />
+          {converting ? 'Converting…' : 'Convert to Project'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function NewPipelineModal({ onClose, toast }) {
+  const { addProject } = useData()
+  const [name,   setName]   = useState('')
+  const [desc,   setDesc]   = useState('')
+  const [color,  setColor]  = useState(PROJECT_COLORS[4])
+  const [saving, setSaving] = useState(false)
+
+  async function handleCreate() {
+    if (!name.trim()) return
+    setSaving(true)
+    try {
+      await addProject({ name: name.trim(), description: desc, color, is_pipeline: true })
+      toast?.('Added to pipeline', 'success')
+      onClose()
+    } catch(e) { toast?.(e.message, 'error') } finally { setSaving(false) }
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <h2 style={{ fontWeight: 700, fontSize: 17, marginBottom: 6, paddingBottom: 2 }}>Add to Pipeline</h2>
+      <p style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>Save a project idea to your pipeline. No tasks, no deadlines — just a placeholder until you're ready.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div>
+          <label style={lStyle}>Project Name *</label>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mobile App Redesign" autoFocus onKeyDown={e => e.key === 'Enter' && handleCreate()} style={{ ...iStyle, background: COLORS.inputBg }} />
+        </div>
+        <div>
+          <label style={lStyle}>Description / Notes</label>
+          <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What's the idea? Why does it matter?" rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5, background: COLORS.inputBg }} />
+        </div>
+        <div>
+          <label style={lStyle}>Color</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {PROJECT_COLORS.map(c => <button key={c} onClick={() => setColor(c)} style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: 'none', cursor: 'pointer', outline: color === c ? `3px solid ${c}` : '3px solid transparent', outlineOffset: 2, transition: 'all 0.15s' }} />)}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 22, justifyContent: 'flex-end' }}>
+        <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
+        <Btn onClick={handleCreate} disabled={saving || !name.trim()}>{saving ? 'Adding…' : 'Add to Pipeline'}</Btn>
+      </div>
+    </Modal>
+  )
+}
