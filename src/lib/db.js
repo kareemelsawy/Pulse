@@ -352,27 +352,15 @@ export async function deleteMeeting(id) {
   if (error) throw error
 }
 
-export async function getMeetingActions(meetingId) {
+export async function getTasksByMeeting(meetingId) {
   const { data, error } = await supabase
-    .from('meeting_actions')
+    .from('tasks')
     .select('*')
     .eq('meeting_id', meetingId)
     .order('created_at', { ascending: true })
   if (error) {
-    if (error.code === '42P01') return []
+    if (error.code === '42703') return [] // column doesn't exist yet
     throw error
   }
-  return data || []
-}
-
-export async function upsertMeetingActions(meetingId, actions) {
-  // Delete existing then insert fresh — simpler than diffing
-  await supabase.from('meeting_actions').delete().eq('meeting_id', meetingId)
-  if (!actions.length) return []
-  const { data, error } = await supabase
-    .from('meeting_actions')
-    .insert(actions.map(a => ({ ...a, meeting_id: meetingId })))
-    .select()
-  if (error) throw error
   return data || []
 }

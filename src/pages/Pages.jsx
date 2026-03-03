@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
 import { COLORS, STATUS, STATUS_FLOW, PRIORITY, PROJECT_COLORS } from '../lib/constants'
 import { Avatar, Badge, ProgressBar, Modal, Btn, iStyle, lStyle, Icon } from '../components/UI'
-import { getComments, addComment, deleteComment, uploadAttachment, getAttachments, deleteAttachment, exportTasksCsv, getMeetings, createMeeting, updateMeeting, deleteMeeting, getMeetingActions, upsertMeetingActions } from '../lib/db'
+import { getComments, addComment, deleteComment, uploadAttachment, getAttachments, deleteAttachment, exportTasksCsv, getMeetings, createMeeting, updateMeeting, deleteMeeting, getTasksByMeeting } from '../lib/db'
 
 // ─── OverviewPage ─────────────────────────────────────────────────────────────
 export function OverviewPage({ onOpenProject, onNewProject, workspaceName }) {
@@ -876,20 +876,22 @@ function AttachmentsSection({ taskId, toast }) {
 
 // ─── Meetings Tab ─────────────────────────────────────────────────────────────
 function MeetingsTab({ project, workspace, user, toast }) {
-  const [meetings, setMeetings]       = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [modalOpen, setModalOpen]     = useState(false)
-  const [editing, setEditing]         = useState(null) // meeting object or null for new
+  const { members: ctxMembers, workspace: ws, addTask } = useData()
+  const { user: authUser } = useAuth()
+  const [meetings,   setMeetings]   = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [modalOpen,  setModalOpen]  = useState(false)
+  const [editing,    setEditing]    = useState(null)
 
   useEffect(() => {
     getMeetings(project.id)
-      .then(data => { setMeetings(data); setLoading(false) })
+      .then(d => { setMeetings(d); setLoading(false) })
       .catch(() => setLoading(false))
   }, [project.id])
 
   function handleSaved(meeting, isNew) {
     if (isNew) setMeetings(prev => [meeting, ...prev])
-    else setMeetings(prev => prev.map(m => m.id === meeting.id ? meeting : m))
+    else       setMeetings(prev => prev.map(m => m.id === meeting.id ? meeting : m))
     setModalOpen(false); setEditing(null)
   }
 
@@ -897,27 +899,22 @@ function MeetingsTab({ project, workspace, user, toast }) {
     try {
       await deleteMeeting(id)
       setMeetings(prev => prev.filter(m => m.id !== id))
-      toast?.('Meeting deleted')
+      toast?.('Meeting deleted — tasks from this meeting are kept in the project')
     } catch(e) { toast?.(e.message, 'error') }
   }
 
-  function openNew()     { setEditing(null);    setModalOpen(true) }
-  function openEdit(m)   { setEditing(m);       setModalOpen(true) }
-
-  const fmt = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+  const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Sub-header */}
       <div style={{ padding: '14px 22px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: COLORS.surface, flexShrink: 0 }}>
         <div>
           <span style={{ fontWeight: 700, fontSize: 14 }}>Meeting Minutes</span>
           <span style={{ fontSize: 12, color: COLORS.textMuted, marginLeft: 10 }}>{meetings.length} meeting{meetings.length !== 1 ? 's' : ''}</span>
         </div>
-        <Btn size="sm" onClick={openNew}>+ New Meeting</Btn>
+        <Btn size="sm" onClick={() => { setEditing(null); setModalOpen(true) }}>+ New Meeting</Btn>
       </div>
 
-      {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: 22 }}>
         {loading ? (
           <div style={{ color: COLORS.textMuted, fontSize: 13 }}>Loading…</div>
@@ -925,13 +922,15 @@ function MeetingsTab({ project, workspace, user, toast }) {
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <Icon name="messageCircle" size={36} color={COLORS.border} style={{ marginBottom: 12 }} />
             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>No meetings yet</div>
-            <div style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Record your first meeting to track decisions and actions.</div>
-            <Btn onClick={openNew}>+ New Meeting</Btn>
+            <div style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Record your first meeting — tasks created here will appear in the project board automatically.</div>
+            <Btn onClick={() => { setEditing(null); setModalOpen(true) }}>+ New Meeting</Btn>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 860 }}>
             {meetings.map(m => (
-              <MeetingCard key={m.id} meeting={m} fmt={fmt} onEdit={() => openEdit(m)} onDelete={() => handleDelete(m.id)} />
+              <MeetingCard key={m.id} meeting={m} fmt={fmt}
+                onEdit={() => { setEditing(m); setModalOpen(true) }}
+                onDelete={() => handleDelete(m.id)} />
             ))}
           </div>
         )}
@@ -940,10 +939,12 @@ function MeetingsTab({ project, workspace, user, toast }) {
       {modalOpen && (
         <MeetingModal
           project={project}
-          workspace={workspace}
-          user={user}
+          workspace={ws}
+          user={authUser}
+          members={ctxMembers || []}
           meeting={editing}
           onSaved={handleSaved}
+          addTask={addTask}
           onClose={() => { setModalOpen(false); setEditing(null) }}
           toast={toast}
         />
@@ -952,46 +953,54 @@ function MeetingsTab({ project, workspace, user, toast }) {
   )
 }
 
+// ── MeetingCard ────────────────────────────────────────────────────────────────
 function MeetingCard({ meeting, fmt, onEdit, onDelete }) {
-  const [expanded, setExpanded] = useState(false)
-  const [actions, setActions]   = useState(null) // null = not loaded yet
+  const [expanded,   setExpanded]   = useState(false)
+  const [tasks,      setTasks]      = useState(null)
   const [confirmDel, setConfirmDel] = useState(false)
 
-  async function loadActions() {
-    if (actions !== null) { setExpanded(e => !e); return }
-    const data = await getMeetingActions(meeting.id).catch(() => [])
-    setActions(data)
-    setExpanded(true)
+  async function toggleExpand() {
+    if (!expanded && tasks === null) {
+      const data = await getTasksByMeeting(meeting.id).catch(() => [])
+      setTasks(data)
+    }
+    setExpanded(e => !e)
   }
 
-  const doneCount = (actions || []).filter(a => a.done).length
-  const total     = (actions || []).length
+  const doneCount = (tasks || []).filter(t => t.status === 'done').length
+  const taskCount = meeting.task_count ?? 0
 
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: 'hidden', transition: 'box-shadow 0.15s' }}>
-      {/* Card header */}
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: 'hidden' }}>
+      {/* Header */}
       <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: COLORS.accent + '18', border: `1px solid ${COLORS.accent}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Icon name="messageCircle" size={18} color={COLORS.accent} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>{meeting.title}</span>
-            {meeting.meeting_date && <span style={{ fontSize: 11, color: COLORS.textMuted, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '2px 8px' }}>{fmt(meeting.meeting_date)}</span>}
+            {meeting.meeting_date && (
+              <span style={{ fontSize: 11, color: COLORS.textMuted, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '2px 8px' }}>{fmt(meeting.meeting_date)}</span>
+            )}
           </div>
           {meeting.attendees && <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 4 }}>👥 {meeting.attendees}</div>}
-          {meeting.summary && <p style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.6, margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 2, WebkitBoxOrient: 'vertical' }}>{meeting.summary}</p>}
+          {meeting.summary && (
+            <p style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.6, margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 2, WebkitBoxOrient: 'vertical' }}>{meeting.summary}</p>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          {meeting.action_count > 0 && (
+          {taskCount > 0 && (
             <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 20, padding: '2px 8px' }}>
-              {doneCount !== null && actions ? `${doneCount}/${total}` : `${meeting.action_count}`} actions
+              {tasks ? `${doneCount}/${tasks.length}` : taskCount} tasks
             </span>
           )}
-          <button onClick={loadActions} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '5px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: COLORS.textMuted, fontFamily: 'inherit' }}>
-            {expanded ? '▲ Hide' : '▼ Show'}
+          <button onClick={toggleExpand} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '5px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600, color: COLORS.textMuted, fontFamily: 'inherit' }}>
+            {expanded ? '▲ Hide' : '▼ Tasks'}
           </button>
-          <button onClick={onEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: '4px 6px', display: 'flex', alignItems: 'center' }}><Icon name="edit" size={14} color={COLORS.textMuted} /></button>
+          <button onClick={onEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: '4px 6px', display: 'flex', alignItems: 'center' }}>
+            <Icon name="edit" size={14} color={COLORS.textMuted} />
+          </button>
           {!confirmDel
             ? <button onClick={() => setConfirmDel(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: '4px 6px', display: 'flex', alignItems: 'center' }}><Icon name="x" size={14} color={COLORS.textMuted} /></button>
             : <button onClick={onDelete} style={{ background: COLORS.red + '18', border: `1px solid ${COLORS.red}44`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: COLORS.red, fontFamily: 'inherit' }}>Delete?</button>
@@ -999,19 +1008,28 @@ function MeetingCard({ meeting, fmt, onEdit, onDelete }) {
         </div>
       </div>
 
-      {/* Expanded actions */}
+      {/* Expanded tasks */}
       {expanded && (
         <div style={{ borderTop: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
-          {actions === null ? (
+          {tasks === null ? (
             <div style={{ padding: '12px 20px', fontSize: 12, color: COLORS.textMuted }}>Loading…</div>
-          ) : actions.length === 0 ? (
-            <div style={{ padding: '12px 20px', fontSize: 12, color: COLORS.textMuted }}>No action items recorded.</div>
+          ) : tasks.length === 0 ? (
+            <div style={{ padding: '12px 20px', fontSize: 12, color: COLORS.textMuted }}>No tasks were created from this meeting.</div>
           ) : (
-            <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>Action Items</div>
-              {actions.map((a, i) => (
-                <ActionRow key={i} action={a} />
-              ))}
+            <div style={{ padding: '12px 20px' }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Tasks from this meeting</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {tasks.map(t => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: COLORS.surface, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS[t.status]?.color || COLORS.border, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: t.status === 'done' ? COLORS.textMuted : COLORS.text, textDecoration: t.status === 'done' ? 'line-through' : 'none' }}>{t.title}</span>
+                    {t.assignee_name && <span style={{ fontSize: 11, color: COLORS.textMuted }}>{t.assignee_name}</span>}
+                    {t.due_date && <span style={{ fontSize: 11, color: COLORS.textMuted }}>{t.due_date}</span>}
+                    <Badge color={STATUS[t.status]?.color || '#888'}>{STATUS[t.status]?.label}</Badge>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 5, background: PRIORITY[t.priority]?.color + '22', color: PRIORITY[t.priority]?.color }}>{PRIORITY[t.priority]?.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1020,57 +1038,50 @@ function MeetingCard({ meeting, fmt, onEdit, onDelete }) {
   )
 }
 
-function ActionRow({ action }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 12px', background: COLORS.surface, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-      <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${action.done ? COLORS.green : COLORS.border}`, background: action.done ? COLORS.green : 'none', flexShrink: 0, marginTop: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {action.done && <Icon name="check" size={10} color="#fff" />}
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, textDecoration: action.done ? 'line-through' : 'none', color: action.done ? COLORS.textMuted : COLORS.text }}>{action.action}</div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
-          {action.owner && <span style={{ fontSize: 11, color: COLORS.textMuted }}>👤 {action.owner}</span>}
-          {action.due_date && <span style={{ fontSize: 11, color: COLORS.textMuted }}>📅 {action.due_date}</span>}
-        </div>
-      </div>
-      {action.priority && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: action.priority === 'high' ? COLORS.red + '18' : action.priority === 'low' ? COLORS.green + '18' : COLORS.amber + '18', color: action.priority === 'high' ? COLORS.red : action.priority === 'low' ? COLORS.green : COLORS.amber }}>{action.priority}</span>}
-    </div>
-  )
-}
-
-function MeetingModal({ project, workspace, user, meeting, onSaved, onClose, toast }) {
+// ── MeetingModal ───────────────────────────────────────────────────────────────
+function MeetingModal({ project, workspace, user, members, meeting, addTask, onSaved, onClose, toast }) {
   const isEdit = !!meeting
   const [title,       setTitle]       = useState(meeting?.title || '')
   const [date,        setDate]        = useState(meeting?.meeting_date?.slice(0,10) || new Date().toISOString().slice(0,10))
   const [attendees,   setAttendees]   = useState(meeting?.attendees || '')
   const [summary,     setSummary]     = useState(meeting?.summary || '')
-  const [actions,     setActions]     = useState([])
-  const [loadingActs, setLoadingActs] = useState(isEdit)
+  const [taskRows,    setTaskRows]    = useState([])
+  const [existTasks,  setExistTasks]  = useState([])
+  const [loadingT,    setLoadingT]    = useState(isEdit)
   const [saving,      setSaving]      = useState(false)
 
   useEffect(() => {
     if (isEdit) {
-      getMeetingActions(meeting.id)
-        .then(data => { setActions(data.length ? data : [emptyAction()]); setLoadingActs(false) })
-        .catch(() => { setActions([emptyAction()]); setLoadingActs(false) })
-    } else {
-      setActions([emptyAction()])
+      getTasksByMeeting(meeting.id)
+        .then(data => { setExistTasks(data); setLoadingT(false) })
+        .catch(() => setLoadingT(false))
     }
+    setTaskRows([emptyTask()])
   }, [])
 
-  function emptyAction() { return { action: '', owner: '', due_date: '', priority: 'medium', done: false } }
-
-  function setAction(i, field, val) {
-    setActions(prev => prev.map((a, idx) => idx === i ? { ...a, [field]: val } : a))
+  function emptyTask() {
+    return { title: '', assigneeId: '', assigneeFreeform: '', useFreeform: false, due_date: '', priority: 'medium' }
   }
-  function addAction()    { setActions(prev => [...prev, emptyAction()]) }
-  function removeAction(i){ setActions(prev => prev.filter((_, idx) => idx !== i)) }
+
+  function setRow(i, field, val) {
+    setTaskRows(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: val } : r))
+  }
+  function addRow()    { setTaskRows(prev => [...prev, emptyTask()]) }
+  function removeRow(i){ setTaskRows(prev => prev.filter((_, idx) => idx !== i)) }
 
   async function handleSave() {
     if (!title.trim()) return
     setSaving(true)
     try {
-      const fields = { title: title.trim(), meeting_date: date, attendees: attendees.trim(), summary: summary.trim(), action_count: actions.filter(a => a.action.trim()).length }
+      // 1. Save/update the meeting record
+      const validTaskRows = taskRows.filter(r => r.title.trim())
+      const fields = {
+        title: title.trim(),
+        meeting_date: date,
+        attendees: attendees.trim(),
+        summary: summary.trim(),
+        task_count: (isEdit ? existTasks.length : 0) + validTaskRows.length,
+      }
       let saved
       if (isEdit) {
         await updateMeeting(meeting.id, fields)
@@ -1078,21 +1089,39 @@ function MeetingModal({ project, workspace, user, meeting, onSaved, onClose, toa
       } else {
         saved = await createMeeting(project.id, workspace.id, user.id, fields)
       }
-      const validActions = actions.filter(a => a.action.trim()).map(a => ({ action: a.action.trim(), owner: a.owner.trim(), due_date: a.due_date || null, priority: a.priority, done: a.done }))
-      await upsertMeetingActions(saved.id, validActions)
-      toast?.('Meeting saved', 'success')
+
+      // 2. Create real tasks linked to this meeting
+      for (const r of validTaskRows) {
+        const member = members.find(m => m.user_id === r.assigneeId)
+        const assignee_name  = r.useFreeform ? r.assigneeFreeform.trim() : (member?.full_name || member?.email || '')
+        const assignee_email = r.useFreeform ? '' : (member?.email || '')
+        await addTask(project.id, {
+          title: r.title.trim(),
+          status: 'new',
+          priority: r.priority,
+          assignee_name,
+          assignee_email,
+          due_date: r.due_date || null,
+          meeting_id: saved.id,
+        })
+      }
+
+      toast?.('Meeting saved' + (validTaskRows.length ? ` · ${validTaskRows.length} task${validTaskRows.length > 1 ? 's' : ''} created` : ''), 'success')
       onSaved(saved, !isEdit)
     } catch(e) { toast?.(e.message, 'error') } finally { setSaving(false) }
   }
 
+  const newTaskCount = taskRows.filter(r => r.title.trim()).length
+
   return (
-    <Modal onClose={onClose} width={640}>
+    <Modal onClose={onClose} width={660}>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <h2 style={{ fontWeight: 700, fontSize: 18 }}>{isEdit ? 'Edit Meeting' : 'New Meeting'}</h2>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: 4 }}><Icon name="x" size={18} color={COLORS.textMuted} /></button>
       </div>
 
-      {/* Row 1: title + date */}
+      {/* Title + Date */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginBottom: 14 }}>
         <div>
           <label style={lStyle}>Meeting Title *</label>
@@ -1110,56 +1139,114 @@ function MeetingModal({ project, workspace, user, meeting, onSaved, onClose, toa
         <input value={attendees} onChange={e => setAttendees(e.target.value)} placeholder="e.g. Kareem, Sara, Ahmed" style={{ ...iStyle, background: COLORS.inputBg }} />
       </div>
 
-      {/* Summary / minutes */}
+      {/* Notes */}
       <div style={{ marginBottom: 20 }}>
         <label style={lStyle}>Meeting Notes / Minutes</label>
-        <textarea value={summary} onChange={e => setSummary(e.target.value)} placeholder="Key decisions, discussion points, context…" rows={4} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.6, background: COLORS.inputBg }} />
+        <textarea value={summary} onChange={e => setSummary(e.target.value)} placeholder="Key decisions, discussion points, context…" rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.6, background: COLORS.inputBg }} />
       </div>
 
-      {/* Action items */}
+      {/* ── Tasks section ── */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <label style={{ ...lStyle, marginBottom: 0 }}>Action Items</label>
-          <button onClick={addAction} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: COLORS.accent, cursor: 'pointer', fontFamily: 'inherit' }}>+ Add Action</button>
-        </div>
-        {loadingActs ? (
-          <div style={{ fontSize: 12, color: COLORS.textMuted }}>Loading…</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {actions.map((a, i) => (
-              <div key={i} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 12 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 110px 80px 28px', gap: 8, alignItems: 'center' }}>
-                  <input value={a.action} onChange={e => setAction(i, 'action', e.target.value)} placeholder="Action item…" style={{ ...iStyle, background: COLORS.surface, fontSize: 12 }} />
-                  <input value={a.owner} onChange={e => setAction(i, 'owner', e.target.value)} placeholder="Owner" style={{ ...iStyle, background: COLORS.surface, fontSize: 12 }} />
-                  <input type="date" value={a.due_date || ''} onChange={e => setAction(i, 'due_date', e.target.value)} style={{ ...iStyle, background: COLORS.surface, fontSize: 11 }} />
-                  <select value={a.priority} onChange={e => setAction(i, 'priority', e.target.value)} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '6px 6px', fontSize: 11, outline: 'none' }}>
-                    <option value="high">High</option>
-                    <option value="medium">Med</option>
-                    <option value="low">Low</option>
-                  </select>
-                  <button onClick={() => removeAction(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" size={13} color={COLORS.textMuted} /></button>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                  <button onClick={() => setAction(i, 'done', !a.done)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${a.done ? COLORS.green : COLORS.border}`, background: a.done ? COLORS.green : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {a.done && <Icon name="check" size={9} color="#fff" />}
-                    </div>
-                    <span style={{ fontSize: 11, color: COLORS.textMuted }}>Mark done</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div>
+            <label style={{ ...lStyle, marginBottom: 0 }}>Tasks</label>
+            <span style={{ fontSize: 11, color: COLORS.textMuted, marginLeft: 8 }}>Will be created in the project board as New</span>
           </div>
+          <button onClick={addRow} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: COLORS.accent, cursor: 'pointer', fontFamily: 'inherit' }}>+ Add Task</button>
+        </div>
+
+        {/* Existing tasks (edit mode) */}
+        {isEdit && (
+          loadingT ? (
+            <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 10 }}>Loading existing tasks…</div>
+          ) : existTasks.length > 0 ? (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>Existing tasks from this meeting</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {existTasks.map(t => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: COLORS.bg, borderRadius: 7, border: `1px solid ${COLORS.border}` }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS[t.status]?.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 12, color: COLORS.textDim }}>{t.title}</span>
+                    {t.assignee_name && <span style={{ fontSize: 11, color: COLORS.textMuted }}>{t.assignee_name}</span>}
+                    <Badge color={STATUS[t.status]?.color || '#888'}>{STATUS[t.status]?.label}</Badge>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>Add more tasks below — existing ones aren't modified here.</div>
+            </div>
+          ) : null
         )}
+
+        {/* New task rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {taskRows.map((r, i) => (
+            <div key={i} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 12 }}>
+              {/* Row 1: title + due + priority + remove */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 76px 26px', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <input
+                  value={r.title}
+                  onChange={e => setRow(i, 'title', e.target.value)}
+                  placeholder="Task title…"
+                  style={{ ...iStyle, background: COLORS.surface, fontSize: 12 }}
+                />
+                <input type="date" value={r.due_date || ''} onChange={e => setRow(i, 'due_date', e.target.value)} style={{ ...iStyle, background: COLORS.surface, fontSize: 11 }} />
+                <select value={r.priority} onChange={e => setRow(i, 'priority', e.target.value)} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '6px 6px', fontSize: 11, outline: 'none', width: '100%' }}>
+                  <option value="high">High</option>
+                  <option value="medium">Med</option>
+                  <option value="low">Low</option>
+                </select>
+                <button onClick={() => removeRow(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="x" size={13} color={COLORS.textMuted} />
+                </button>
+              </div>
+
+              {/* Row 2: assignee — member picker OR freeform */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>Assign to:</span>
+                {!r.useFreeform ? (
+                  <>
+                    <select
+                      value={r.assigneeId}
+                      onChange={e => setRow(i, 'assigneeId', e.target.value)}
+                      style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }}>
+                      <option value="">— Unassigned —</option>
+                      {members.map(m => (
+                        <option key={m.user_id} value={m.user_id}>{m.full_name || m.email}</option>
+                      ))}
+                    </select>
+                    <button onClick={() => setRow(i, 'useFreeform', true)} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 8px', fontSize: 11, color: COLORS.textMuted, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>External?</button>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      value={r.assigneeFreeform}
+                      onChange={e => setRow(i, 'assigneeFreeform', e.target.value)}
+                      placeholder="Name (external / guest)"
+                      style={{ flex: 1, ...iStyle, background: COLORS.surface, fontSize: 12 }}
+                    />
+                    <button onClick={() => { setRow(i, 'useFreeform', false); setRow(i, 'assigneeFreeform', '') }} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 8px', fontSize: 11, color: COLORS.accent, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Member?</button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 16, borderTop: `1px solid ${COLORS.border}` }}>
-        <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
-        <Btn onClick={handleSave} disabled={saving || !title.trim()}>{saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Meeting'}</Btn>
+      {/* Footer */}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: `1px solid ${COLORS.border}` }}>
+        <span style={{ fontSize: 11, color: COLORS.textMuted }}>
+          {newTaskCount > 0 ? `${newTaskCount} task${newTaskCount > 1 ? 's' : ''} will be created in the board` : 'No tasks to create yet'}
+        </span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
+          <Btn onClick={handleSave} disabled={saving || !title.trim()}>{saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Meeting'}</Btn>
+        </div>
       </div>
     </Modal>
   )
 }
+
 
 function hour() { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening' }
 function hourIcon() { const h = new Date().getHours(); return h < 12 ? 'sunrise' : h < 17 ? 'sun' : 'moon' }
