@@ -55,7 +55,7 @@ export function Modal({ children, onClose, width = 500 }) {
       <div onClick={e => e.stopPropagation()} style={{
         background: COLORS.surface, border: `1px solid ${COLORS.border}`,
         borderRadius: 14, padding: 28, width, maxWidth: '100%',
-        maxHeight: '90vh', overflowY: 'auto',
+        maxHeight: '92vh', overflowY: 'hidden',
         boxShadow: `0 24px 64px ${COLORS.shadow}`,
         animation: 'slideUp 0.2s ease',
       }}>
@@ -176,6 +176,8 @@ export function Icon({ name, size = 16, color = 'currentColor', style: s }) {
     moon:        <svg {...props}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
     user:        <svg {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
     download:    <svg {...props}><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>,
+    clock:       <svg {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+    sunrise:     <svg {...props}><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/><polyline points="8 6 12 2 16 6"/></svg>,
   }
   return icons[name] || <svg {...props}><circle cx="12" cy="12" r="9"/></svg>
 }

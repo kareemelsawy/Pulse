@@ -20,7 +20,7 @@ function applyTheme(isDark) {
 export function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('pulse_theme')
-    return saved ? saved === 'dark' : true
+    return saved ? saved === 'dark' : false  // default: light
   })
 
   // Apply theme on mount and whenever it changes

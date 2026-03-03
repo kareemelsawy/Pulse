@@ -8,7 +8,7 @@ function StatCard({ title, value, sub, color, icon }) {
     <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: '20px 22px', borderTop: `3px solid ${color || COLORS.accent}` }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{title}</div>
-        {icon && <span style={{ fontSize: 18 }}>{icon}</span>}
+        {icon && <span style={{ display: "flex", alignItems: "center" }}>{icon}</span>}
       </div>
       <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: COLORS.textMuted }}>{sub}</div>}
@@ -60,6 +60,13 @@ function DonutChart({ data, size = 120 }) {
       <text x={cx} y={cy + 5} textAnchor="middle" fontSize="14" fontWeight="800" fill={COLORS.text}>{total}</text>
     </svg>
   )
+}
+
+// Show first part of email as name if no full name stored
+function displayName(raw) {
+  if (!raw) return '?'
+  if (raw.includes('@')) return raw.split('@')[0].replace(/[._-]/g, ' ').replace(/\w/g, l => l.toUpperCase())
+  return raw
 }
 
 export default function AnalyticsPage() {
@@ -138,10 +145,10 @@ export default function AnalyticsPage() {
 
         {/* Top KPI row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
-          <StatCard title="Total Tasks"       value={tasks.length}               sub={`across ${projects.length} projects`}    color={COLORS.accent}  icon="📋" />
+          <StatCard title="Total Tasks"       value={tasks.length}               sub={`across ${projects.length} projects`}    color={COLORS.accent}  icon={<Icon name="tasks" size={14} color={COLORS.textMuted} />} />
           <StatCard title="Completion Rate"   value={`${stats.completionRate}%`} sub={`${stats.done.length} tasks done`}       color={COLORS.green}   icon={<Icon name="check" size={13} />} />
           <StatCard title="Overdue"           value={stats.overdue.length}       sub="need attention"                          color={stats.overdue.length > 0 ? COLORS.red : COLORS.green} icon={<Icon name="warning" size={13} />} />
-          <StatCard title="Due This Week"     value={stats.dueSoon.length}       sub="tasks approaching deadline"              color={COLORS.amber}   icon="📅" />
+          <StatCard title="Due This Week"     value={stats.dueSoon.length}       sub="tasks approaching deadline"              color={COLORS.amber}   icon={<Icon name="clock" size={14} color={COLORS.textMuted} />} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
@@ -230,11 +237,11 @@ export default function AnalyticsPage() {
             ) : stats.assigneeStats.map(([name, data]) => (
               <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                 <div style={{ width: 28, height: 28, borderRadius: '50%', background: COLORS.accent + '33', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: COLORS.accent, flexShrink: 0 }}>
-                  {name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  {displayName(name).slice(0, 2).toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>{name}</span>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>{displayName(name)}</span>
                     <span style={{ fontSize: 11, color: COLORS.textMuted }}>{data.done}/{data.total} done</span>
                   </div>
                   <div style={{ height: 5, borderRadius: 3, background: COLORS.border }}>

@@ -3,11 +3,13 @@ import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
 import { COLORS, STATUS, STATUS_FLOW, PRIORITY, PROJECT_COLORS } from '../lib/constants'
 import { Avatar, Badge, ProgressBar, Modal, Btn, iStyle, lStyle, Icon } from '../components/UI'
-import { getComments, addComment, deleteComment } from '../lib/db'
+import { getComments, addComment, deleteComment, uploadAttachment, getAttachments, deleteAttachment, exportTasksCsv, importTasks } from '../lib/db'
 
 // ─── OverviewPage ─────────────────────────────────────────────────────────────
 export function OverviewPage({ onOpenProject, onNewProject, workspaceName }) {
   const { projects, tasks, getProjectTasks } = useData()
+  const { user } = useAuth()
+  const firstName = (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there').split(' ')[0]
   const byStatus = Object.keys(STATUS).map(s => ({ s, count: tasks.filter(t => t.status === s).length }))
   const overdue  = tasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date())
 
@@ -16,10 +18,10 @@ export function OverviewPage({ onOpenProject, onNewProject, workspaceName }) {
       <div style={{ maxWidth: 1100 }}>
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <span style={{ fontSize: 22 }}>{hourIcon()}</span>
             <h1 style={{ fontWeight: 700, fontSize: 24, letterSpacing: '-0.02em', paddingBottom: 2, margin: 0 }}>
-              Good {hour()}
+              Hey {firstName}, good {hour()}
             </h1>
+            <Icon name={hourIcon()} size={20} color={COLORS.textMuted} />
           </div>
           {workspaceName && (
             <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted, marginBottom: 4, letterSpacing: '-0.01em' }}>{workspaceName}</div>
@@ -157,7 +159,9 @@ export function ProjectView({ project, toast }) {
             <button key={v} onClick={() => setView(v)} style={{ padding: '5px 9px', background: view===v ? COLORS.border : 'none', color: view===v ? COLORS.text : COLORS.textMuted, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Icon name={ic} size={14} color={view===v ? COLORS.text : COLORS.textMuted} /></button>
           ))}
         </div>
-        <Btn size="sm" variant="secondary" onClick={() => setCsvOpen(true)}>↑ CSV</Btn>
+        <Btn size="sm" variant="secondary" onClick={() => setCsvOpen(true)}>↑ Import CSV</Btn>
+        <Btn size="sm" variant="secondary" onClick={() => handleExportCsv()}>↓ Export CSV</Btn>
+        <Btn size="sm" variant="secondary" onClick={() => setCsvEditOpen(true)}>✎ Edit via CSV</Btn>
         <Btn size="sm" onClick={() => setTaskModal('new')}>+ Add Task</Btn>
       </div>
 
@@ -192,7 +196,8 @@ export function ProjectView({ project, toast }) {
           onClose={() => setEditProjOpen(false)}
         />
       )}
-      {csvOpen && <CsvImportModal projectId={project.id} onClose={() => setCsvOpen(false)} toast={toast} />}
+      {csvOpen && <CsvImportModal projectId={project.id} project={project} mode="import" onClose={() => setCsvOpen(false)} toast={toast} />}
+      {csvEditOpen && <CsvImportModal projectId={project.id} project={project} mode="export" tasks={filtered} onClose={() => setCsvEditOpen(false)} toast={toast} />}
     </div>
   )
 }
@@ -380,7 +385,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
       </div>
 
       {/* ── Scrollable body ── */}
-      <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: 4 }}>
+      <div style={{ maxHeight: 'calc(85vh - 180px)', overflowY: 'auto', paddingRight: 4 }}>
 
         {/* Title */}
         <div style={{ marginBottom: 16 }}>
@@ -539,18 +544,9 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
         <div style={S.divider} />
         <div style={S.sectionLabel}>Attachments</div>
         {task ? (
-          <div style={{ border: `1px dashed ${COLORS.border}`, borderRadius: 10, padding: '18px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Icon name="paperclip" size={22} color={COLORS.textMuted} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>File Attachments</div>
-              <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6 }}>
-                Create a Supabase Storage bucket named <code style={{ background: COLORS.border, padding: '1px 5px', borderRadius: 3, fontSize: 10 }}>task-attachments</code> to enable uploads.
-              </div>
-            </div>
-            <Btn size="sm" variant="secondary" onClick={() => window.open('https://supabase.com/dashboard', '_blank')}>Setup →</Btn>
-          </div>
+          <AttachmentsSection taskId={task.id} toast={toast} />
         ) : (
-          <p style={{ fontSize: 13, color: COLORS.textMuted }}>Save this task first to add attachments.</p>
+          <p style={{ fontSize: 13, color: COLORS.textMuted }}>Save the task first, then you can add attachments.</p>
         )}
 
         <div style={{ height: 8 }} />
@@ -643,7 +639,7 @@ function EditProjectModal({ project, isAdmin, onSave, onDelete, onClose }) {
 }
 
 // ─── CSV Import Modal ─────────────────────────────────────────────────────────
-function CsvImportModal({ projectId, onClose, toast }) {
+function CsvImportModal({ projectId, project, mode = 'import', tasks = [], onClose, toast }) {
   const { importTasks, projects } = useData()
   const [mode,     setMode]     = useState('tasks') // 'tasks'
   const [preview,  setPreview]  = useState(null)
@@ -695,6 +691,7 @@ function CsvImportModal({ projectId, onClose, toast }) {
       const projectMap = { [project?.name || '']: projectId }
       const normalized = preview.map(r => ({
         title: r.title || r.name || 'Untitled',
+        status: ['new','inprogress','review','done'].includes(r.status?.toLowerCase()) ? r.status.toLowerCase() : 'new',
         priority: ['high','medium','low'].includes(r.priority?.toLowerCase()) ? r.priority.toLowerCase() : 'medium',
         assignee_name: r.assignee_name || r.assignee || '',
         assignee_email: r.assignee_email || r.email || '',
@@ -709,16 +706,22 @@ function CsvImportModal({ projectId, onClose, toast }) {
 
   return (
     <Modal onClose={onClose} width={560}>
-      <h2 style={{ fontWeight: 700, fontSize: 17, marginBottom: 6, paddingBottom: 2 }}>CSV Import</h2>
-      <p style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Import tasks into <strong style={{ color: COLORS.text }}>{project?.name}</strong></p>
+      <h2 style={{ fontWeight: 700, fontSize: 17, marginBottom: 6, paddingBottom: 2 }}>{mode === 'export' ? 'Edit Tasks via CSV' : 'CSV Import'}</h2>
+      <p style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: mode === 'export' ? 8 : 20 }}>{mode === 'export' ? 'Download the current tasks, edit in a spreadsheet, then re-upload to override.' : <>Import tasks into <strong style={{ color: COLORS.text }}>{project?.name}</strong></>}</p>
+      {mode === 'export' && (
+        <div style={{ marginBottom: 16 }}>
+          <Btn size="sm" variant="secondary" onClick={() => exportTasksCsv(tasks, project?.name)}>↓ Download current tasks ({tasks.length})</Btn>
+          <p style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 8 }}>Re-upload the edited file below. Existing tasks will be replaced.</p>
+        </div>
+      )}
 
       <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14, marginBottom: 18, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.8 }}>
         <strong style={{ color: COLORS.textDim }}>Expected CSV columns:</strong><br />
-        <code style={{ color: COLORS.accent }}>title, priority, assignee_name, assignee_email, due_date</code><br />
+        <code style={{ color: COLORS.accent }}>title, status, priority, assignee_name, assignee_email, due_date</code><br />
         <span>• <strong>title</strong> — required</span><br />
+        <span>• <strong>status</strong> — new / inprogress / review / done (default: new)</span><br />
         <span>• <strong>priority</strong> — high / medium / low (default: medium)</span><br />
-        <span>• <strong>due_date</strong> — YYYY-MM-DD format</span><br />
-        <span>• All tasks start as <strong>New</strong></span>
+        <span>• <strong>due_date</strong> — YYYY-MM-DD format</span>
       </div>
 
       <div
@@ -756,7 +759,7 @@ function CsvImportModal({ projectId, onClose, toast }) {
       )}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
-        <a href="data:text/csv;charset=utf-8,title,priority,assignee_name,assignee_email,due_date%0AExample Task,high,John Doe,john@co.com,2025-12-31%0AAnother Task,medium,Jane Smith,jane@co.com," download="pulse-tasks-template.csv" style={{ fontSize: 12, color: COLORS.accent }}>⬇ Download template</a>
+        <a href="data:text/csv;charset=utf-8,title,status,priority,assignee_name,assignee_email,due_date%0AExample Task,new,high,John Doe,john@homzmart.com,2025-12-31%0AAnother Task,inprogress,medium,Jane Smith,jane@homzmart.com,2025-11-30%0AReview This,review,low,,%2C," download="pulse-tasks-template.csv" style={{ fontSize: 12, color: COLORS.accent }}>⬇ Download template</a>
         <div style={{ display: 'flex', gap: 8 }}>
           <Btn variant="secondary" onClick={onClose}>Cancel</Btn>
           <Btn onClick={handleImport} disabled={!preview?.length || importing}>{importing ? 'Importing…' : `Import ${preview?.length || 0} Tasks`}</Btn>
@@ -772,5 +775,91 @@ export function NotifModal({ onClose, toast }) {
   return null
 }
 
+
+// ─── Attachments Section ──────────────────────────────────────────────────────
+function AttachmentsSection({ taskId, toast }) {
+  const [attachments, setAttachments] = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [uploading, setUploading]     = useState(false)
+  const [storageOk, setStorageOk]     = useState(true)
+  const fileRef = useRef(null)
+
+  useEffect(() => {
+    getAttachments(taskId)
+      .then(data => { setAttachments(data); setLoading(false) })
+      .catch(e => {
+        if (e?.message?.includes('does not exist') || e?.code === '42P01') setStorageOk(false)
+        setLoading(false)
+      })
+  }, [taskId])
+
+  async function handleUpload(e) {
+    const file = e.target.files?.[0]; if (!file) return
+    setUploading(true)
+    try {
+      const rec = await uploadAttachment(taskId, file)
+      setAttachments(prev => [...prev, rec])
+      toast?.('File uploaded', 'success')
+    } catch(err) {
+      if (err?.message?.includes('Bucket') || err?.message?.includes('bucket')) setStorageOk(false)
+      else toast?.(err.message, 'error')
+    } finally { setUploading(false); e.target.value = '' }
+  }
+
+  async function handleDelete(att) {
+    try {
+      await deleteAttachment(att.id, att.file_path)
+      setAttachments(prev => prev.filter(a => a.id !== att.id))
+    } catch(err) { toast?.(err.message, 'error') }
+  }
+
+  function fmt(bytes) {
+    if (!bytes) return ''
+    if (bytes < 1024) return `${bytes}B`
+    if (bytes < 1048576) return `${Math.round(bytes/1024)}KB`
+    return `${(bytes/1048576).toFixed(1)}MB`
+  }
+
+  if (!storageOk) return (
+    <div style={{ border: `1px dashed ${COLORS.border}`, borderRadius: 10, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <Icon name="paperclip" size={18} color={COLORS.textMuted} />
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
+          Run <code style={{ background: COLORS.border, padding: '1px 5px', borderRadius: 3, fontSize: 10 }}>create-storage-bucket.sql</code> in Supabase, then also create the <code style={{ background: COLORS.border, padding: '1px 5px', borderRadius: 3, fontSize: 10 }}>task_attachments</code> table below.
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div>
+      {loading ? (
+        <div style={{ fontSize: 12, color: COLORS.textMuted }}>Loading…</div>
+      ) : (
+        <>
+          {attachments.length > 0 && (
+            <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {attachments.map(att => (
+                <div key={att.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
+                  <Icon name="paperclip" size={14} color={COLORS.textMuted} />
+                  <a href={att.file_url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 12, color: COLORS.accent, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.file_name}</a>
+                  <span style={{ fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>{fmt(att.file_size)}</span>
+                  <button onClick={() => handleDelete(att)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}><Icon name="x" size={13} color={COLORS.textMuted} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'none', border: `1px dashed ${COLORS.border}`, borderRadius: 8, color: COLORS.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+            <Icon name="upload" size={13} color={COLORS.textMuted} />
+            {uploading ? 'Uploading…' : 'Attach file'}
+          </button>
+          <input ref={fileRef} type="file" onChange={handleUpload} style={{ display: 'none' }} />
+        </>
+      )}
+    </div>
+  )
+}
+
 function hour() { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening' }
-function hourIcon() { const h = new Date().getHours(); return h < 12 ? '🌤' : h < 17 ? '☀️' : '🌙' }
+function hourIcon() { const h = new Date().getHours(); return h < 12 ? 'sunrise' : h < 17 ? 'sun' : 'moon' }

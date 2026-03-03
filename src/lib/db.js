@@ -266,3 +266,55 @@ export function subscribeMembers(workspaceId, callback) {
     .subscribe()
   return () => supabase.removeChannel(channel)
 }
+
+// ── Attachments ───────────────────────────────────────────────────────────────
+export async function uploadAttachment(taskId, file) {
+  const ext = file.name.split('.').pop()
+  const path = `${taskId}/${Date.now()}_${file.name.replace(/[^a-z0-9._-]/gi, '_')}`
+  const { data, error } = await supabase.storage.from('task-attachments').upload(path, file)
+  if (error) throw error
+  const { data: { publicUrl } } = supabase.storage.from('task-attachments').getPublicUrl(path)
+  // Store record in DB
+  const { data: rec, error: recErr } = await supabase.from('task_attachments').insert({
+    task_id: taskId, file_name: file.name, file_path: path, file_url: publicUrl, file_size: file.size
+  }).select().single()
+  if (recErr) throw recErr
+  return rec
+}
+
+export async function getAttachments(taskId) {
+  const { data, error } = await supabase.from('task_attachments').select('*').eq('task_id', taskId).order('created_at')
+  if (error) {
+    // Table might not exist yet — return empty gracefully
+    if (error.code === '42P01') return []
+    throw error
+  }
+  return data || []
+}
+
+export async function deleteAttachment(id, filePath) {
+  await supabase.storage.from('task-attachments').remove([filePath])
+  const { error } = await supabase.from('task_attachments').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+export function exportTasksCsv(tasks, projectName) {
+  const headers = ['title', 'status', 'priority', 'assignee_name', 'assignee_email', 'due_date']
+  const rows = tasks.map(t => [
+    `"${(t.title || '').replace(/"/g, '""')}"`,
+    t.status || 'new',
+    t.priority || 'medium',
+    `"${(t.assignee_name || '').replace(/"/g, '""')}"`,
+    t.assignee_email || '',
+    t.due_date || '',
+  ].join(','))
+  const csv = [headers.join(','), ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${(projectName || 'tasks').replace(/\s+/g, '-').toLowerCase()}-tasks.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
