@@ -311,11 +311,113 @@ function NotificationsTab({ toast }) {
   )
 }
 
+// ─── Integrations Tab ────────────────────────────────────────────────────────
+function IntegrationsTab({ toast }) {
+  const { colors } = useTheme()
+  const { iStyle, lStyle } = useS()
+  const [googleClientId,     setGoogleClientId]     = useState(() => localStorage.getItem('pulse_google_client_id') || '')
+  const [googleClientSecret, setGoogleClientSecret] = useState(() => localStorage.getItem('pulse_google_client_secret') || '')
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      localStorage.setItem('pulse_google_client_id',     googleClientId.trim())
+      localStorage.setItem('pulse_google_client_secret', googleClientSecret.trim())
+      toast('Google config saved', 'success')
+    } catch (e) { toast(e.message, 'error') } finally { setSaving(false) }
+  }
+
+  async function handleTestGoogle() {
+    setTesting(true)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin, skipBrowserRedirect: true }
+      })
+      if (error) throw error
+      toast('Google OAuth reachable ✓', 'success')
+    } catch (e) {
+      toast(e.message.includes('provider') ? 'Google not enabled in Supabase — see setup guide below' : e.message, 'error')
+    } finally { setTesting(false) }
+  }
+
+  const steps = [
+    { n: 1, title: 'Create a Google Cloud project', body: 'Go to console.cloud.google.com → New Project.' },
+    { n: 2, title: 'Enable OAuth consent screen', body: 'APIs & Services → OAuth consent screen → External → fill in app name, support email, and your domain.' },
+    { n: 3, title: 'Create OAuth credentials', body: 'APIs & Services → Credentials → Create Credentials → OAuth Client ID → Web application.' },
+    { n: 4, title: 'Add redirect URI', body: `Add this to "Authorised redirect URIs": your Supabase project URL + /auth/v1/callback\ne.g. https://xxxx.supabase.co/auth/v1/callback` },
+    { n: 5, title: 'Add your site to Authorised origins', body: `Add your Vercel domain (e.g. https://pulse.vercel.app) and http://localhost:5173 for local dev.` },
+    { n: 6, title: 'Copy credentials into Supabase', body: 'In Supabase → Authentication → Providers → Google → paste Client ID and Client Secret, enable the provider, and save.' },
+    { n: 7, title: 'Add redirect URL in Supabase', body: 'Supabase → Authentication → URL Configuration → add your site URL and https://yourdomain.com/** to Redirect URLs.' },
+  ]
+
+  return (
+    <div>
+      <Section>
+        <SectionTitle>Google Sign-In</SectionTitle>
+        <SectionDesc>Configure Google OAuth so team members can sign in with their Google accounts. The setup happens in Supabase — credentials are never stored in the app itself.</SectionDesc>
+
+        <div style={{ background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 18, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 36, height: 36, background: '#4285F4', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24">
+                <path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                <path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.4 }}>Google OAuth 2.0</div>
+              <div style={{ fontSize: 11, color: colors.textMuted, lineHeight: 1.4 }}>Enabled via Supabase Authentication → Providers</div>
+            </div>
+            <Btn size="sm" variant="secondary" onClick={handleTestGoogle} disabled={testing} style={{ marginLeft: 'auto' }}>{testing ? 'Testing…' : 'Test Connection'}</Btn>
+          </div>
+          <div style={{ fontSize: 12, color: colors.textMuted, lineHeight: 1.6 }}>
+            Google Sign-In is configured directly in your Supabase project, not here. Paste the credentials in Supabase and they apply automatically. Use the reference fields below to keep track of your credentials locally (stored in browser only, never sent anywhere).
+          </div>
+        </div>
+
+        <label style={lStyle}>Google Client ID (reference only)</label>
+        <input value={googleClientId} onChange={e => setGoogleClientId(e.target.value)} placeholder="xxxxxx.apps.googleusercontent.com" style={{ ...iStyle, marginBottom: 12, fontFamily: 'monospace', fontSize: 12 }} />
+        <label style={lStyle}>Google Client Secret (reference only)</label>
+        <input value={googleClientSecret} onChange={e => setGoogleClientSecret(e.target.value)} placeholder="GOCSPX-…" type="password" style={{ ...iStyle, marginBottom: 16, fontFamily: 'monospace', fontSize: 12 }} />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Btn onClick={handleSave} disabled={saving} size="sm">{saving ? 'Saving…' : 'Save Reference'}</Btn>
+          <span style={{ fontSize: 11, color: colors.textMuted, lineHeight: 1.4 }}>Stored in your browser only. Does not affect authentication.</span>
+        </div>
+      </Section>
+
+      <Section>
+        <SectionTitle>Setup Guide</SectionTitle>
+        <SectionDesc>Follow these steps once to enable Google Sign-In for the whole workspace.</SectionDesc>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {steps.map(step => (
+            <div key={step.n} style={{ display: 'flex', gap: 14, padding: '12px 14px', background: colors.bg, borderRadius: 10, border: `1px solid ${colors.border}` }}>
+              <div style={{ width: 26, height: 26, borderRadius: '50%', background: colors.accent + '22', color: colors.accent, fontWeight: 800, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{step.n}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3, lineHeight: 1.4 }}>{step.title}</div>
+                <div style={{ fontSize: 12, color: colors.textMuted, lineHeight: 1.6, whiteSpace: 'pre-line' }}>{step.body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 16, padding: '10px 14px', background: colors.accent + '12', border: `1px solid ${colors.accent}33`, borderRadius: 10, fontSize: 12, color: colors.textMuted, lineHeight: 1.6 }}>
+          <strong style={{ color: colors.accent }}>Important:</strong> The "Continue with Google" button on the login page will work automatically once you enable the Google provider in Supabase. No code changes needed.
+        </div>
+      </Section>
+    </div>
+  )
+}
+
 // ─── Main SettingsPage ────────────────────────────────────────────────────────
 const TABS = [
   { id: 'account',       label: '👤 Account' },
   { id: 'workspace',     label: '🏢 Workspace' },
   { id: 'notifications', label: '🔔 Notifications' },
+  { id: 'integrations',  label: '🔗 Integrations' },
 ]
 
 export default function SettingsPage({ toast }) {
@@ -341,6 +443,7 @@ export default function SettingsPage({ toast }) {
         {tab === 'account'       && <AccountTab       toast={toast} />}
         {tab === 'workspace'     && <WorkspaceTab     toast={toast} />}
         {tab === 'notifications' && <NotificationsTab toast={toast} />}
+        {tab === 'integrations'  && <IntegrationsTab  toast={toast} />}
       </div>
     </div>
   )

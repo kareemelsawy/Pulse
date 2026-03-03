@@ -185,7 +185,7 @@ export function subscribeTasks(workspaceId, callback) {
 export async function bulkCreateTasks(tasks, workspaceId, userId, projectMap) {
   const rows = tasks.map(t => ({
     title: t.title,
-    status: 'new',
+    status: ['new','inprogress','review','done'].includes(t.status) ? t.status : 'new',
     priority: t.priority || 'medium',
     assignee_name: t.assignee_name || '',
     assignee_email: t.assignee_email || '',
@@ -269,7 +269,6 @@ export function subscribeMembers(workspaceId, callback) {
 
 // ── Attachments ───────────────────────────────────────────────────────────────
 export async function uploadAttachment(taskId, file) {
-  const ext = file.name.split('.').pop()
   const path = `${taskId}/${Date.now()}_${file.name.replace(/[^a-z0-9._-]/gi, '_')}`
   const { data, error } = await supabase.storage.from('task-attachments').upload(path, file)
   if (error) throw error

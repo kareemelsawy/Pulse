@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
 import { COLORS, STATUS, STATUS_FLOW, PRIORITY, PROJECT_COLORS } from '../lib/constants'
 import { Avatar, Badge, ProgressBar, Modal, Btn, iStyle, lStyle, Icon } from '../components/UI'
-import { getComments, addComment, deleteComment, uploadAttachment, getAttachments, deleteAttachment, exportTasksCsv, importTasks } from '../lib/db'
+import { getComments, addComment, deleteComment, uploadAttachment, getAttachments, deleteAttachment, exportTasksCsv } from '../lib/db'
 
 // ─── OverviewPage ─────────────────────────────────────────────────────────────
 export function OverviewPage({ onOpenProject, onNewProject, workspaceName }) {
@@ -84,7 +84,6 @@ export function OverviewPage({ onOpenProject, onNewProject, workspaceName }) {
 // ─── MyTasksPage ─────────────────────────────────────────────────────────────
 export function MyTasksPage() {
   const { myTasks, projects } = useData()
-  const { user } = useAuth()
   const overdue = myTasks.filter(t => t.due_date && new Date(t.due_date) < new Date())
   const rest    = myTasks.filter(t => !t.due_date || new Date(t.due_date) >= new Date())
 
@@ -136,6 +135,9 @@ export function ProjectView({ project, toast }) {
   const [taskModal, setTaskModal] = useState(null)
   const [editProjOpen, setEditProjOpen] = useState(false)
   const [csvOpen, setCsvOpen] = useState(false)
+  const [csvEditOpen, setCsvEditOpen] = useState(false)
+
+  function handleExportCsv() { exportTasksCsv(filtered, project?.name) }
 
   const filtered = tasks.filter(t => {
     if (filterS !== 'all' && t.status !== filterS) return false
@@ -385,7 +387,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
       </div>
 
       {/* ── Scrollable body ── */}
-      <div style={{ maxHeight: 'calc(85vh - 180px)', overflowY: 'auto', paddingRight: 4 }}>
+      <div style={{ paddingRight: 4 }}>
 
         {/* Title */}
         <div style={{ marginBottom: 16 }}>
@@ -640,7 +642,7 @@ function EditProjectModal({ project, isAdmin, onSave, onDelete, onClose }) {
 
 // ─── CSV Import Modal ─────────────────────────────────────────────────────────
 function CsvImportModal({ projectId, project, mode = 'import', tasks = [], onClose, toast }) {
-  const { importTasks, projects } = useData()
+  const { importTasks } = useData()
   const [preview,  setPreview]  = useState(null)
   const [importing, setImporting] = useState(false)
   const fileRef = useRef()

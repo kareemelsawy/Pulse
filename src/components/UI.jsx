@@ -55,7 +55,7 @@ export function Modal({ children, onClose, width = 500 }) {
       <div onClick={e => e.stopPropagation()} style={{
         background: COLORS.surface, border: `1px solid ${COLORS.border}`,
         borderRadius: 14, padding: 28, width, maxWidth: '100%',
-        maxHeight: '92vh', overflowY: 'hidden',
+        maxHeight: '92vh', overflowY: 'auto',
         boxShadow: `0 24px 64px ${COLORS.shadow}`,
         animation: 'slideUp 0.2s ease',
       }}>

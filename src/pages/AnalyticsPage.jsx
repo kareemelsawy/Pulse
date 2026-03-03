@@ -65,7 +65,7 @@ function DonutChart({ data, size = 120 }) {
 // Show first part of email as name if no full name stored
 function displayName(raw) {
   if (!raw) return '?'
-  if (raw.includes('@')) return raw.split('@')[0].replace(/[._-]/g, ' ').replace(/\w/g, l => l.toUpperCase())
+  if (raw.includes('@')) { return raw.split('@')[0].split(/[._-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') }
   return raw
 }
 

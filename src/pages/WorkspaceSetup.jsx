@@ -1,18 +1,16 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 import { joinWorkspaceByCode } from '../lib/db'
-import { COLORS } from '../lib/constants'
-import { Icon } from '../components/UI'
-import { Spinner } from '../components/UI'
-
-const C = COLORS
-const wrap = { minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 20 }
-const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: '44px 40px', width: 460, maxWidth: '100%', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }
-const inp  = { width: '100%', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 14, fontFamily: 'inherit' }
-const lbl  = { fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }
+import { Icon, Spinner } from '../components/UI'
 
 export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }) {
   const { user } = useAuth()
+  const { colors: C } = useTheme()
+  const wrap = { minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 20 }
+  const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: '44px 40px', width: 460, maxWidth: '100%', boxShadow: `0 32px 80px ${C.shadow}` }
+  const inp  = { width: '100%', background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 14, fontFamily: 'inherit', outline: 'none' }
+  const lbl  = { fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }
   const [code,    setCode]    = useState(defaultCode)
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
@@ -36,7 +34,7 @@ export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#fff' }}>✦</div>
-          <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: '-0.03em', color: C.text }}>Pulse</span>
+          <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: '-0.03em', color: C.accent }}>Pulse</span>
         </div>
 
         <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, color: C.text, marginBottom: 8 }}>Join a workspace</h2>
@@ -45,7 +43,7 @@ export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }
         </p>
 
         {error && (
-          <div style={{ background: '#450a0a', border: `1px solid ${C.red}55`, borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 13, color: C.red }}>
+          <div style={{ background: C.red + '18', border: `1px solid ${C.red}44`, borderRadius: 10, padding: 14, marginBottom: 16, fontSize: 13, color: C.red }}>
             ✕ {error}
           </div>
         )}
