@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { DataProvider, useData } from './contexts/DataContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { useToast } from './hooks/useToast'
-import { Toast, Spinner, Icon } from './components/UI'
+import { Toast, Spinner } from './components/UI'
 import { DARK_THEME, LIGHT_THEME } from './lib/constants'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoginPage, { SignupPage, ResetPage, NewPasswordPage } from './pages/LoginPage'
@@ -79,13 +79,13 @@ function WorkspaceGate({ toast }) {
     return <WorkspaceSetup onJoined={handleJoined} onSignOut={signOut} />
   }
 
-  return <AppShell toast={toast} />
+  // key={isDark} remounts AppShell instantly when theme changes,
+  // flushing all inline COLORS references without touching auth/data state.
+  return <AppShell key={isDark ? 'dark' : 'light'} toast={toast} />
 }
 
 function Inner() {
   const { toasts, toast, removeToast } = useToast()
-  // No key trick here — that caused full unmount/remount on theme toggle + tab refocus.
-  // Theme is handled via CSS variables and COLORS mutation in ThemeContext instead.
   return (
     <div>
       <AuthGate toast={toast} />
