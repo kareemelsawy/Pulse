@@ -641,12 +641,10 @@ function EditProjectModal({ project, isAdmin, onSave, onDelete, onClose }) {
 // ─── CSV Import Modal ─────────────────────────────────────────────────────────
 function CsvImportModal({ projectId, project, mode = 'import', tasks = [], onClose, toast }) {
   const { importTasks, projects } = useData()
-  const [mode,     setMode]     = useState('tasks') // 'tasks'
   const [preview,  setPreview]  = useState(null)
   const [importing, setImporting] = useState(false)
   const fileRef = useRef()
 
-  const project = projects.find(p => p.id === projectId)
 
   function handleFile(e) {
     const file = e.target.files[0]
