@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
-import { COLORS, STATUS, STATUS_FLOW, PRIORITY, PROJECT_COLORS, NOTIFICATION_TRIGGERS } from '../lib/constants'
-import { Avatar, Badge, ProgressBar, Modal, Toggle, Btn, iStyle, lStyle } from '../components/UI'
-import { startGmailOAuth, parseOAuthToken, getGmailAddress } from '../lib/gmail'
+import { COLORS, STATUS, STATUS_FLOW, PRIORITY, PROJECT_COLORS } from '../lib/constants'
+import { Avatar, Badge, ProgressBar, Modal, Btn, iStyle, lStyle } from '../components/UI'
 import { getComments, addComment, deleteComment } from '../lib/db'
 
 // ─── OverviewPage ─────────────────────────────────────────────────────────────
@@ -272,54 +271,78 @@ function ListView({ tasks, onTaskClick }) {
 
 // ─── TaskModal ───────────────────────────────────────────────────────────────
 function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
-  const { addTask, editTask, removeTask, members } = useData()
+  const { addTask, editTask, removeTask, members: ctxMembers, workspace } = useData()
   const { user } = useAuth()
-  const [tab,      setTab]      = useState('details')
-  const [title,    setTitle]    = useState(task?.title || '')
-  const [status,   setStatus]   = useState(task?.status || 'new')
-  const [priority, setPriority] = useState(task?.priority || 'medium')
-  const [assignee, setAssignee] = useState(task?.assignee_name || '')
-  const [email,    setEmail]    = useState(task?.assignee_email || '')
-  const [due,      setDue]      = useState(task?.due_date || '')
-  const [saving,   setSaving]   = useState(false)
+  const [tab,        setTab]        = useState('details')
+  const [title,      setTitle]      = useState(task?.title || '')
+  const [status,     setStatus]     = useState(task?.status || 'new')
+  const [priority,   setPriority]   = useState(task?.priority || 'medium')
+  const [assigneeId, setAssigneeId] = useState('')
+  const [due,        setDue]        = useState(task?.due_date || '')
+  const [saving,     setSaving]     = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
+  const [localMembers, setLocalMembers] = useState([])
 
   // Comments
-  const [comments, setComments] = useState([])
-  const [commentText, setCommentText] = useState('')
+  const [comments,     setComments]     = useState([])
+  const [commentText,  setCommentText]  = useState('')
   const [loadingComments, setLoadingComments] = useState(false)
-  const [savingComment, setSavingComment] = useState(false)
+  const [savingComment,   setSavingComment]   = useState(false)
+
+  // Fetch members fresh every time modal opens so dropdown is always populated
+  useEffect(() => {
+    if (ctxMembers?.length > 0) {
+      setLocalMembers(ctxMembers)
+      // Pre-select assignee for existing task
+      if (task?.assignee_email) {
+        const match = ctxMembers.find(m => m.email === task.assignee_email)
+        if (match) setAssigneeId(match.user_id)
+      }
+    } else if (workspace?.id) {
+      import('../lib/db').then(({ getWorkspaceMembers }) => {
+        getWorkspaceMembers(workspace.id).then(ms => {
+          setLocalMembers(ms)
+          if (task?.assignee_email) {
+            const match = ms.find(m => m.email === task.assignee_email)
+            if (match) setAssigneeId(match.user_id)
+          }
+        }).catch(() => {})
+      })
+    }
+  }, [])
 
   useEffect(() => {
     if (task && tab === 'comments') {
       setLoadingComments(true)
-      getComments(task.id).then(c => { setComments(c); setLoadingComments(false) }).catch(() => setLoadingComments(false))
+      getComments(task.id)
+        .then(c => { setComments(c); setLoadingComments(false) })
+        .catch(() => setLoadingComments(false))
     }
   }, [task, tab])
 
-  function handleMemberSelect(e) {
-    const val = e.target.value
-    if (!val) { setAssignee(''); setEmail(''); return }
-    const member = members.find(m => m.user_id === val)
-    if (member) { setAssignee(member.full_name || member.email || val); setEmail(member.email || '') }
-  }
+  const selectedMember = localMembers.find(m => m.user_id === assigneeId)
 
-  const selectedMemberId = members.find(m =>
-    (m.full_name && m.full_name === assignee) || (m.email && m.email === email)
-  )?.user_id || ''
-
-  // For existing tasks: only allow moving to the next status in sequence
+  // Admins can jump to any status; non-admins can only move one step forward
   const allowedStatuses = task
-    ? STATUS_FLOW.slice(0, STATUS_FLOW.indexOf(task.status) + 2) // current + next only
-    : ['new'] // new tasks always start as 'new'
+    ? (isAdmin ? STATUS_FLOW : STATUS_FLOW.slice(0, STATUS_FLOW.indexOf(task.status) + 2))
+    : ['new']
 
   async function handleSave() {
     if (!title.trim()) return
     setSaving(true)
     try {
-      const data = { title: title.trim(), status: task ? status : 'new', priority, assignee_name: assignee, assignee_email: email, due_date: due }
+      const assignee_name  = selectedMember?.full_name || selectedMember?.email || ''
+      const assignee_email = selectedMember?.email || ''
+      const data = {
+        title: title.trim(),
+        status: task ? status : 'new',
+        priority,
+        assignee_name,
+        assignee_email,
+        due_date: due,
+      }
       if (task) { await editTask(task.id, data, task); toast?.('Task updated', 'success') }
-      else      { await addTask(projectId, data);     toast?.('Task created', 'success') }
+      else      { await addTask(projectId, data);      toast?.('Task created', 'success') }
       onClose()
     } catch(e) { toast?.(e.message, 'error') } finally { setSaving(false) }
   }
@@ -342,10 +365,8 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
   }
 
   async function handleDeleteComment(id) {
-    try {
-      await deleteComment(id)
-      setComments(prev => prev.filter(c => c.id !== id))
-    } catch(e) { toast?.(e.message, 'error') }
+    try { await deleteComment(id); setComments(prev => prev.filter(c => c.id !== id)) }
+    catch(e) { toast?.(e.message, 'error') }
   }
 
   return (
@@ -364,50 +385,56 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={lStyle}>Title *</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="What needs to be done?" autoFocus onKeyDown={e => e.key === 'Enter' && handleSave()} style={{ ...iStyle, fontSize: 15, fontWeight: 500 }} />
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="What needs to be done?" autoFocus
+              onKeyDown={e => e.key === 'Enter' && handleSave()}
+              style={{ ...iStyle, fontSize: 15, fontWeight: 500, background: COLORS.inputBg }} />
           </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {task && (
               <div>
-                <label style={lStyle}>Status {!isAdmin && <span style={{ color: COLORS.amber }}>(sequential)</span>}</label>
+                <label style={lStyle}>Status</label>
                 <select value={status} onChange={e => setStatus(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }}>
                   {allowedStatuses.map(k => <option key={k} value={k}>{STATUS[k].label}</option>)}
                 </select>
                 {!isAdmin && <p style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>Tasks move forward one step at a time</p>}
               </div>
             )}
+
             <div>
               <label style={lStyle}>Priority</label>
               <select value={priority} onChange={e => setPriority(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }}>
                 {Object.entries(PRIORITY).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
             </div>
-            <div>
+
+            <div style={{ gridColumn: task ? 'auto' : '1 / -1' }}>
               <label style={lStyle}>Assignee</label>
-              {members.length > 0 ? (
-                <>
-                  <select value={selectedMemberId} onChange={handleMemberSelect} style={{ ...iStyle, background: COLORS.inputBg, marginBottom: 6 }}>
-                    <option value="">— Unassigned —</option>
-                    {members.map(m => <option key={m.user_id} value={m.user_id}>{m.full_name || m.email || m.user_id.slice(0, 8)}</option>)}
-                  </select>
-                  {!selectedMemberId && <input value={assignee} onChange={e => setAssignee(e.target.value)} placeholder="Or type a name" style={{ ...iStyle, fontSize: 12, background: COLORS.inputBg }} />}
-                </>
-              ) : (
-                <input value={assignee} onChange={e => setAssignee(e.target.value)} placeholder="e.g. Alex K." style={{ ...iStyle, background: COLORS.inputBg }} />
+              <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)}
+                style={{ ...iStyle, background: COLORS.inputBg }}>
+                <option value="">— Unassigned —</option>
+                {localMembers.map(m => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {m.full_name && m.email ? `${m.full_name} (${m.email})` : m.full_name || m.email || m.user_id.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
+              {localMembers.length === 0 && (
+                <p style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>
+                  No members found — make sure the <code>profiles</code> table is set up (run the full SQL script)
+                </p>
               )}
             </div>
-            <div>
-              <label style={lStyle}>Assignee Email</label>
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="alex@company.com" type="email" style={{ ...iStyle, background: COLORS.inputBg }} />
-            </div>
+
             <div>
               <label style={lStyle}>Due Date</label>
-              <input type="date" value={due} onChange={e => setDue(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }} />
+              <input type="date" value={due} onChange={e => setDue(e.target.value)}
+                style={{ ...iStyle, background: COLORS.inputBg }} />
             </div>
           </div>
 
           {!task && (
-            <div style={{ background: COLORS.accentDim + '44', border: `1px solid ${COLORS.accent}33`, borderRadius: 8, padding: '8px 12px', fontSize: 12, color: COLORS.textMuted }}>
+            <div style={{ background: COLORS.accent + '18', border: `1px solid ${COLORS.accent}33`, borderRadius: 8, padding: '8px 12px', fontSize: 12, color: COLORS.textMuted }}>
               ℹ New tasks start as <strong style={{ color: COLORS.text }}>New</strong> and move through: New → In Progress → Review → Done
             </div>
           )}
@@ -421,8 +448,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
               <div style={{ textAlign: 'center', color: COLORS.textMuted, padding: 24 }}>Loading…</div>
             ) : comments.length === 0 ? (
               <div style={{ textAlign: 'center', color: COLORS.textMuted, padding: 24 }}>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>💬</div>
-                No comments yet
+                <div style={{ fontSize: 28, marginBottom: 8 }}>💬</div>No comments yet
               </div>
             ) : comments.map(c => (
               <div key={c.id} style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '10px 14px' }}>
@@ -439,7 +465,8 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <textarea value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Add a comment…" rows={2}
+            <textarea value={commentText} onChange={e => setCommentText(e.target.value)}
+              placeholder="Add a comment…" rows={2}
               onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleAddComment() }}
               style={{ ...iStyle, flex: 1, resize: 'none', lineHeight: 1.5, background: COLORS.inputBg }} />
             <Btn onClick={handleAddComment} disabled={savingComment || !commentText.trim()}>Post</Btn>
@@ -453,7 +480,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
           <div style={{ fontSize: 36, marginBottom: 12 }}>📎</div>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>File Attachments</div>
           <p style={{ fontSize: 12, lineHeight: 1.7, maxWidth: 300, margin: '0 auto 16px' }}>
-            To enable file attachments, create a Supabase Storage bucket named <code style={{ background: COLORS.border, padding: '1px 5px', borderRadius: 3 }}>task-attachments</code> and set it to public. Files will be linked to this task.
+            To enable file attachments, create a Supabase Storage bucket named <code style={{ background: COLORS.border, padding: '1px 5px', borderRadius: 3 }}>task-attachments</code> and set it to public.
           </p>
           <Btn size="sm" variant="secondary" onClick={() => window.open('https://supabase.com/dashboard', '_blank')}>Open Supabase Storage →</Btn>
         </div>
@@ -469,7 +496,6 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
     </Modal>
   )
 }
-
 // ─── NewProjectModal ─────────────────────────────────────────────────────────
 export function NewProjectModal({ onClose, toast }) {
   const { addProject } = useData()
@@ -567,14 +593,26 @@ function CsvImportModal({ projectId, onClose, toast }) {
     reader.readAsText(file)
   }
 
+  function parseCsvLine(line) {
+    const vals = []; let cur = ''; let inQ = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (ch === '"') { inQ = !inQ }
+      else if (ch === ',' && !inQ) { vals.push(cur.trim()); cur = '' }
+      else { cur += ch }
+    }
+    vals.push(cur.trim())
+    return vals
+  }
+
   function parseCsv(text) {
-    const lines = text.trim().split('\n')
+    const lines = text.trim().split(/\r?\n/)
     if (lines.length < 2) return []
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''))
-    return lines.slice(1).map(line => {
-      const vals = line.split(',').map(v => v.trim().replace(/"/g, ''))
+    const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/"/g, ''))
+    return lines.slice(1).filter(l => l.trim()).map(line => {
+      const vals = parseCsvLine(line)
       const row = {}
-      headers.forEach((h, i) => { row[h] = vals[i] || '' })
+      headers.forEach((h, i) => { row[h] = (vals[i] || '').replace(/"/g, '') })
       return row
     }).filter(r => r.title || r.name)
   }
@@ -614,12 +652,15 @@ function CsvImportModal({ projectId, onClose, toast }) {
 
       <div
         onClick={() => fileRef.current?.click()}
+        onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = COLORS.accent; e.currentTarget.style.background = COLORS.accent + '08' }}
+        onDragLeave={e => { e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.background = 'none' }}
+        onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.background = 'none'; const file = e.dataTransfer.files[0]; if (file) { const reader = new FileReader(); reader.onload = ev => setPreview(parseCsv(ev.target.result)); reader.readAsText(file) } }}
         style={{ border: `2px dashed ${COLORS.border}`, borderRadius: 10, padding: '24px 20px', textAlign: 'center', cursor: 'pointer', marginBottom: 16, transition: 'all 0.15s' }}
         onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
         onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
         <div style={{ fontSize: 28, marginBottom: 8 }}>📂</div>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>Click to select CSV file</div>
-        <div style={{ fontSize: 12, color: COLORS.textMuted }}>or drag and drop</div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>Click to select or drag & drop a CSV</div>
+        <div style={{ fontSize: 12, color: COLORS.textMuted }}>Accepts .csv files</div>
         <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }} />
       </div>
 

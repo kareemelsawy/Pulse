@@ -130,13 +130,18 @@ export function Toast({ toasts, onRemove }) {
   )
 }
 
+// Functions so they always read current COLORS (theme-safe)
 export const iStyle = {
-  width: '100%', background: COLORS.inputBg, border: `1px solid ${COLORS.border}`,
-  borderRadius: 8, padding: '8px 12px', color: COLORS.text, fontSize: 13, outline: 'none',
-  lineHeight: 1.5,
+  get width() { return '100%' },
+  get background() { return COLORS.inputBg },
+  get border() { return `1px solid ${COLORS.border}` },
+  borderRadius: 8, padding: '8px 12px',
+  get color() { return COLORS.text },
+  fontSize: 13, outline: 'none', lineHeight: 1.5,
 }
 export const lStyle = {
-  fontSize: 11, fontWeight: 700, color: COLORS.textMuted,
-  letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6,
-  lineHeight: 1.4,
+  fontSize: 11, fontWeight: 700,
+  get color() { return COLORS.textMuted },
+  letterSpacing: '0.06em', textTransform: 'uppercase',
+  display: 'block', marginBottom: 6, lineHeight: 1.4,
 }

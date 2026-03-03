@@ -2,8 +2,8 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useAuth } from './AuthContext'
 import {
   getMyWorkspace, subscribeProjects, subscribeTasks, subscribeMembers,
-  createProject, updateProject, deleteProject,
-  createTask, updateTask, deleteTask,
+  createProject, updateProject, deleteProject, bulkCreateProjects,
+  createTask, updateTask, deleteTask, bulkCreateTasks,
   getNotifSettings, saveNotifSettings,
   getNotifLogs, insertNotifLog,
 } from '../lib/db'
@@ -36,8 +36,8 @@ export function DataProvider({ children }) {
       const unsubTasks    = subscribeTasks(ws.id, setTasks)
       getNotifSettings(ws.id).then(setNotifSettings).catch(() => {})
       getNotifLogs(ws.id).then(setNotifLogs).catch(() => {})
-      getWorkspaceMembers(ws.id).then(setMembers).catch(() => {})
-      window.__pulseUnsub = () => { unsubProjects(); unsubTasks() }
+      const unsubMembers  = subscribeMembers(ws.id, setMembers)
+      window.__pulseUnsub = () => { unsubProjects(); unsubTasks(); unsubMembers() }
     }).catch(err => {
       clearTimeout(timeout)
       setWsError(err.message)

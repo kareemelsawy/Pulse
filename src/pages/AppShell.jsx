@@ -12,18 +12,21 @@ export default function AppShell({ toast }) {
   const { user, signOut } = useAuth()
   const { workspace, projects, getProjectTasks, loading } = useData()
   const { isDark, toggleTheme } = useTheme()
-  const [view, setView]             = useState('overview')
-  const [activeProject, setActiveProject] = useState(null)
-  const [sidebarOpen, setSidebarOpen]     = useState(true)
-  const [newProjectOpen, setNewProjectOpen] = useState(false)
-  const [userMenu, setUserMenu]           = useState(false)
+  const [view, setView]                   = useState('overview')
+  const [activeProjectId, setActiveProjectId] = useState(null)
+  const [sidebarOpen, setSidebarOpen]         = useState(true)
+  const [newProjectOpen, setNewProjectOpen]   = useState(false)
+  const [userMenu, setUserMenu]               = useState(false)
+
+  // Always derive activeProject from live projects array — never goes stale
+  const activeProject = projects.find(p => p.id === activeProjectId) || null
 
   const displayName = user?.user_metadata?.full_name || user?.email || 'You'
   const avatarName  = user?.user_metadata?.full_name || user?.email || 'U'
 
-  function openProject(p) { setActiveProject(p); setView('project') }
-  function openOverview() { setActiveProject(null); setView('overview') }
-  function openMyTasks()  { setActiveProject(null); setView('mytasks') }
+  function openProject(p) { setActiveProjectId(p.id); setView('project') }
+  function openOverview() { setActiveProjectId(null); setView('overview') }
+  function openMyTasks()  { setActiveProjectId(null); setView('mytasks') }
 
   if (loading) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: COLORS.bg, gap: 16 }}>
@@ -52,7 +55,7 @@ export default function AppShell({ toast }) {
           <nav style={{ padding: '10px 8px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
             <NavItem icon="⊞" label="Overview"  active={view === 'overview'}   onClick={openOverview} />
             <NavItem icon="✦" label="My Tasks"  active={view === 'mytasks'}    onClick={openMyTasks} />
-            <NavItem icon="📊" label="Analytics" active={view === 'analytics'}  onClick={() => { setActiveProject(null); setView('analytics') }} />
+            <NavItem icon="📊" label="Analytics" active={view === 'analytics'}  onClick={() => { setActiveProjectId(null); setView('analytics') }} />
           </nav>
 
           {/* Projects */}
@@ -65,7 +68,7 @@ export default function AppShell({ toast }) {
             {projects.map(p => {
               const ptasks   = getProjectTasks(p.id)
               const done     = ptasks.filter(t => t.status === 'done').length
-              const isActive = activeProject?.id === p.id && view === 'project'
+              const isActive = activeProjectId === p.id && view === 'project'
               return (
                 <div key={p.id} onClick={() => openProject(p)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 1, background: isActive ? COLORS.surfaceHover : 'transparent', transition: 'background 0.15s' }}
@@ -81,7 +84,7 @@ export default function AppShell({ toast }) {
 
           {/* Bottom */}
           <div style={{ padding: 8, borderTop: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <NavItem icon="⚙" label="Settings" active={view === 'settings'} onClick={() => { setActiveProject(null); setView('settings') }} />
+            <NavItem icon="⚙" label="Settings" active={view === 'settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
             <div style={{ position: 'relative' }}>
               <div onClick={() => setUserMenu(p => !p)}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer' }}
