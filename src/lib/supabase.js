@@ -14,17 +14,12 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder',
   {
     auth: {
-      // Prevent Supabase from firing onAuthStateChange on tab focus/visibility change.
-      // Without this, switching tabs triggers a session refresh → setUser → DataContext
-      // re-runs its useEffect → full app reload (loading spinner shows again).
-      detectSessionInUrl: false,
+      detectSessionInUrl: true,  // required — reads OAuth token from URL hash on redirect
       persistSession: true,
       autoRefreshToken: true,
-      // Disable the visibility-change listener that causes the tab-switch reload
       storageKey: 'pulse_auth',
     },
     realtime: {
-      // Keep realtime alive across tab switches
       params: { eventsPerSecond: 10 },
     },
   }

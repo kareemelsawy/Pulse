@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
-// Check if we have a cached session to skip splash on reload
 function getCachedUser() {
   try {
     const raw = localStorage.getItem('pulse_session_user')
@@ -16,6 +15,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(!getCachedUser())
 
   useEffect(() => {
+    // On mount: read current session (handles OAuth redirect token in URL hash)
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
       setUser(u)
@@ -25,9 +25,10 @@ export function AuthProvider({ children }) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Ignore TOKEN_REFRESHED events fired on tab focus — these don't change the user
-      // and would otherwise cause DataContext to re-initialise (loading flash).
-      if (event === 'TOKEN_REFRESHED') return
+      // TOKEN_REFRESHED fires on tab focus and would cause DataContext to re-init.
+      // Only skip it when a user is already signed in (tab-switch case).
+      // If there's no user yet it means this is the real sign-in event — let it through.
+      if (event === 'TOKEN_REFRESHED' && getCachedUser()) return
 
       const u = session?.user ?? null
       setUser(u)
@@ -40,6 +41,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function signOut() {
+    localStorage.removeItem('pulse_session_user')
     await supabase.auth.signOut()
   }
 

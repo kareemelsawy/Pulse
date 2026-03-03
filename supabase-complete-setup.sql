@@ -376,7 +376,7 @@ create policy "Authenticated users can view attachments"
 
 create policy "Authenticated users can delete attachments"
   on storage.objects for delete to authenticated
-  using (bucket_id = 'task-attachments' and owner = auth.uid()::text);
+  using (bucket_id = 'task-attachments' and owner::uuid = auth.uid());
 
 
 -- ============================================================
