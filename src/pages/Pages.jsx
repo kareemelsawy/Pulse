@@ -333,13 +333,15 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
     try {
       const assignee_name  = selectedMember?.full_name || selectedMember?.email || ''
       const assignee_email = selectedMember?.email || ''
+      // Always explicitly pass 'new' for new tasks — never undefined
+      const safeStatus = task ? (status || task.status || 'new') : 'new'
       const data = {
         title: title.trim(),
-        status: task ? status : 'new',
-        priority,
+        status: safeStatus,
+        priority: priority || 'medium',
         assignee_name,
         assignee_email,
-        due_date: due,
+        due_date: due || null,
       }
       if (task) { await editTask(task.id, data, task); toast?.('Task updated', 'success') }
       else      { await addTask(projectId, data);      toast?.('Task created', 'success') }
@@ -373,13 +375,11 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
     <Modal onClose={onClose} width={560}>
       <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 16, paddingBottom: 2 }}>{task ? 'Edit Task' : 'New Task'}</h2>
 
-      {task && (
-        <div style={{ display: 'flex', gap: 2, marginBottom: 18, background: COLORS.bg, borderRadius: 8, padding: 3 }}>
-          {[['details','Details'],['comments',`Comments (${comments.length})`],['attachments','Attachments']].map(([k,l]) => (
-            <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 600, background: tab===k ? COLORS.surface : 'none', color: tab===k ? COLORS.text : COLORS.textMuted, border: tab===k ? `1px solid ${COLORS.border}` : '1px solid transparent', cursor: 'pointer' }}>{l}</button>
-          ))}
-        </div>
-      )}
+      <div style={{ display: 'flex', gap: 2, marginBottom: 18, background: COLORS.bg, borderRadius: 8, padding: 3 }}>
+        {[['details','Details'],['comments', task ? `Comments (${comments.length})` : 'Comments'],['attachments','Attachments']].map(([k,l]) => (
+          <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 12, fontWeight: 600, background: tab===k ? COLORS.surface : 'none', color: tab===k ? COLORS.text : COLORS.textMuted, border: tab===k ? `1px solid ${COLORS.border}` : '1px solid transparent', cursor: 'pointer' }}>{l}</button>
+        ))}
+      </div>
 
       {tab === 'details' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -403,9 +403,22 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
 
             <div>
               <label style={lStyle}>Priority</label>
-              <select value={priority} onChange={e => setPriority(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }}>
-                {Object.entries(PRIORITY).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {Object.entries(PRIORITY).map(([k, v]) => (
+                  <button key={k} onClick={() => setPriority(k)}
+                    style={{
+                      flex: 1, padding: '8px 4px', borderRadius: 8, border: `2px solid ${priority === k ? v.color : COLORS.border}`,
+                      background: priority === k ? v.color + '22' : COLORS.bg,
+                      color: priority === k ? v.color : COLORS.textMuted,
+                      cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
+                      fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                      transition: 'all 0.15s',
+                    }}>
+                    <span style={{ fontSize: 16 }}>{v.icon === '↑↑' ? '🔴' : v.icon === '↑' ? '🟡' : '🟢'}</span>
+                    <span style={{ fontSize: 10 }}>{v.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div style={{ gridColumn: task ? 'auto' : '1 / -1' }}>
@@ -441,7 +454,15 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
         </div>
       )}
 
-      {tab === 'comments' && (
+      {tab === 'comments' && !task && (
+        <div style={{ textAlign: 'center', padding: '36px 20px', color: COLORS.textMuted }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>💬</div>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>Create the task first</div>
+          <p style={{ fontSize: 12 }}>Save this task, then open it to add comments.</p>
+        </div>
+      )}
+
+      {tab === 'comments' && task && (
         <div>
           <div style={{ maxHeight: 280, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
             {loadingComments ? (
@@ -475,7 +496,15 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
         </div>
       )}
 
-      {tab === 'attachments' && (
+      {tab === 'attachments' && !task && (
+        <div style={{ textAlign: 'center', padding: '36px 20px', color: COLORS.textMuted }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>📎</div>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>Create the task first</div>
+          <p style={{ fontSize: 12 }}>Save this task, then open it to add attachments.</p>
+        </div>
+      )}
+
+      {tab === 'attachments' && task && (
         <div style={{ textAlign: 'center', padding: '32px 20px', color: COLORS.textMuted }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>📎</div>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>File Attachments</div>

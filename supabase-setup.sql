@@ -40,12 +40,11 @@ create table if not exists tasks (
   project_id     uuid references projects(id) on delete cascade not null,
   created_by     uuid references auth.users(id) on delete set null,
   title          text not null,
-  status         text default 'todo' check (status in ('todo','inprogress','review','done')),
+  status         text default 'new' check (status in ('new','inprogress','review','done')),
   priority       text default 'medium' check (priority in ('high','medium','low')),
   assignee_name  text,
   assignee_email text,
   due_date       date,
-  tags           text[] default '{}',
   created_at     timestamptz default now(),
   updated_at     timestamptz default now()
 );
@@ -76,6 +75,15 @@ create table if not exists notif_logs (
   created_at   timestamptz default now()
 );
 
+
+-- ── Profiles ──────────────────────────────────────────────────
+create table if not exists profiles (
+  id         uuid primary key references auth.users(id) on delete cascade,
+  full_name  text,
+  email      text,
+  updated_at timestamptz default now()
+);
+
 -- ── Row Level Security ────────────────────────────────────────
 alter table workspaces        enable row level security;
 alter table workspace_members enable row level security;
@@ -83,6 +91,7 @@ alter table projects          enable row level security;
 alter table tasks             enable row level security;
 alter table notif_settings    enable row level security;
 alter table notif_logs        enable row level security;
+alter table profiles          enable row level security;
 
 -- Workspaces: members can read, owner can update/delete
 create policy "Members can view their workspaces"
@@ -143,10 +152,49 @@ create policy "Members can view notif logs"
   using (workspace_id in (select workspace_id from workspace_members where user_id = auth.uid()))
   with check (workspace_id in (select workspace_id from workspace_members where user_id = auth.uid()));
 
+
+-- Profiles: anyone in the platform can read, users manage their own
+create policy "Profiles are viewable by all"
+  on profiles for select using (true);
+
+create policy "Users can insert own profile"
+  on profiles for insert with check (id = auth.uid());
+
+create policy "Users can update own profile"
+  on profiles for update using (id = auth.uid());
+
 -- ── Real-time ─────────────────────────────────────────────────
 alter publication supabase_realtime add table projects;
 alter publication supabase_realtime add table tasks;
 alter publication supabase_realtime add table workspace_members;
+
+
+-- ── Task Comments ─────────────────────────────────────────────
+create table if not exists task_comments (
+  id         uuid primary key default gen_random_uuid(),
+  task_id    uuid references tasks(id) on delete cascade not null,
+  user_id    uuid references auth.users(id) on delete cascade not null,
+  body       text not null,
+  created_at timestamptz default now()
+);
+
+alter table task_comments enable row level security;
+
+create policy "Members can view comments"
+  on task_comments for select
+  using (task_id in (
+    select id from tasks where workspace_id in (
+      select workspace_id from workspace_members where user_id = auth.uid()
+    )
+  ));
+
+create policy "Members can add comments"
+  on task_comments for insert
+  with check (user_id = auth.uid());
+
+create policy "Authors can delete comments"
+  on task_comments for delete
+  using (user_id = auth.uid());
 
 -- ── Auto-create workspace on first signup ─────────────────────
 create or replace function handle_new_user()
@@ -154,6 +202,12 @@ returns trigger language plpgsql security definer as $$
 declare
   new_workspace_id uuid;
 begin
+  -- Upsert into profiles so assignee names work
+  insert into profiles (id, full_name, email)
+  values (new.id, new.raw_user_meta_data->>'full_name', new.email)
+  on conflict (id) do update
+    set full_name = excluded.full_name, email = excluded.email;
+
   -- Create a personal workspace
   insert into workspaces (name, owner_id)
   values (
@@ -205,3 +259,11 @@ create policy "Authors and admins can delete comments"
   using (user_id = auth.uid());
 
 alter publication supabase_realtime add table task_comments;
+
+-- ── Sync existing users into profiles ────────────────────────
+insert into profiles (id, full_name, email)
+select id, raw_user_meta_data->>'full_name', email
+from auth.users
+on conflict (id) do update
+  set full_name = excluded.full_name,
+      email     = excluded.email;

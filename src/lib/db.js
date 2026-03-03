@@ -15,20 +15,39 @@ export async function getMyWorkspace(userId) {
 }
 
 export async function getWorkspaceMembers(workspaceId) {
+  // Try with profiles join first
   const { data, error } = await supabase
     .from('workspace_members')
     .select('user_id, role, joined_at, profiles(full_name, email)')
     .eq('workspace_id', workspaceId)
 
   if (!error && data) {
-    return data.map(m => ({
+    const members = data.map(m => ({
       user_id: m.user_id,
       role: m.role,
       joined_at: m.joined_at,
       full_name: m.profiles?.full_name || null,
       email: m.profiles?.email || null,
     }))
+
+    // If profiles table gave us nothing, try fetching current user's own profile
+    // to at least show something useful in the dropdown
+    const anyHasName = members.some(m => m.full_name || m.email)
+    if (!anyHasName) {
+      // Try getting current user from supabase auth session
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        return members.map(m => m.user_id === user.id ? {
+          ...m,
+          full_name: user.user_metadata?.full_name || null,
+          email: user.email || null,
+        } : m)
+      }
+    }
+    return members
   }
+
+  // Fallback: no profiles table
   const { data: fallback } = await supabase
     .from('workspace_members')
     .select('user_id, role, joined_at')
