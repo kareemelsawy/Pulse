@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import { COLORS } from '../lib/constants'
 import { Avatar, Spinner, Icon } from '../components/UI'
 import { OverviewPage, MyTasksPage, ProjectView, NewProjectModal, PipelineView, NewPipelineModal } from './Pages'
+import DocsPage from './DocsPage'
 import SettingsPage from './SettingsPage'
 import AnalyticsPage from './AnalyticsPage'
 
@@ -127,6 +128,7 @@ export default function AppShell({ toast }) {
           {/* Bottom */}
           <div style={{ padding: 8, borderTop: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
             <NavItem icon={<Icon name="settings" size={15} />} label="Settings" active={view === 'settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
+            <NavItem icon={<Icon name="fileText" size={15} />} label="Docs" active={view === 'docs'} onClick={() => { setActiveProjectId(null); setView('docs') }} />
             <div style={{ position: 'relative' }}>
               <div onClick={() => setUserMenu(p => !p)}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer' }}
@@ -176,6 +178,7 @@ export default function AppShell({ toast }) {
           {view === 'project'   && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
           {view === 'settings'  && <SettingsPage toast={toast} />}
           {view === 'pipeline'  && <PipelineView onConvertToProject={() => setView('overview')} toast={toast} />}
+          {view === 'docs'      && <DocsPage />}
         </main>
       </div>
 
