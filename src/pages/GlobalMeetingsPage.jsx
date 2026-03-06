@@ -3,8 +3,7 @@ import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
 import { COLORS } from '../lib/constants'
 import { Avatar, Badge, Modal, Btn, Icon, lStyle, iStyle } from '../components/UI'
-import { getMeetings, createMeeting, updateMeeting, deleteMeeting } from '../lib/db/meetings'
-import { getTasksByMeeting } from '../lib/db/tasks'
+import { getMeetings, createMeeting, updateMeeting, deleteMeeting, getTasksByMeeting } from '../lib/db'
 import { STATUS, PRIORITY } from '../lib/constants'
 
 // ─── Global Meetings Page ─────────────────────────────────────────────────────

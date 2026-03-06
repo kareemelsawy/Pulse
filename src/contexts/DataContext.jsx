@@ -7,7 +7,7 @@ import {
   getNotifSettings, saveNotifSettings,
   getNotifLogs, insertNotifLog,
   logGuestInvitation,
-} from '../lib/db/index'
+} from '../lib/db'
 import { sendGmail, buildNotificationEmail } from '../lib/gmail'
 
 const DataContext = createContext(null)

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
-import { getWorkspaceMembers, regenerateInviteCode, updateWorkspaceName, removeMember } from '../lib/db/workspace'
+import { getWorkspaceMembers, regenerateInviteCode, updateWorkspaceName, removeMember } from '../lib/db'
 import { COLORS } from '../lib/constants'
 import { Modal, Btn, Avatar, iStyle, lStyle } from './UI'
 
