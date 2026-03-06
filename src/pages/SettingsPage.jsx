@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { NOTIFICATION_TRIGGERS } from '../lib/constants'
 import { Toggle, Btn, Avatar, Badge, Spinner } from '../components/UI'
 import { startGmailOAuth, parseOAuthToken, getGmailAddress } from '../lib/gmail'
-import { getWorkspaceMembers, regenerateInviteCode, updateWorkspaceName, removeMember } from '../lib/db'
+import { getWorkspaceMembers, regenerateInviteCode, updateWorkspaceName, removeMember } from '../lib/db/workspace'
 
 function useS() {
   const { colors } = useTheme()

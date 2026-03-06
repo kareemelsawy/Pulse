@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import LoginPage, { SignupPage, ResetPage, NewPasswordPage } from './pages/LoginPage'
 import WorkspaceSetup from './pages/WorkspaceSetup'
 import AppShell from './pages/AppShell'
+import GuestView from './pages/GuestView'
 
 function AuthGate({ toast }) {
   const { user, loading: authLoading, signOut } = useAuth()
@@ -78,6 +79,10 @@ function WorkspaceGate({ toast }) {
     }
     return <WorkspaceSetup onJoined={handleJoined} onSignOut={signOut} />
   }
+
+  // Check if user is a @homzmart.com invited guest (has tasks assigned but no workspace membership)
+  const isGuest = wsError === 'no_workspace' && user?.email?.endsWith('@homzmart.com')
+  if (isGuest) return <GuestView toast={toast} />
 
   // key={isDark} remounts AppShell instantly when theme changes,
   // flushing all inline COLORS references without touching auth/data state.

@@ -6,6 +6,7 @@ import { COLORS } from '../lib/constants'
 import { Avatar, Spinner, Icon } from '../components/UI'
 import { OverviewPage, MyTasksPage, ProjectView, NewProjectModal, PipelineView, NewPipelineModal } from './Pages'
 import DocsPage from './DocsPage'
+import GlobalMeetingsPage from './GlobalMeetingsPage'
 import SettingsPage from './SettingsPage'
 import AnalyticsPage from './AnalyticsPage'
 
@@ -59,6 +60,7 @@ export default function AppShell({ toast }) {
             <NavItem icon={<Icon name="grid" size={15} />}    label="Overview"  active={view === 'overview'}  onClick={openOverview} />
             <NavItem icon={<Icon name="tasks" size={15} />}   label="My Tasks"  active={view === 'mytasks'}   onClick={openMyTasks} />
             <NavItem icon={<Icon name="barChart" size={15} />} label="Analytics" active={view === 'analytics'} onClick={() => { setActiveProjectId(null); setView('analytics') }} />
+            <NavItem icon={<Icon name="messageCircle" size={15} />} label="Meetings" active={view === 'meetings'} onClick={() => { setActiveProjectId(null); setView('meetings') }} />
           </nav>
 
           {/* Scrollable middle — Projects + Pipeline */}
@@ -178,6 +180,7 @@ export default function AppShell({ toast }) {
           {view === 'project'   && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
           {view === 'settings'  && <SettingsPage toast={toast} />}
           {view === 'pipeline'  && <PipelineView onConvertToProject={() => setView('overview')} toast={toast} />}
+          {view === 'meetings'  && <GlobalMeetingsPage toast={toast} />}
           {view === 'docs'      && <DocsPage />}
         </main>
       </div>
