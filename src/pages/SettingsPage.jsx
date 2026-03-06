@@ -235,21 +235,33 @@ function NotificationsTab({ toast }) {
   const { iStyle, lStyle } = useS()
   const [clientId,       setClientId]       = useState(notifSettings?.gmail_client_id || '')
   const [token,          setToken]          = useState(notifSettings?.gmail_access_token || null)
+  const [expiresAt,      setExpiresAt]      = useState(notifSettings?.gmail_expires_at || null)
   const [email,          setEmail]          = useState(notifSettings?.gmail_email || null)
   const [triggers,       setTriggers]       = useState(notifSettings?.enabled_triggers || { task_assigned: true, status_changed: true, task_completed: true, new_task: false })
   const [notifyAssignee, setNotifyAssignee] = useState(notifSettings?.notify_assignee ?? true)
   const [extraEmails,    setExtraEmails]    = useState(notifSettings?.extra_emails || '')
   const [saving,         setSaving]         = useState(false)
 
+  const tokenExpired = expiresAt && Date.now() > expiresAt
+
   useEffect(() => {
-    const t = parseOAuthToken()
-    if (t) { getGmailAddress(t).then(addr => { setToken(t); setEmail(addr); toast(`Gmail connected: ${addr}`, 'success') }) }
+    const result = parseOAuthToken()
+    if (result?.token) {
+      getGmailAddress(result.token).then(addr => {
+        setToken(result.token)
+        setExpiresAt(result.expiresAt)
+        setEmail(addr)
+        toast(`Gmail connected: ${addr}`, 'success')
+      })
+    }
   }, [])
 
   async function handleSave() {
     setSaving(true)
-    try { await updateNotifSettings({ gmail_client_id: clientId, gmail_access_token: token, gmail_email: email, enabled_triggers: triggers, notify_assignee: notifyAssignee, extra_emails: extraEmails }); toast('Saved', 'success') }
-    catch (e) { toast(e.message, 'error') } finally { setSaving(false) }
+    try {
+      await updateNotifSettings({ gmail_client_id: clientId, gmail_access_token: token, gmail_expires_at: expiresAt, gmail_email: email, enabled_triggers: triggers, notify_assignee: notifyAssignee, extra_emails: extraEmails })
+      toast('Saved', 'success')
+    } catch (e) { toast(e.message, 'error') } finally { setSaving(false) }
   }
 
   return (
@@ -261,15 +273,28 @@ function NotificationsTab({ toast }) {
           <>
             <label style={lStyle}>Google OAuth Client ID</label>
             <input value={clientId} onChange={e => setClientId(e.target.value)} placeholder="xxxxxx.apps.googleusercontent.com" style={{ ...iStyle, marginBottom: 14 }} />
-            <button onClick={() => { if (!clientId.trim()) { toast('Enter Client ID first', 'error'); return } startGmailOAuth(clientId.trim()) }}
+            <button onClick={() => { if (!clientId.trim()) { toast('Enter Client ID first', 'error'); return } window.location.href = startGmailOAuth(clientId.trim()) }}
               style={{ background: '#4285F4', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer', lineHeight: 1.4 }}>
               Sign in with Google
             </button>
           </>
         ) : (
-          <div style={{ background: colors.bg, border: `1px solid ${colors.green}44`, borderRadius: 12, padding: 16 }}>
-            <div style={{ fontWeight: 700, marginBottom: 4, lineHeight: 1.4 }}>✉ Connected: {email}</div>
-            <Btn size="sm" variant="danger" onClick={() => { setToken(null); setEmail(null) }}>Disconnect</Btn>
+          <div style={{ background: colors.bg, border: `1px solid ${tokenExpired ? colors.red : colors.green}44`, borderRadius: 12, padding: 16 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6, lineHeight: 1.4 }}>
+              {tokenExpired ? '⚠ Token expired — ' : '✉ Connected: '}{email}
+            </div>
+            {tokenExpired && (
+              <div style={{ fontSize: 12, color: colors.red, marginBottom: 10, lineHeight: 1.5 }}>
+                Gmail tokens expire after ~1 hour. Click <strong>Reconnect</strong> to get a fresh token — emails won't send until you do.
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => { window.location.href = startGmailOAuth(clientId) }}
+                style={{ background: '#4285F4', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                {tokenExpired ? '⟳ Reconnect Gmail' : 'Reconnect'}
+              </button>
+              <Btn size="sm" variant="danger" onClick={() => { setToken(null); setExpiresAt(null); setEmail(null) }}>Disconnect</Btn>
+            </div>
           </div>
         )}
       </Section>
@@ -311,7 +336,7 @@ function NotificationsTab({ toast }) {
   )
 }
 
-// ─── Integrations Tab ────────────────────────────────────────────────────────
+
 function IntegrationsTab({ toast }) {
   const { colors } = useTheme()
   const { iStyle, lStyle } = useS()

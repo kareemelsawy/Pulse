@@ -8,7 +8,7 @@ import {
   getNotifLogs, insertNotifLog,
   logGuestInvitation,
 } from '../lib/db/index'
-import { sendGmail, buildNotificationEmail, buildGuestInviteEmail, buildMeetingInviteEmail } from '../lib/gmail'
+import { sendGmail, buildNotificationEmail, buildGuestInviteEmail, buildMeetingInviteEmail, refreshGmailToken } from '../lib/gmail'
 
 const DataContext = createContext(null)
 
@@ -48,19 +48,42 @@ export function DataProvider({ children }) {
     return () => { clearTimeout(timeout); window.__pulseUnsub?.() }
   }, [user?.id])
 
+  // ─── Get a valid (non-expired) Gmail access token, refreshing if needed ────
+  const getValidToken = useCallback(async () => {
+    if (!notifSettings?.gmail_access_token) throw new Error('Gmail not connected — go to Settings → Notifications to connect Gmail')
+    const expiresAt = notifSettings.gmail_expires_at
+    const isExpired = expiresAt && Date.now() > expiresAt
+    if (!isExpired) return notifSettings.gmail_access_token
+    // Token is expired — attempt silent refresh via hidden iframe
+    const clientId = notifSettings.gmail_client_id
+    if (!clientId) throw new Error('Gmail token expired. Please reconnect in Settings → Notifications.')
+    try {
+      const { token, expiresAt: newExpiry } = await refreshGmailToken(clientId)
+      // Persist the new token
+      const updated = { ...notifSettings, gmail_access_token: token, gmail_expires_at: newExpiry }
+      setNotifSettings(updated)
+      await saveNotifSettings(workspace.id, { gmail_access_token: token, gmail_expires_at: newExpiry })
+      return token
+    } catch(e) {
+      throw new Error('Gmail token expired. Please reconnect in Settings → Notifications.')
+    }
+  }, [notifSettings, workspace])
+
   // ─── Low-level email sender (works even without full notif settings) ────────
   const sendRawEmail = useCallback(async ({ to, subject, html }) => {
     if (!notifSettings?.gmail_access_token) return false
     try {
-      await sendGmail(notifSettings.gmail_access_token, { to, subject, html })
+      const token = await getValidToken()
+      await sendGmail(token, { to, subject, html })
       return true
     } catch(e) { console.warn('Email send failed:', e.message); return false }
-  }, [notifSettings])
+  }, [notifSettings, getValidToken])
 
   // ─── Send meeting invitations to all attendee emails ──────────────────────
   const sendMeetingInvites = useCallback(async ({ meeting, projectName, attendeeEmails, actionItems }) => {
     if (!notifSettings?.gmail_access_token) throw new Error('Gmail not connected — go to Settings → Notifications to connect Gmail')
     if (!attendeeEmails?.length) return
+    const token = await getValidToken()
     const appUrl = window.location.origin
     const actorName = user?.user_metadata?.full_name || user?.email || 'Someone'
     const meetingDate = meeting.meeting_date
@@ -77,12 +100,12 @@ export function DataProvider({ children }) {
       appUrl,
     })
     const results = await Promise.allSettled(
-      attendeeEmails.map(to => sendGmail(notifSettings.gmail_access_token, { to, subject, html }))
+      attendeeEmails.map(to => sendGmail(token, { to, subject, html }))
     )
     const failed = results.filter(r => r.status === 'rejected')
     if (failed.length === results.length) throw new Error(failed[0].reason?.message || 'Failed to send emails')
     if (failed.length > 0) console.warn(`${failed.length}/${results.length} emails failed`)
-  }, [notifSettings, user])
+  }, [notifSettings, user, getValidToken])
 
   // ─── Notifications ────────────────────────────────────────────────────────
   const sendNotification = useCallback(async ({ trigger, task, projectName, actorName, extraInfo }) => {
@@ -93,16 +116,18 @@ export function DataProvider({ children }) {
     if (notifSettings.extra_emails) notifSettings.extra_emails.split(',').map(e => e.trim()).filter(Boolean).forEach(e => recipients.add(e))
     if (!recipients.size) return
     const { subject, html } = buildNotificationEmail({ trigger, task, projectName, actorName, extraInfo })
+    let token
+    try { token = await getValidToken() } catch(e) { console.warn('Cannot send notification:', e.message); return }
     let successes = 0, failures = 0
     await Promise.all([...recipients].map(async to => {
       let status = 'success'
-      try { await sendGmail(notifSettings.gmail_access_token, { to, subject, html }); successes++ }
+      try { await sendGmail(token, { to, subject, html }); successes++ }
       catch (e) { console.warn('Gmail send failed:', e.message); failures++; status = 'failed' }
       insertNotifLog(workspace.id, { trigger_type: trigger, task_id: task.id, recipient: to, subject, status }).catch(() => {})
     }))
     setNotifLogs(prev => [{ trigger_type: trigger, task_id: task.id, recipient: [...recipients].join(', '), subject, status: failures ? 'partial' : 'success', id: Date.now(), created_at: new Date().toISOString() }, ...prev].slice(0, 50))
     return { successes, failures }
-  }, [notifSettings, workspace])
+  }, [notifSettings, workspace, getValidToken])
 
   // ─── Projects ─────────────────────────────────────────────────────────────
   const addProject = useCallback(async (data) => {

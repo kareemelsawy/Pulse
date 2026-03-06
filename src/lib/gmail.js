@@ -184,24 +184,81 @@ export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate
 }
 
 // Kick off the Gmail OAuth popup (implicit flow)
-export function startGmailOAuth(clientId) {
+export function startGmailOAuth(clientId, { silent = false, redirectUri } = {}) {
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: window.location.origin + window.location.pathname,
+    redirect_uri: redirectUri || (window.location.origin + window.location.pathname),
     response_type: 'token',
     scope: 'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email',
-    prompt: 'select_account',
+    prompt: silent ? 'none' : 'select_account',
   })
-  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params}`
 }
 
-// Parse token from URL hash after OAuth redirect
+// Parse token from URL hash after OAuth redirect — returns { token, expiresAt } or null
 export function parseOAuthToken() {
   if (!window.location.hash.includes('access_token=')) return null
   const params = new URLSearchParams(window.location.hash.replace('#', '?'))
   const token = params.get('access_token')
+  const expiresIn = parseInt(params.get('expires_in') || '3600', 10)
+  const expiresAt = Date.now() + (expiresIn - 120) * 1000 // 2 min buffer
   window.history.replaceState({}, document.title, window.location.pathname)
-  return token
+  return { token, expiresAt }
+}
+
+// Silently refresh the Gmail token using a hidden popup
+export function refreshGmailToken(clientId) {
+  return new Promise((resolve, reject) => {
+    const popup = window.open(
+      startGmailOAuth(clientId, { silent: true, redirectUri: window.location.origin + '/oauth-callback.html' }),
+      'gmail_refresh',
+      'width=1,height=1,top=-100,left=-100'
+    )
+
+    // Fallback: use same-origin redirect in an iframe instead
+    const CALLBACK_PATH = window.location.pathname
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0;pointer-events:none;'
+    iframe.src = startGmailOAuth(clientId, { silent: true, redirectUri: window.location.origin + CALLBACK_PATH })
+    document.body.appendChild(iframe)
+
+    if (popup) popup.close()
+
+    const timeout = setTimeout(() => {
+      document.body.removeChild(iframe)
+      reject(new Error('Token refresh timed out'))
+    }, 8000)
+
+    function onMessage(e) {
+      if (e.origin !== window.location.origin) return
+      if (e.data?.type === 'gmail_token') {
+        clearTimeout(timeout)
+        window.removeEventListener('message', onMessage)
+        document.body.removeChild(iframe)
+        resolve(e.data)
+      }
+    }
+    window.addEventListener('message', onMessage)
+
+    // Also poll iframe URL for hash (same-origin)
+    const poll = setInterval(() => {
+      try {
+        const hash = iframe.contentWindow?.location?.hash
+        if (hash?.includes('access_token=')) {
+          clearInterval(poll)
+          clearTimeout(timeout)
+          window.removeEventListener('message', onMessage)
+          const params = new URLSearchParams(hash.replace('#', '?'))
+          const token = params.get('access_token')
+          const expiresIn = parseInt(params.get('expires_in') || '3600', 10)
+          document.body.removeChild(iframe)
+          resolve({ token, expiresAt: Date.now() + (expiresIn - 120) * 1000 })
+        }
+      } catch(e) { /* cross-origin not yet loaded */ }
+    }, 200)
+
+    setTimeout(() => clearInterval(poll), 8000)
+  })
 }
 
 // Look up the gmail address for this token
@@ -212,3 +269,4 @@ export async function getGmailAddress(accessToken) {
   const data = await res.json()
   return data.email
 }
+
