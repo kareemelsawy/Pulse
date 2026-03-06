@@ -7,8 +7,8 @@ import {
   getNotifSettings, saveNotifSettings,
   getNotifLogs, insertNotifLog,
   logGuestInvitation,
-} from '../lib/db'
-import { sendGmail, buildNotificationEmail } from '../lib/gmail'
+} from '../lib/db/index'
+import { sendGmail, buildNotificationEmail, buildGuestInviteEmail, buildMeetingInviteEmail } from '../lib/gmail'
 
 const DataContext = createContext(null)
 
@@ -47,6 +47,35 @@ export function DataProvider({ children }) {
 
     return () => { clearTimeout(timeout); window.__pulseUnsub?.() }
   }, [user?.id])
+
+  // ─── Low-level email sender (works even without full notif settings) ────────
+  const sendRawEmail = useCallback(async ({ to, subject, html }) => {
+    if (!notifSettings?.gmail_access_token) return false
+    try {
+      await sendGmail(notifSettings.gmail_access_token, { to, subject, html })
+      return true
+    } catch(e) { console.warn('Email send failed:', e.message); return false }
+  }, [notifSettings])
+
+  // ─── Send meeting invitations to all attendee emails ──────────────────────
+  const sendMeetingInvites = useCallback(async ({ meeting, projectName, attendeeEmails }) => {
+    if (!notifSettings?.gmail_access_token || !attendeeEmails?.length) return
+    const appUrl = window.location.origin
+    const actorName = user?.user_metadata?.full_name || user?.email || 'Someone'
+    const meetingDate = meeting.meeting_date
+      ? new Date(meeting.meeting_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'TBD'
+    const { subject, html } = buildMeetingInviteEmail({
+      inviterName: actorName,
+      meetingTitle: meeting.title,
+      meetingDate,
+      projectName,
+      attendeeList: attendeeEmails.join(', '),
+      summary: meeting.summary || '',
+      appUrl,
+    })
+    await Promise.all(attendeeEmails.map(to => sendGmail(notifSettings.gmail_access_token, { to, subject, html }).catch(() => {})))
+  }, [notifSettings, user])
 
   // ─── Notifications ────────────────────────────────────────────────────────
   const sendNotification = useCallback(async ({ trigger, task, projectName, actorName, extraInfo }) => {
@@ -98,16 +127,30 @@ export function DataProvider({ children }) {
     const task = await createTask({ projectId, workspaceId: workspace.id, userId: user.id, ...data, status: 'new' })
     setTasks(prev => [...prev, task])
     const project = projects.find(p => p.id === projectId)
-    sendNotification({ trigger: 'new_task', task, projectName: project?.name, actorName: user.user_metadata?.full_name || 'Someone' })
+    const actorName = user.user_metadata?.full_name || user.email || 'Someone'
+    // Standard notification to workspace members
+    sendNotification({ trigger: 'new_task', task, projectName: project?.name, actorName })
     if (data.assignee_email) {
-      sendNotification({ trigger: 'task_assigned', task, projectName: project?.name, actorName: user.user_metadata?.full_name || 'Someone' })
-      // Track guest invitations for @homzmart.com non-members
-      if (data.assignee_email.endsWith('@homzmart.com')) {
+      const isWorkspaceMember = members.some(m => m.email === data.assignee_email)
+      if (isWorkspaceMember) {
+        // Normal member — send standard task_assigned notification
+        sendNotification({ trigger: 'task_assigned', task, projectName: project?.name, actorName })
+      } else if (data.assignee_email.endsWith('@homzmart.com') && notifSettings?.gmail_access_token) {
+        // Guest — send guest invite email directly
+        const appUrl = window.location.origin
+        const { subject, html } = buildGuestInviteEmail({
+          assigneeName: data.assignee_name || data.assignee_email,
+          assignerName: actorName,
+          taskTitle: task.title,
+          projectName: project?.name || '',
+          appUrl,
+        })
+        sendGmail(notifSettings.gmail_access_token, { to: data.assignee_email, subject, html }).catch(() => {})
         logGuestInvitation(workspace.id, data.assignee_email, task.title, task.id).catch(() => {})
       }
     }
     return task
-  }, [workspace, user, projects, sendNotification])
+  }, [workspace, user, projects, members, notifSettings, sendNotification])
 
   const editTask = useCallback(async (id, data, oldTask) => {
     await updateTask(id, data)
@@ -150,7 +193,7 @@ export function DataProvider({ children }) {
       setWorkspace,
       addProject, editProject, removeProject, importProjects,
       addTask, editTask, removeTask, importTasks,
-      updateNotifSettings, sendNotification,
+      updateNotifSettings, sendNotification, sendMeetingInvites, sendRawEmail,
       getProjectTasks, myTasks,
     }}>
       {children}
