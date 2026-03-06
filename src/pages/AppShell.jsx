@@ -4,7 +4,7 @@ import { useData } from '../contexts/DataContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { COLORS } from '../lib/constants'
 import { Avatar, Spinner, Icon } from '../components/UI'
-import { OverviewPage, MyTasksPage, ProjectView, NewProjectModal, PipelineView, NewPipelineModal } from './Pages'
+import { OverviewPage, ProjectView, NewProjectModal, PipelineView, NewPipelineModal } from './Pages'
 import DocsPage from './DocsPage'
 import GlobalMeetingsPage from './GlobalMeetingsPage'
 import SettingsPage from './SettingsPage'
@@ -28,9 +28,10 @@ export default function AppShell({ toast }) {
   const displayName = user?.user_metadata?.full_name || user?.email || 'You'
   const avatarName  = user?.user_metadata?.full_name || user?.email || 'U'
 
+  const isOwner     = workspace?.owner_id === user?.id
+
   function openProject(p) { setActiveProjectId(p.id); setView('project') }
   function openOverview() { setActiveProjectId(null); setView('overview') }
-  function openMyTasks()  { setActiveProjectId(null); setView('mytasks') }
 
   if (loading) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: COLORS.bg, gap: 16 }}>
@@ -57,9 +58,8 @@ export default function AppShell({ toast }) {
 
           {/* Nav */}
           <nav style={{ padding: '10px 8px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <NavItem icon={<Icon name="grid" size={15} />}    label="Overview"  active={view === 'overview'}  onClick={openOverview} />
-            <NavItem icon={<Icon name="tasks" size={15} />}   label="My Tasks"  active={view === 'mytasks'}   onClick={openMyTasks} />
-            <NavItem icon={<Icon name="barChart" size={15} />} label="Analytics" active={view === 'analytics'} onClick={() => { setActiveProjectId(null); setView('analytics') }} />
+            <NavItem icon={<Icon name="grid" size={15} />}    label="Home"      active={view === 'overview'}  onClick={openOverview} />
+            {isOwner && <NavItem icon={<Icon name="barChart" size={15} />} label="Analytics" active={view === 'analytics'} onClick={() => { setActiveProjectId(null); setView('analytics') }} />}
             <NavItem icon={<Icon name="messageCircle" size={15} />} label="Meetings" active={view === 'meetings'} onClick={() => { setActiveProjectId(null); setView('meetings') }} />
           </nav>
 
@@ -175,8 +175,7 @@ export default function AppShell({ toast }) {
         </header>
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {view === 'overview'  && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} workspaceName={workspace?.name} />}
-          {view === 'mytasks'   && <MyTasksPage />}
-          {view === 'analytics' && <AnalyticsPage />}
+          {view === 'analytics' && isOwner && <AnalyticsPage />}
           {view === 'project'   && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
           {view === 'settings'  && <SettingsPage toast={toast} />}
           {view === 'pipeline'  && <PipelineView onConvertToProject={() => setView('overview')} toast={toast} />}

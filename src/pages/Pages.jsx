@@ -10,29 +10,35 @@ import TaskModal from '../components/TaskModal'
 import MeetingCard from '../components/MeetingCard'
 import MeetingModal from '../components/MeetingModal'
 
-// ─── OverviewPage ─────────────────────────────────────────────────────────────
-export function OverviewPage({ onOpenProject, onNewProject, workspaceName }) {
-  const { projects, tasks, getProjectTasks } = useData()
+// ─── HomePage (merged Overview + My Tasks) ────────────────────────────────────
+export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
+  const { projects, tasks, myTasks, getProjectTasks } = useData()
   const { user } = useAuth()
-  const firstName = (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there').split(' ')[0]
-  const byStatus = Object.keys(STATUS).map(s => ({ s, count: tasks.filter(t => t.status === s).length }))
-  const overdue  = tasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date())
+  const firstName  = (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there').split(' ')[0]
+  const myEmail    = user?.email
+  const byStatus   = Object.keys(STATUS).map(s => ({ s, count: tasks.filter(t => t.status === s).length }))
+  const overdue    = tasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date())
+  const myOverdue  = myTasks.filter(t => t.due_date && new Date(t.due_date) < new Date())
+  const myUpcoming = myTasks.filter(t => !t.due_date || new Date(t.due_date) >= new Date())
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
       <div style={{ maxWidth: 1100 }}>
+
+        {/* Greeting */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <h1 style={{ fontWeight: 700, fontSize: 24, letterSpacing: '-0.02em', paddingBottom: 2, margin: 0 }}>
+            <h1 style={{ fontWeight: 700, fontSize: 24, letterSpacing: '-0.02em', margin: 0 }}>
               Hey {firstName}, good {hour()}
             </h1>
             <Icon name={hourIcon()} size={20} color={COLORS.textMuted} />
           </div>
-          {workspaceName && <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted, marginBottom: 4, letterSpacing: '-0.01em' }}>{workspaceName}</div>}
+          {workspaceName && <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted, marginBottom: 4 }}>{workspaceName}</div>}
           <p style={{ color: COLORS.textMuted, fontSize: 13 }}>{projects.length} projects · {tasks.length} tasks total</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 28 }}>
+        {/* Workspace status cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
           {byStatus.map(({ s, count }) => (
             <div key={s} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: '16px 18px', borderTop: `3px solid ${STATUS[s].color}` }}>
               <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 6, lineHeight: 1.2 }}>{count}</div>
@@ -41,90 +47,90 @@ export function OverviewPage({ onOpenProject, onNewProject, workspaceName }) {
           ))}
         </div>
 
+        {/* Overdue alert */}
         {overdue.length > 0 && (
           <div style={{ background: COLORS.red + '18', border: `1px solid ${COLORS.red}44`, borderRadius: 12, padding: '12px 18px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icon name="warning" size={16} color={COLORS.red} />
-            <span style={{ color: COLORS.red, fontSize: 13 }}><strong>{overdue.length}</strong> task{overdue.length > 1 ? 's are' : ' is'} overdue</span>
+            <span style={{ color: COLORS.red, fontSize: 13 }}><strong>{overdue.length}</strong> task{overdue.length > 1 ? 's are' : ' is'} overdue across all projects</span>
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ fontWeight: 600, fontSize: 13, color: COLORS.textDim, letterSpacing: '0.04em', textTransform: 'uppercase' }}>All Projects</h2>
-          <Btn size="sm" onClick={onNewProject}>+ New Project</Btn>
-        </div>
-
-        {projects.length === 0 ? (
-          <div style={{ background: COLORS.surface, border: `2px dashed ${COLORS.border}`, borderRadius: 16, padding: 48, textAlign: 'center' }}>
-            <Icon name="folder" size={36} color={COLORS.border} style={{ marginBottom: 10 }} />
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>No projects yet</div>
-            <div style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Create your first project to get started</div>
-            <Btn onClick={onNewProject}>+ Create Project</Btn>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 14 }}>
-            {projects.map(p => {
-              const ptasks = getProjectTasks(p.id)
-              const ov = ptasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date()).length
-              return (
-                <div key={p.id} onClick={() => onOpenProject(p)}
-                  style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, cursor: 'pointer', borderLeft: `4px solid ${p.color}`, transition: 'all 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = COLORS.cardShadow }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{p.name}</div>
-                  {p.description && <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12, lineHeight: 1.5 }}>{p.description}</div>}
-                  <ProgressBar tasks={ptasks} />
-                  {ov > 0 && <div style={{ marginTop: 8, fontSize: 11, color: COLORS.red, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><Icon name="warning" size={11} color={COLORS.red} /> {ov} overdue</div>}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── MyTasksPage ─────────────────────────────────────────────────────────────
-export function MyTasksPage() {
-  const { myTasks, projects } = useData()
-  const overdue = myTasks.filter(t => t.due_date && new Date(t.due_date) < new Date())
-  const rest    = myTasks.filter(t => !t.due_date || new Date(t.due_date) >= new Date())
-
-  return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
-      <div style={{ maxWidth: 800 }}>
-        <h1 style={{ fontWeight: 700, fontSize: 22, marginBottom: 22, letterSpacing: '-0.02em', paddingBottom: 2 }}>My Tasks</h1>
-        {myTasks.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: COLORS.textMuted }}>
-            <Icon name="check" size={36} color={COLORS.green} style={{ marginBottom: 10 }} />
-            <div style={{ fontWeight: 600, fontSize: 15 }}>All caught up!</div>
-          </div>
-        ) : (
-          [['Overdue', overdue], ['Upcoming', rest]].map(([label, list]) => list.length === 0 ? null : (
-            <div key={label} style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: label === 'Overdue' ? COLORS.red : COLORS.textMuted, marginBottom: 8 }}>{label}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {list.map(t => {
-                  const proj = projects.find(p => p.id === t.project_id)
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start' }}>
+          {/* Left — Projects */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h2 style={{ fontWeight: 600, fontSize: 13, color: COLORS.textDim, letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>Projects</h2>
+              <Btn size="sm" onClick={onNewProject}>+ New Project</Btn>
+            </div>
+            {projects.length === 0 ? (
+              <div style={{ background: COLORS.surface, border: `2px dashed ${COLORS.border}`, borderRadius: 16, padding: 48, textAlign: 'center' }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>No projects yet</div>
+                <div style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20 }}>Create your first project to get started</div>
+                <Btn onClick={onNewProject}>+ Create Project</Btn>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 12 }}>
+                {projects.filter(p => !p.is_pipeline).map(p => {
+                  const ptasks = getProjectTasks(p.id)
+                  const ov = ptasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date()).length
                   return (
-                    <div key={t.id} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '11px 15px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      {proj && <div style={{ width: 8, height: 8, borderRadius: '50%', background: proj.color, flexShrink: 0 }} />}
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 500 }}>{t.title}</div>
-                        <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{proj?.name}{t.due_date ? ` · Due ${t.due_date}` : ''}</div>
-                      </div>
-                      <Badge color={STATUS[t.status]?.color || '#888'}>{STATUS[t.status]?.label}</Badge>
+                    <div key={p.id} onClick={() => onOpenProject(p)}
+                      style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, cursor: 'pointer', borderLeft: `4px solid ${p.color}`, transition: 'all 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = COLORS.cardShadow }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{p.name}</div>
+                      {p.description && <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 10, lineHeight: 1.5 }}>{p.description}</div>}
+                      <ProgressBar tasks={ptasks} />
+                      {ov > 0 && <div style={{ marginTop: 8, fontSize: 11, color: COLORS.red, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><Icon name="warning" size={11} color={COLORS.red} /> {ov} overdue</div>}
                     </div>
                   )
                 })}
               </div>
-            </div>
-          ))
-        )}
+            )}
+          </div>
+
+          {/* Right — My Tasks */}
+          <div>
+            <h2 style={{ fontWeight: 600, fontSize: 13, color: COLORS.textDim, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 14, margin: '0 0 14px' }}>My Tasks</h2>
+            {myTasks.length === 0 ? (
+              <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: '28px 20px', textAlign: 'center' }}>
+                <Icon name="check" size={28} color={COLORS.green} />
+                <div style={{ fontWeight: 600, fontSize: 14, marginTop: 10 }}>All caught up!</div>
+                <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>No open tasks assigned to you</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {[['Overdue', myOverdue], ['Upcoming', myUpcoming]].map(([label, list]) => list.length === 0 ? null : (
+                  <div key={label}>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: label === 'Overdue' ? COLORS.red : COLORS.textMuted, marginBottom: 8 }}>{label}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {list.map(t => {
+                        const proj = projects.find(p => p.id === t.project_id)
+                        return (
+                          <div key={t.id} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 13px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {proj && <div style={{ width: 7, height: 7, borderRadius: '50%', background: proj.color, flexShrink: 0 }} />}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                              <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{proj?.name}{t.due_date ? ` · Due ${t.due_date}` : ''}</div>
+                            </div>
+                            <Badge color={STATUS[t.status]?.color || '#888'}>{STATUS[t.status]?.label}</Badge>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
 }
+
+// Keep OverviewPage as alias for backward compatibility
+export const OverviewPage = HomePage
 
 // ─── ProjectView ─────────────────────────────────────────────────────────────
 export function ProjectView({ project, toast }) {

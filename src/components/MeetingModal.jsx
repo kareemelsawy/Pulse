@@ -204,10 +204,19 @@ export default function MeetingModal({ project, workspace, user, members, meetin
         })
       }
 
-      // Send meeting invites to all attendees with emails
+      // Send meeting minutes to all attendees with emails
       const emailsToInvite = attendees.map(a => a.email).filter(Boolean)
       if (emailsToInvite.length && sendMeetingInvites) {
-        sendMeetingInvites({ meeting: saved, projectName: activeProject.name, attendeeEmails: emailsToInvite }).catch(() => {})
+        const actionItems = validTaskRows.filter(r => r.title.trim()).map(r => {
+          const member = members.find(m => m.user_id === r.assigneeId)
+          return {
+            title: r.title.trim(),
+            assignee: member?.full_name || member?.email || r.assigneeEmail || '',
+            due_date: r.due_date || '',
+            priority: r.priority,
+          }
+        })
+        sendMeetingInvites({ meeting: saved, projectName: activeProject.name, attendeeEmails: emailsToInvite, actionItems }).catch(() => {})
       }
 
       const taskMsg = validTaskRows.length ? ` · ${validTaskRows.length} task${validTaskRows.length > 1 ? 's' : ''} created` : ''
@@ -344,12 +353,17 @@ export default function MeetingModal({ project, workspace, user, members, meetin
       {/* Footer */}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: `1px solid ${COLORS.border}` }}>
         <div style={{ fontSize: 11, color: COLORS.textMuted }}>
-          {newTaskCount > 0 && <span>{newTaskCount} task{newTaskCount > 1 ? 's' : ''} will be created · </span>}
-          {attendees.length > 0 && <span>{attendees.length} attendee{attendees.length > 1 ? 's' : ''} will be notified</span>}
+          {newTaskCount > 0 && <span>{newTaskCount} action item{newTaskCount > 1 ? 's' : ''} will be created · </span>}
+          {attendees.length > 0
+            ? <span>Minutes will be emailed to {attendees.length} attendee{attendees.length > 1 ? 's' : ''}</span>
+            : <span style={{ color: COLORS.amber }}>Add attendees to send minutes by email</span>
+          }
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
-          <Btn onClick={handleSave} disabled={saving || !title.trim()}>{saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Meeting'}</Btn>
+          <Btn onClick={handleSave} disabled={saving || !title.trim()}>
+            {saving ? 'Sending…' : isEdit ? 'Save & Resend Minutes' : 'Save & Send Minutes'}
+          </Btn>
         </div>
       </div>
     </Modal>

@@ -120,46 +120,65 @@ export function buildGuestInviteEmail({ assigneeName, assignerName, taskTitle, p
   }
 }
 
-export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate, projectName, attendeeList, summary, appUrl }) {
+export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate, projectName, attendeeList, summary, actionItems, appUrl }) {
+  const priorityColor = { high: '#EF4444', medium: '#F59E0B', low: '#6366F1' }
+  const actionsHtml = actionItems?.length ? `
+    <div style="margin-top:22px;">
+      <div style="font-size:11px;font-weight:800;color:#64748B;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">Action Items</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${actionItems.map(a => `
+          <div style="background:#141720;border:1px solid #252A3A;border-radius:8px;padding:10px 14px;display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:6px;height:6px;border-radius:50%;background:${priorityColor[a.priority] || '#888'};flex-shrink:0;margin-top:5px;"></div>
+            <div style="flex:1;">
+              <div style="color:#E2E8F0;font-size:13px;font-weight:500;">${a.title}</div>
+              ${a.assignee ? `<div style="color:#64748B;font-size:11px;margin-top:3px;">→ ${a.assignee}${a.due_date ? ` · Due ${a.due_date}` : ''}</div>` : ''}
+            </div>
+            <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:${priorityColor[a.priority] || '#888'}22;color:${priorityColor[a.priority] || '#888'};white-space:nowrap;">${a.priority}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : ''
+
   const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:20px;background:#f1f5f9;font-family:'Segoe UI',sans-serif;">
-  <div style="max-width:540px;margin:0 auto;background:#0D0F14;border-radius:16px;overflow:hidden;border:1px solid #252A3A;">
+  <div style="max-width:560px;margin:0 auto;background:#0D0F14;border-radius:16px;overflow:hidden;border:1px solid #252A3A;">
     <div style="background:linear-gradient(135deg,#4F8EF7,#A78BFA);padding:22px 26px;display:flex;align-items:center;">
       <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px;flex:1;">◈ Pulse</span>
-      <span style="background:rgba(255,255,255,0.2);color:#fff;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600;">Meeting Invite</span>
+      <span style="background:rgba(255,255,255,0.2);color:#fff;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600;">Meeting Minutes</span>
     </div>
     <div style="padding:26px;">
-      <p style="color:#94A3B8;font-size:13px;margin:0 0 6px;"><strong style="color:#E2E8F0;">${inviterName}</strong> invited you to a meeting</p>
+      <p style="color:#94A3B8;font-size:13px;margin:0 0 6px;"><strong style="color:#E2E8F0;">${inviterName}</strong> shared meeting minutes</p>
       <h2 style="color:#E2E8F0;font-size:19px;margin:0 0 20px;font-weight:700;">${meetingTitle}</h2>
       <table style="width:100%;border-collapse:collapse;background:#141720;border-radius:10px;overflow:hidden;border:1px solid #252A3A;">
         <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;border-bottom:1px solid #252A3A;">Date</td>
+          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;border-bottom:1px solid #252A3A;white-space:nowrap;">Date</td>
           <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;border-bottom:1px solid #252A3A;">${meetingDate}</td>
         </tr>
         <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;border-bottom:1px solid #252A3A;">Project</td>
+          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;border-bottom:1px solid #252A3A;white-space:nowrap;">Project</td>
           <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;border-bottom:1px solid #252A3A;">${projectName}</td>
         </tr>
         <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;${summary ? 'border-bottom:1px solid #252A3A;' : ''}">Attendees</td>
+          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;${summary ? 'border-bottom:1px solid #252A3A;' : ''}white-space:nowrap;">Attendees</td>
           <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;${summary ? 'border-bottom:1px solid #252A3A;' : ''}">${attendeeList}</td>
         </tr>
         ${summary ? `<tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;">Notes</td>
-          <td style="padding:11px 15px;color:#94A3B8;font-size:12px;line-height:1.6;">${summary}</td>
+          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;vertical-align:top;white-space:nowrap;">Minutes</td>
+          <td style="padding:11px 15px;color:#94A3B8;font-size:13px;line-height:1.7;white-space:pre-line;">${summary}</td>
         </tr>` : ''}
       </table>
+      ${actionsHtml}
       <div style="margin-top:22px;text-align:center;">
         <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#A78BFA);color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;">Open in Pulse →</a>
       </div>
+      <p style="margin:18px 0 0;color:#475569;font-size:11px;text-align:center;">Sent via ◈ Pulse</p>
     </div>
   </div>
 </body>
 </html>`
   return {
-    subject: `[Pulse] Meeting invite: ${meetingTitle}`,
+    subject: `[Pulse] Meeting minutes: ${meetingTitle}`,
     html,
   }
 }

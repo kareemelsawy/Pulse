@@ -13,7 +13,9 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
   const [title,      setTitle]      = useState(task?.title || '')
   const [status,     setStatus]     = useState(task?.status || 'new')
   const [priority,   setPriority]   = useState(task?.priority || 'medium')
-  const [assigneeId, setAssigneeId] = useState('')
+  const [assigneeId,    setAssigneeId]    = useState('')
+  const [guestEmail,    setGuestEmail]    = useState('')  // for external @homzmart.com
+  const [useGuestEmail, setUseGuestEmail] = useState(false)
   const [due,        setDue]        = useState(task?.due_date || '')
   const [saving,     setSaving]     = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
@@ -29,6 +31,7 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
       if (task?.assignee_email) {
         const match = ctxMembers.find(m => m.email === task.assignee_email)
         if (match) setAssigneeId(match.user_id)
+        else if (task.assignee_email) { setUseGuestEmail(true); setGuestEmail(task.assignee_email) }
       }
     } else if (workspace?.id) {
       getWorkspaceMembers(workspace.id).then(ms => {
@@ -36,6 +39,7 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
         if (task?.assignee_email) {
           const match = ms.find(m => m.email === task.assignee_email)
           if (match) setAssigneeId(match.user_id)
+          else if (task.assignee_email) { setUseGuestEmail(true); setGuestEmail(task.assignee_email) }
         }
       }).catch(() => {})
     }
@@ -57,8 +61,8 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
     if (!title.trim()) return
     setSaving(true)
     try {
-      const assignee_name  = selectedMember?.full_name || selectedMember?.email || ''
-      const assignee_email = selectedMember?.email || ''
+      const assignee_name  = useGuestEmail ? (guestEmail.split('@')[0]) : (selectedMember?.full_name || selectedMember?.email || '')
+      const assignee_email = useGuestEmail ? guestEmail.trim() : (selectedMember?.email || '')
       const safeStatus     = task ? (status || task.status || 'new') : 'new'
       const data = { title: title.trim(), status: safeStatus, priority: priority || 'medium', assignee_name, assignee_email, due_date: due || null }
       if (task) { await editTask(task.id, data, task); toast?.('Task updated', 'success') }
@@ -159,24 +163,44 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
 
         {/* Assignee */}
         <div style={{ marginTop: 12 }}>
-          <label style={lStyle}>Assignee</label>
-          {localMembers.length > 0 ? (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {[{ user_id: '', display: 'Unassigned', isUnassigned: true },
-                ...localMembers.map(m => ({ user_id: m.user_id, display: m.full_name || m.email || 'Team Member', isUnassigned: false }))
-              ].map(m => {
-                const active = assigneeId === m.user_id
-                return (
-                  <button key={m.user_id} onClick={() => setAssigneeId(m.user_id)} style={{ padding: '6px 14px', borderRadius: 20, border: `2px solid ${active ? COLORS.accent : COLORS.border}`, background: active ? COLORS.accent + '18' : COLORS.inputBg, color: active ? COLORS.accent : COLORS.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: active ? 700 : 400, fontSize: 12, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {!m.isUnassigned && <Avatar name={m.display} size={16} />}
-                    {m.display}
-                  </button>
-                )
-              })}
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <label style={{ ...lStyle, marginBottom: 0 }}>Assignee</label>
+            <button onClick={() => { setUseGuestEmail(v => !v); setAssigneeId(''); setGuestEmail('') }}
+              style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: useGuestEmail ? COLORS.accent : COLORS.textMuted, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {useGuestEmail ? '← Team member' : 'Guest email →'}
+            </button>
+          </div>
+          {!useGuestEmail ? (
+            localMembers.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {[{ user_id: '', display: 'Unassigned', isUnassigned: true },
+                  ...localMembers.map(m => ({ user_id: m.user_id, display: m.full_name || m.email || 'Team Member', isUnassigned: false }))
+                ].map(m => {
+                  const active = assigneeId === m.user_id
+                  return (
+                    <button key={m.user_id} onClick={() => setAssigneeId(m.user_id)} style={{ padding: '6px 14px', borderRadius: 20, border: `2px solid ${active ? COLORS.accent : COLORS.border}`, background: active ? COLORS.accent + '18' : COLORS.inputBg, color: active ? COLORS.accent : COLORS.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: active ? 700 : 400, fontSize: 12, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {!m.isUnassigned && <Avatar name={m.display} size={16} />}
+                      {m.display}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: COLORS.textMuted, padding: '8px 0' }}>
+                Loading members…
+              </div>
+            )
           ) : (
-            <div style={{ fontSize: 13, color: COLORS.textMuted, padding: '8px 0' }}>
-              Loading members… (run <code style={{ fontSize: 11 }}>fix-existing-db.sql</code> if this persists)
+            <div>
+              <input
+                value={guestEmail}
+                onChange={e => setGuestEmail(e.target.value)}
+                placeholder="guest@homzmart.com"
+                style={{ ...iStyle, background: COLORS.inputBg }}
+              />
+              <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>
+                They'll receive an email invite and can view their assigned tasks after signing in.
+              </div>
             </div>
           )}
         </div>

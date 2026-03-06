@@ -58,7 +58,7 @@ export function DataProvider({ children }) {
   }, [notifSettings])
 
   // ─── Send meeting invitations to all attendee emails ──────────────────────
-  const sendMeetingInvites = useCallback(async ({ meeting, projectName, attendeeEmails }) => {
+  const sendMeetingInvites = useCallback(async ({ meeting, projectName, attendeeEmails, actionItems }) => {
     if (!notifSettings?.gmail_access_token || !attendeeEmails?.length) return
     const appUrl = window.location.origin
     const actorName = user?.user_metadata?.full_name || user?.email || 'Someone'
@@ -72,6 +72,7 @@ export function DataProvider({ children }) {
       projectName,
       attendeeList: attendeeEmails.join(', '),
       summary: meeting.summary || '',
+      actionItems: actionItems || [],
       appUrl,
     })
     await Promise.all(attendeeEmails.map(to => sendGmail(notifSettings.gmail_access_token, { to, subject, html }).catch(() => {})))
@@ -88,12 +89,12 @@ export function DataProvider({ children }) {
     const { subject, html } = buildNotificationEmail({ trigger, task, projectName, actorName, extraInfo })
     let successes = 0, failures = 0
     await Promise.all([...recipients].map(async to => {
+      let status = 'success'
       try { await sendGmail(notifSettings.gmail_access_token, { to, subject, html }); successes++ }
-      catch (e) { console.warn('Gmail send failed:', e.message); failures++ }
+      catch (e) { console.warn('Gmail send failed:', e.message); failures++; status = 'failed' }
+      insertNotifLog(workspace.id, { trigger_type: trigger, task_id: task.id, recipient: to, subject, status }).catch(() => {})
     }))
-    const log = { trigger, task_title: task.title, project_name: projectName, recipients: [...recipients], successes, failures, created_at: new Date().toISOString() }
-    await insertNotifLog(workspace.id, log).catch(() => {})
-    setNotifLogs(prev => [{ ...log, id: Date.now() }, ...prev].slice(0, 50))
+    setNotifLogs(prev => [{ trigger_type: trigger, task_id: task.id, recipient: [...recipients].join(', '), subject, status: failures ? 'partial' : 'success', id: Date.now(), created_at: new Date().toISOString() }, ...prev].slice(0, 50))
     return { successes, failures }
   }, [notifSettings, workspace])
 
@@ -185,7 +186,7 @@ export function DataProvider({ children }) {
 
   // ─── Derived ──────────────────────────────────────────────────────────────
   const getProjectTasks = useCallback((projectId) => tasks.filter(t => t.project_id === projectId), [tasks])
-  const myTasks = tasks.filter(t => t.status !== 'done').sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
+  const myTasks = tasks.filter(t => t.status !== 'done' && t.assignee_email === user?.email).sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
 
   return (
     <DataContext.Provider value={{
