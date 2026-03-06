@@ -48,6 +48,44 @@ export function DataProvider({ children }) {
   }, [user?.id])
 
   // ─── Notifications ────────────────────────────────────────────────────────
+  const inviteExternalAssignee = useCallback(async (email, task, projectName) => {
+    if (!email) return
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed.endsWith('@homzmart.com')) return
+    if (!workspace?.invite_code || !workspace?.name) return
+    if (!notifSettings?.gmail_access_token) return
+    if (members?.some(m => m.email?.toLowerCase() === trimmed)) return
+    const inviteUrl = `${window.location.origin}?invite=${workspace.invite_code}`
+    const subject = `[Pulse] You’ve been assigned a task in ${workspace.name}`
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:20px;background:#f1f5f9;font-family:'Segoe UI',sans-serif;">
+  <div style="max-width:540px;margin:0 auto;background:#0D0F14;border-radius:16px;overflow:hidden;border:1px solid #252A3A;">
+    <div style="background:linear-gradient(135deg,#4F8EF7,#A78BFA);padding:22px 26px;display:flex;align-items:center;">
+      <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px;flex:1;">◈ Pulse</span>
+      <span style="background:rgba(255,255,255,0.2);color:#fff;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600;">Task Invitation</span>
+    </div>
+    <div style="padding:26px;">
+      <p style="color:#94A3B8;font-size:13px;margin:0 0 10px;">
+        You’ve been assigned a task in the <strong style="color:#E2E8F0;">${workspace.name}</strong> workspace${projectName ? ` (project <strong style="color:#E2E8F0;">${projectName}</strong>)` : ''}.
+      </p>
+      <h2 style="color:#E2E8F0;font-size:19px;margin:0 0 16px;font-weight:700;">${task.title}</h2>
+      <p style="color:#CBD5F5;font-size:13px;margin:0 0 18px;">To view and update this task, you’ll need to sign in to Pulse with your <strong>@homzmart.com</strong> email and join the workspace.</p>
+      <a href="${inviteUrl}" style="display:inline-block;background:#4F8EF7;color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:700;margin-bottom:14px;">Open Pulse &amp; Join Workspace</a>
+      <p style="color:#64748B;font-size:11px;margin:0;">If the button doesn’t work, copy and paste this link into your browser:<br/><span style="color:#94A3B8;">${inviteUrl}</span></p>
+      <p style="margin:20px 0 0;color:#475569;font-size:11px;text-align:center;">Sent by ◈ Pulse</p>
+    </div>
+  </div>
+</body>
+</html>`
+    try {
+      await sendGmail(notifSettings.gmail_access_token, { to: trimmed, subject, html })
+    } catch (e) {
+      console.warn('Invite email send failed:', e.message)
+    }
+  }, [workspace, notifSettings, members])
+
   const sendNotification = useCallback(async ({ trigger, task, projectName, actorName, extraInfo }) => {
     if (!notifSettings?.gmail_access_token) return
     if (!notifSettings?.enabled_triggers?.[trigger]) return
@@ -98,9 +136,12 @@ export function DataProvider({ children }) {
     setTasks(prev => [...prev, task])
     const project = projects.find(p => p.id === projectId)
     sendNotification({ trigger: 'new_task', task, projectName: project?.name, actorName: user.user_metadata?.full_name || 'Someone' })
-    if (data.assignee_email) sendNotification({ trigger: 'task_assigned', task, projectName: project?.name, actorName: user.user_metadata?.full_name || 'Someone' })
+    if (data.assignee_email) {
+      sendNotification({ trigger: 'task_assigned', task, projectName: project?.name, actorName: user.user_metadata?.full_name || 'Someone' })
+      inviteExternalAssignee(data.assignee_email, task, project?.name)
+    }
     return task
-  }, [workspace, user, projects, sendNotification])
+  }, [workspace, user, projects, sendNotification, inviteExternalAssignee])
 
   const editTask = useCallback(async (id, data, oldTask) => {
     await updateTask(id, data)
@@ -113,8 +154,9 @@ export function DataProvider({ children }) {
     }
     if (data.assignee_email && oldTask?.assignee_email !== data.assignee_email) {
       sendNotification({ trigger: 'task_assigned', task: newTask, projectName: project?.name, actorName: user.user_metadata?.full_name || 'Someone' })
+      inviteExternalAssignee(data.assignee_email, newTask, project?.name)
     }
-  }, [user, projects, sendNotification])
+  }, [user, projects, sendNotification, inviteExternalAssignee])
 
   const removeTask = useCallback(async (id) => {
     await deleteTask(id)
