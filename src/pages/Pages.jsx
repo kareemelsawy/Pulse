@@ -302,6 +302,7 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
   const [status,     setStatus]     = useState(task?.status || 'new')
   const [priority,   setPriority]   = useState(task?.priority || 'medium')
   const [assigneeId, setAssigneeId] = useState('')
+  const [assigneeEmailManual, setAssigneeEmailManual] = useState(task?.assignee_email || '')
   const [due,        setDue]        = useState(task?.due_date || '')
   const [saving,     setSaving]     = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
@@ -347,8 +348,20 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
     if (!title.trim()) return
     setSaving(true)
     try {
-      const assignee_name  = selectedMember?.full_name || selectedMember?.email || ''
-      const assignee_email = selectedMember?.email || ''
+      let assignee_name = ''
+      let assignee_email = ''
+      if (selectedMember) {
+        assignee_name  = selectedMember.full_name || selectedMember.email || ''
+        assignee_email = selectedMember.email || ''
+      } else if (assigneeEmailManual.trim()) {
+        assignee_email = assigneeEmailManual.trim()
+        const localPart = assignee_email.split('@')[0] || ''
+        assignee_name = localPart
+          .split(/[._-]+/)
+          .filter(Boolean)
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ') || assignee_email
+      }
       const safeStatus = task ? (status || task.status || 'new') : 'new'
       const data = { title: title.trim(), status: safeStatus, priority: priority || 'medium', assignee_name, assignee_email, due_date: due || null }
       if (task) { await editTask(task.id, data, task); toast?.('Task updated', 'success') }
@@ -492,6 +505,17 @@ function TaskModal({ task, projectId, isAdmin, onClose, toast }) {
                   </button>
                 )
               })}
+              <div style={{ width: '100%', marginTop: 8 }}>
+                <input
+                  value={assigneeEmailManual}
+                  onChange={e => { setAssigneeEmailManual(e.target.value); if (assigneeId) setAssigneeId('') }}
+                  placeholder="Or type an email (e.g. name@homzmart.com)"
+                  style={{ ...iStyle, background: COLORS.inputBg, fontSize: 12 }}
+                />
+                <p style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>
+                  If you enter an <strong>@homzmart.com</strong> email that isn’t in the workspace yet, they’ll get an invite email.
+                </p>
+              </div>
             </div>
           ) : (
             <div style={{ fontSize: 13, color: COLORS.textMuted, padding: '8px 0' }}>
