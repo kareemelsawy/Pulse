@@ -126,7 +126,9 @@ function AttendeePicker({ members, value, onChange }) {
 export default function MeetingModal({ project, workspace, user, members, meeting, addTask, onSaved, onClose, toast, sendMeetingInvites, projects }) {
   const isEdit = !!meeting
 
-  // Parse existing attendees string back into attendee objects on edit
+  // All non-pipeline projects available for task assignment
+  const allProjects = projects ? projects.filter(p => !p.is_pipeline) : (project ? [project] : [])
+
   function parseExistingAttendees(attendeesStr) {
     if (!attendeesStr) return []
     return attendeesStr.split(',').map(s => s.trim()).filter(Boolean).map(email => {
@@ -135,19 +137,16 @@ export default function MeetingModal({ project, workspace, user, members, meetin
     })
   }
 
+  const defaultProjectId = project?.id || allProjects[0]?.id || ''
+
   const [title,      setTitle]      = useState(meeting?.title || '')
   const [date,       setDate]       = useState(meeting?.meeting_date?.slice(0,10) || new Date().toISOString().slice(0,10))
   const [attendees,  setAttendees]  = useState(() => parseExistingAttendees(meeting?.attendees))
   const [summary,    setSummary]    = useState(meeting?.summary || '')
-  const [taskRows,   setTaskRows]   = useState([emptyTask()])
+  const [taskRows,   setTaskRows]   = useState([emptyTask(defaultProjectId)])
   const [existTasks, setExistTasks] = useState([])
   const [loadingT,   setLoadingT]   = useState(isEdit)
   const [saving,     setSaving]     = useState(false)
-  // For global meetings hub: allow picking a project
-  const [selectedProjectId, setSelectedProjectId] = useState(project?.id || '')
-  const activeProject = projects
-    ? (projects.find(p => p.id === selectedProjectId) || projects[0])
-    : project
 
   useEffect(() => {
     if (isEdit) {
@@ -157,8 +156,8 @@ export default function MeetingModal({ project, workspace, user, members, meetin
     }
   }, [])
 
-  function emptyTask() {
-    return { title: '', assigneeId: '', assigneeEmail: '', due_date: '', priority: 'medium' }
+  function emptyTask(projectId) {
+    return { title: '', assigneeId: '', assigneeEmail: '', due_date: '', priority: 'medium', projectId: projectId || defaultProjectId }
   }
 
   function setRow(i, field, val) {
@@ -167,11 +166,16 @@ export default function MeetingModal({ project, workspace, user, members, meetin
 
   async function handleSave() {
     if (!title.trim()) return
-    if (!activeProject) { toast?.('Please select a project', 'error'); return }
+    if (allProjects.length === 0) { toast?.('No projects available', 'error'); return }
     setSaving(true)
     try {
       const validTaskRows = taskRows.filter(r => r.title.trim())
       const attendeeEmails = attendees.map(a => a.email).join(', ')
+
+      // Meeting lives in the first/default project (DB constraint), but tasks go to their own project
+      const meetingProjectId = meeting?.project_id || defaultProjectId
+      const meetingProject   = allProjects.find(p => p.id === meetingProjectId) || allProjects[0]
+
       const fields = {
         title: title.trim(),
         meeting_date: date,
@@ -185,15 +189,16 @@ export default function MeetingModal({ project, workspace, user, members, meetin
         await updateMeeting(meeting.id, fields)
         saved = { ...meeting, ...fields }
       } else {
-        saved = await createMeeting(activeProject.id, workspace.id, user.id, fields)
+        saved = await createMeeting(meetingProject.id, workspace.id, user.id, fields)
       }
 
-      // Create tasks
+      // Create tasks — each in its chosen project
       for (const r of validTaskRows) {
         const member = members.find(m => m.user_id === r.assigneeId)
         const assignee_name  = member?.full_name || member?.email || r.assigneeEmail || ''
         const assignee_email = member?.email || r.assigneeEmail || ''
-        await addTask(activeProject.id, {
+        const taskProjectId  = r.projectId || meetingProject.id
+        await addTask(taskProjectId, {
           title: r.title.trim(),
           status: 'new',
           priority: r.priority,
@@ -204,52 +209,46 @@ export default function MeetingModal({ project, workspace, user, members, meetin
         })
       }
 
-      // Send meeting minutes to all attendees with emails
+      // Send meeting minutes — await and surface errors
       const emailsToInvite = attendees.map(a => a.email).filter(Boolean)
       if (emailsToInvite.length && sendMeetingInvites) {
-        const actionItems = validTaskRows.filter(r => r.title.trim()).map(r => {
+        const actionItems = validTaskRows.map(r => {
           const member = members.find(m => m.user_id === r.assigneeId)
+          const taskProject = allProjects.find(p => p.id === r.projectId)
           return {
             title: r.title.trim(),
             assignee: member?.full_name || member?.email || r.assigneeEmail || '',
             due_date: r.due_date || '',
             priority: r.priority,
+            projectName: taskProject?.name || meetingProject?.name || '',
           }
         })
-        sendMeetingInvites({ meeting: saved, projectName: activeProject.name, attendeeEmails: emailsToInvite, actionItems }).catch(() => {})
+        try {
+          await sendMeetingInvites({ meeting: saved, projectName: meetingProject?.name || '', attendeeEmails: emailsToInvite, actionItems })
+          toast?.(`Minutes sent to ${emailsToInvite.length} attendee${emailsToInvite.length > 1 ? 's' : ''}`, 'success')
+        } catch(emailErr) {
+          console.error('Meeting email failed:', emailErr)
+          toast?.(`Meeting saved but email failed: ${emailErr.message}`, 'error')
+        }
+      } else {
+        const taskMsg = validTaskRows.length ? ` · ${validTaskRows.length} task${validTaskRows.length > 1 ? 's' : ''} created` : ''
+        toast?.(`Meeting saved${taskMsg}`, 'success')
       }
 
-      const taskMsg = validTaskRows.length ? ` · ${validTaskRows.length} task${validTaskRows.length > 1 ? 's' : ''} created` : ''
-      const inviteMsg = emailsToInvite.length ? ` · ${emailsToInvite.length} invited` : ''
-      toast?.(`Meeting saved${taskMsg}${inviteMsg}`, 'success')
-      onSaved(saved, !isEdit, activeProject)
+      onSaved(saved, !isEdit, meetingProject)
     } catch(e) { toast?.(e.message, 'error') } finally { setSaving(false) }
   }
 
   const newTaskCount = taskRows.filter(r => r.title.trim()).length
 
   return (
-    <Modal onClose={onClose} width={680}>
+    <Modal onClose={onClose} width={700}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <h2 style={{ fontWeight: 700, fontSize: 18 }}>{isEdit ? 'Edit Meeting' : 'New Meeting'}</h2>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textMuted, padding: 4 }}>
           <Icon name="x" size={18} color={COLORS.textMuted} />
         </button>
       </div>
-
-      {/* Project selector — only shown in global meetings hub mode */}
-      {projects && !isEdit && (
-        <div style={{ marginBottom: 14 }}>
-          <label style={lStyle}>Project *</label>
-          <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}
-            style={{ ...iStyle, background: COLORS.inputBg }}>
-            <option value="">— Select a project —</option>
-            {projects.filter(p => !p.is_pipeline).map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* Title + Date */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginBottom: 14 }}>
@@ -279,12 +278,12 @@ export default function MeetingModal({ project, workspace, user, members, meetin
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div>
-            <label style={{ ...lStyle, marginBottom: 0 }}>Tasks</label>
-            <span style={{ fontSize: 11, color: COLORS.textMuted, marginLeft: 8 }}>Created in the project board as New</span>
+            <label style={{ ...lStyle, marginBottom: 0 }}>Action Items</label>
+            {allProjects.length > 1 && <span style={{ fontSize: 11, color: COLORS.textMuted, marginLeft: 8 }}>Each item can go to any project</span>}
           </div>
-          <button onClick={() => setTaskRows(prev => [...prev, emptyTask()])}
+          <button onClick={() => setTaskRows(prev => [...prev, emptyTask(defaultProjectId)])}
             style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: COLORS.accent, cursor: 'pointer', fontFamily: 'inherit' }}>
-            + Add Task
+            + Add Item
           </button>
         </div>
 
@@ -304,7 +303,7 @@ export default function MeetingModal({ project, workspace, user, members, meetin
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>Add more tasks below — existing ones aren't modified here.</div>
+            <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 6 }}>Add more items below — existing ones aren't modified here.</div>
           </div>
         ) : null)}
 
@@ -327,9 +326,9 @@ export default function MeetingModal({ project, workspace, user, members, meetin
                 </button>
               </div>
 
-              {/* Assignee row — member picker or email */}
+              {/* Assignee + Project row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>Assign to:</span>
+                <span style={{ fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>Assign:</span>
                 <select value={r.assigneeId} onChange={e => setRow(i, 'assigneeId', e.target.value)}
                   style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none' }}>
                   <option value="">— Unassigned —</option>
@@ -344,6 +343,15 @@ export default function MeetingModal({ project, workspace, user, members, meetin
                     style={{ flex: 1, ...iStyle, background: COLORS.surface, fontSize: 12 }}
                   />
                 )}
+                {allProjects.length > 1 && (
+                  <>
+                    <span style={{ fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>→</span>
+                    <select value={r.projectId || defaultProjectId} onChange={e => setRow(i, 'projectId', e.target.value)}
+                      style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.border}`, color: COLORS.accent, borderRadius: 6, padding: '5px 8px', fontSize: 12, outline: 'none', fontWeight: 600 }}>
+                      {allProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -355,8 +363,8 @@ export default function MeetingModal({ project, workspace, user, members, meetin
         <div style={{ fontSize: 11, color: COLORS.textMuted }}>
           {newTaskCount > 0 && <span>{newTaskCount} action item{newTaskCount > 1 ? 's' : ''} will be created · </span>}
           {attendees.length > 0
-            ? <span>Minutes will be emailed to {attendees.length} attendee{attendees.length > 1 ? 's' : ''}</span>
-            : <span style={{ color: COLORS.amber }}>Add attendees to send minutes by email</span>
+            ? <span style={{ color: COLORS.green }}>✓ Minutes will be emailed to {attendees.length} attendee{attendees.length > 1 ? 's' : ''}</span>
+            : <span style={{ color: COLORS.amber }}>⚠ Add attendees to send minutes by email</span>
           }
         </div>
         <div style={{ display: 'flex', gap: 8 }}>

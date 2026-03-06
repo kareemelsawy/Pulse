@@ -59,7 +59,8 @@ export function DataProvider({ children }) {
 
   // ─── Send meeting invitations to all attendee emails ──────────────────────
   const sendMeetingInvites = useCallback(async ({ meeting, projectName, attendeeEmails, actionItems }) => {
-    if (!notifSettings?.gmail_access_token || !attendeeEmails?.length) return
+    if (!notifSettings?.gmail_access_token) throw new Error('Gmail not connected — go to Settings → Notifications to connect Gmail')
+    if (!attendeeEmails?.length) return
     const appUrl = window.location.origin
     const actorName = user?.user_metadata?.full_name || user?.email || 'Someone'
     const meetingDate = meeting.meeting_date
@@ -75,7 +76,12 @@ export function DataProvider({ children }) {
       actionItems: actionItems || [],
       appUrl,
     })
-    await Promise.all(attendeeEmails.map(to => sendGmail(notifSettings.gmail_access_token, { to, subject, html }).catch(() => {})))
+    const results = await Promise.allSettled(
+      attendeeEmails.map(to => sendGmail(notifSettings.gmail_access_token, { to, subject, html }))
+    )
+    const failed = results.filter(r => r.status === 'rejected')
+    if (failed.length === results.length) throw new Error(failed[0].reason?.message || 'Failed to send emails')
+    if (failed.length > 0) console.warn(`${failed.length}/${results.length} emails failed`)
   }, [notifSettings, user])
 
   // ─── Notifications ────────────────────────────────────────────────────────

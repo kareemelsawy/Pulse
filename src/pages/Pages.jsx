@@ -211,7 +211,7 @@ export function ProjectView({ project, toast }) {
 
 // ─── MeetingsTab (per-project) ─────────────────────────────────────────────
 function MeetingsTab({ project, toast }) {
-  const { members: ctxMembers, workspace, addTask, sendMeetingInvites } = useData()
+  const { members: ctxMembers, workspace, addTask, sendMeetingInvites, projects } = useData()
   const { user } = useAuth()
   const [meetings,  setMeetings]  = useState([])
   const [loading,   setLoading]   = useState(true)
@@ -268,7 +268,7 @@ function MeetingsTab({ project, toast }) {
         )}
       </div>
       {modalOpen && (
-        <MeetingModal project={project} workspace={workspace} user={user} members={ctxMembers || []} meeting={editing}
+        <MeetingModal project={project} projects={projects} workspace={workspace} user={user} members={ctxMembers || []} meeting={editing}
           onSaved={handleSaved} addTask={addTask} sendMeetingInvites={sendMeetingInvites}
           onClose={() => { setModalOpen(false); setEditing(null) }} toast={toast} />
       )}
