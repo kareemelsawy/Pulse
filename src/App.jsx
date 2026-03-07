@@ -71,7 +71,9 @@ function WorkspaceGate({ toast }) {
     </div>
   )
 
-  if (wsError === 'no_workspace' || !workspace) {
+  if (wsError === 'no_workspace') {
+    // Guest users (@homzmart.com) with tasks assigned but no workspace membership
+    if (user?.email?.endsWith('@homzmart.com')) return <GuestView toast={toast} />
     const pendingInvite = sessionStorage.getItem('pendingInvite')
     if (pendingInvite) {
       sessionStorage.removeItem('pendingInvite')
@@ -80,9 +82,13 @@ function WorkspaceGate({ toast }) {
     return <WorkspaceSetup onJoined={handleJoined} onSignOut={signOut} />
   }
 
-  // Check if user is a @homzmart.com invited guest (has tasks assigned but no workspace membership)
-  const isGuest = wsError === 'no_workspace' && user?.email?.endsWith('@homzmart.com')
-  if (isGuest) return <GuestView toast={toast} />
+  if (!workspace) return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.bg, gap: 16 }}>
+      <div style={{ fontSize: 40, color: C.accent, fontWeight: 900, lineHeight: 1 }}>✦</div>
+      <Spinner size={28} />
+      <span style={{ color: C.textMuted, fontSize: 13 }}>Loading workspace…</span>
+    </div>
+  )
 
   // key={isDark} remounts AppShell instantly when theme changes,
   // flushing all inline COLORS references without touching auth/data state.

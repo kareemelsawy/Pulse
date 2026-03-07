@@ -29,9 +29,13 @@ export function DataProvider({ children }) {
     setWsError(null)
     const timeout = setTimeout(() => setLoading(false), 8000)
 
-    getMyWorkspace(user.id).then(ws => {
+    const loadWorkspace = (attempt = 1) => getMyWorkspace(user.id).then(ws => {
       clearTimeout(timeout)
-      if (!ws) { setWsError('no_workspace'); setLoading(false); return }
+      if (!ws) {
+        // Retry once after a short delay — RLS can lag just after login
+        if (attempt < 3) return setTimeout(() => loadWorkspace(attempt + 1), 800 * attempt)
+        setWsError('no_workspace'); setLoading(false); return
+      }
       setWorkspace(ws)
       const unsubProjects = subscribeProjects(ws.id, (data) => { setProjects(data); setLoading(false) })
       const unsubTasks    = subscribeTasks(ws.id, setTasks)
@@ -44,6 +48,7 @@ export function DataProvider({ children }) {
       setWsError(err.message)
       setLoading(false)
     })
+    loadWorkspace()
 
     return () => { clearTimeout(timeout); window.__pulseUnsub?.() }
   }, [user?.id])

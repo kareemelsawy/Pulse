@@ -7,9 +7,10 @@ export async function getMyWorkspace(userId) {
     .eq('user_id', userId)
     .order('joined_at', { ascending: true })
     .limit(1)
-    .single()
-  if (error) return null
-  return { ...data.workspaces, role: data.role }
+  if (error || !data?.length) return null
+  const row = data[0]
+  if (!row.workspaces) return null
+  return { ...row.workspaces, role: row.role }
 }
 
 export async function getWorkspaceMembers(workspaceId) {
