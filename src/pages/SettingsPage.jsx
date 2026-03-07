@@ -249,9 +249,9 @@ function NotificationsTab({ toast }) {
     <div>
       <Section>
         <SectionTitle>Email Notifications</SectionTitle>
-        <SectionDesc>Emails are sent automatically via your Google Workspace account. No setup required.</SectionDesc>
+        <SectionDesc>Emails are sent automatically via a secured backend function (e.g. SendGrid single sender). No credentials are stored in the browser.</SectionDesc>
         <div style={{ background: colors.bg, border: `1px solid ${colors.green}44`, borderRadius: 12, padding: '12px 16px', fontSize: 13, color: colors.green }}>
-          ✓ Connected via Google Service Account — never expires
+          ✓ Connected via server-side email provider — API key kept in Supabase
         </div>
       </Section>
 
