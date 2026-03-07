@@ -13,7 +13,7 @@ import { sendEmail, buildNotificationEmail, buildGuestInviteEmail, buildMeetingI
 const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
-  const { user } = useAuth()
+  const { user, authReady } = useAuth()
   const [workspace,    setWorkspace]    = useState(null)
   const [projects,     setProjects]     = useState([])
   const [tasks,        setTasks]        = useState([])
@@ -24,18 +24,20 @@ export function DataProvider({ children }) {
   const [wsError,      setWsError]      = useState(null)
 
   useEffect(() => {
+    // Don't attempt anything until Supabase has confirmed the session
+    if (!authReady) return
     if (!user) { setWorkspace(null); setProjects([]); setTasks([]); setLoading(false); return }
     setLoading(true)
     setWsError(null)
-    const timeout = setTimeout(() => setLoading(false), 8000)
+    const timeout = setTimeout(() => { setWsError('no_workspace'); setLoading(false) }, 10000)
 
     const loadWorkspace = (attempt = 1) => getMyWorkspace(user.id).then(ws => {
-      clearTimeout(timeout)
       if (!ws) {
-        // Retry once after a short delay — RLS can lag just after login
-        if (attempt < 3) return setTimeout(() => loadWorkspace(attempt + 1), 800 * attempt)
+        if (attempt < 5) return setTimeout(() => loadWorkspace(attempt + 1), 600 * attempt)
+        clearTimeout(timeout)
         setWsError('no_workspace'); setLoading(false); return
       }
+      clearTimeout(timeout)
       setWorkspace(ws)
       const unsubProjects = subscribeProjects(ws.id, (data) => { setProjects(data); setLoading(false) })
       const unsubTasks    = subscribeTasks(ws.id, setTasks)
@@ -43,15 +45,15 @@ export function DataProvider({ children }) {
       getNotifLogs(ws.id).then(setNotifLogs).catch(() => {})
       const unsubMembers  = subscribeMembers(ws.id, setMembers)
       window.__pulseUnsub = () => { unsubProjects(); unsubTasks(); unsubMembers() }
-    }).catch(err => {
+    }).catch(() => {
+      if (attempt < 5) return setTimeout(() => loadWorkspace(attempt + 1), 600 * attempt)
       clearTimeout(timeout)
-      setWsError(err.message)
-      setLoading(false)
+      setWsError('no_workspace'); setLoading(false)
     })
     loadWorkspace()
 
     return () => { clearTimeout(timeout); window.__pulseUnsub?.() }
-  }, [user?.id])
+  }, [user?.id, authReady])
 
   // ─── Low-level email sender ───────────────────────────────────────────────
   // ─── Helper: build SendGrid config from notifSettings ────────────────────
