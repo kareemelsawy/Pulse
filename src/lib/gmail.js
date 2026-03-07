@@ -1,23 +1,18 @@
 import { NOTIFICATION_TRIGGERS, STATUS, PRIORITY } from './constants'
 
-// ─── Resend API sender ────────────────────────────────────────────────────────
-export async function sendEmail(apiKey, { to, from, subject, html }) {
-  const res = await fetch('https://api.resend.com/emails', {
+// ─── Email sender via Supabase Edge Function ──────────────────────────────────
+// The Edge Function holds the Google Service Account credentials securely.
+// The app just calls it with to/subject/html — no secrets in the browser.
+export async function sendEmail(supabaseUrl, { to, subject, html }) {
+  const fnUrl = `${supabaseUrl}/functions/v1/send-email`
+  const res = await fetch(fnUrl, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: from || 'Pulse <notifications@homzmart.com>',
-      to,
-      subject,
-      html,
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to, subject, html }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.message || `Resend API error ${res.status}`)
+    throw new Error(err.error || `Email send failed (${res.status})`)
   }
   return res.json()
 }

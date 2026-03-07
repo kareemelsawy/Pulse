@@ -10,6 +10,8 @@ import {
 } from '../lib/db/index'
 import { sendEmail, buildNotificationEmail, buildGuestInviteEmail, buildMeetingInviteEmail } from '../lib/gmail'
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+
 const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
@@ -48,25 +50,16 @@ export function DataProvider({ children }) {
     return () => { clearTimeout(timeout); window.__pulseUnsub?.() }
   }, [user?.id])
 
-  // ─── Helper: get Resend API key or throw ──────────────────────────────────
-  function getApiKey() {
-    const key = notifSettings?.resend_api_key
-    if (!key) throw new Error('Resend not connected — go to Settings → Notifications to add your API key')
-    return key
-  }
-
   // ─── Low-level email sender ───────────────────────────────────────────────
   const sendRawEmail = useCallback(async ({ to, subject, html }) => {
-    if (!notifSettings?.resend_api_key) return false
     try {
-      await sendEmail(notifSettings.resend_api_key, { to, subject, html })
+      await sendEmail(SUPABASE_URL, { to, subject, html })
       return true
     } catch(e) { console.warn('Email send failed:', e.message); return false }
-  }, [notifSettings])
+  }, [])
 
   // ─── Send meeting minutes to all attendee emails ──────────────────────────
   const sendMeetingInvites = useCallback(async ({ meeting, projectName, attendeeEmails, actionItems }) => {
-    const apiKey = getApiKey()
     if (!attendeeEmails?.length) return
     const appUrl = window.location.origin
     const actorName = user?.user_metadata?.full_name || user?.email || 'Someone'
@@ -84,16 +77,15 @@ export function DataProvider({ children }) {
       appUrl,
     })
     const results = await Promise.allSettled(
-      attendeeEmails.map(to => sendEmail(apiKey, { to, subject, html }))
+      attendeeEmails.map(to => sendEmail(SUPABASE_URL, { to, subject, html }))
     )
     const failed = results.filter(r => r.status === 'rejected')
     if (failed.length === results.length) throw new Error(failed[0].reason?.message || 'Failed to send emails')
     if (failed.length > 0) console.warn(`${failed.length}/${results.length} emails failed`)
-  }, [notifSettings, user])
+  }, [user])
 
   // ─── Notifications ────────────────────────────────────────────────────────
   const sendNotification = useCallback(async ({ trigger, task, projectName, actorName, extraInfo }) => {
-    if (!notifSettings?.resend_api_key) return
     if (!notifSettings?.enabled_triggers?.[trigger]) return
     const recipients = new Set()
     if (notifSettings.notify_assignee && task.assignee_email) recipients.add(task.assignee_email)
@@ -103,7 +95,7 @@ export function DataProvider({ children }) {
     let successes = 0, failures = 0
     await Promise.all([...recipients].map(async to => {
       let status = 'success'
-      try { await sendEmail(notifSettings.resend_api_key, { to, subject, html }); successes++ }
+      try { await sendEmail(SUPABASE_URL, { to, subject, html }); successes++ }
       catch (e) { console.warn('Email send failed:', e.message); failures++; status = 'failed' }
       insertNotifLog(workspace.id, { trigger_type: trigger, task_id: task.id, recipient: to, subject, status }).catch(() => {})
     }))
@@ -149,7 +141,7 @@ export function DataProvider({ children }) {
       if (isWorkspaceMember) {
         // Normal member — send standard task_assigned notification
         sendNotification({ trigger: 'task_assigned', task, projectName: project?.name, actorName })
-      } else if (data.assignee_email.endsWith('@homzmart.com') && notifSettings?.resend_api_key) {
+      } else if (data.assignee_email.endsWith('@homzmart.com')) {
         // Guest — send guest invite email directly
         const appUrl = window.location.origin
         const { subject, html } = buildGuestInviteEmail({
@@ -159,7 +151,7 @@ export function DataProvider({ children }) {
           projectName: project?.name || '',
           appUrl,
         })
-        sendEmail(notifSettings.resend_api_key, { to: data.assignee_email, subject, html }).catch(() => {})
+        sendEmail(SUPABASE_URL, { to: data.assignee_email, subject, html }).catch(() => {})
         logGuestInvitation(workspace.id, data.assignee_email, task.title, task.id).catch(() => {})
       }
     }
