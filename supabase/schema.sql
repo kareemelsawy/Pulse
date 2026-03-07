@@ -1,12 +1,5 @@
--- Pulse Application Database Schema
--- This script sets up all tables, RLS policies, and functions for the Pulse app
-
--- ============================================================================
--- ENABLE ROW LEVEL SECURITY
--- ============================================================================
-
--- Enable RLS on all tables (will be created below)
--- RLS ensures users can only access data they're authorized to see
+-- Pulse Application Database Schema (Idempotent)
+-- This script can be run multiple times safely
 
 -- ============================================================================
 -- WORKSPACES TABLE
@@ -15,15 +8,15 @@
 CREATE TABLE IF NOT EXISTS workspaces (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
-  domain TEXT, -- e.g., "homzmart.com"
+  domain TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   settings JSONB DEFAULT '{}'::jsonb
 );
 
--- RLS Policies for workspaces
 ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their workspace" ON workspaces;
 CREATE POLICY "Users can view their workspace"
   ON workspaces FOR SELECT
   USING (
@@ -33,6 +26,7 @@ CREATE POLICY "Users can view their workspace"
     )
   );
 
+DROP POLICY IF EXISTS "Workspace admins can update workspace" ON workspaces;
 CREATE POLICY "Workspace admins can update workspace"
   ON workspaces FOR UPDATE
   USING (
@@ -52,15 +46,15 @@ CREATE TABLE IF NOT EXISTS workspace_members (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   name TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'member', -- 'admin' or 'member'
+  role TEXT NOT NULL DEFAULT 'member',
   avatar_url TEXT,
   joined_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(workspace_id, user_id)
 );
 
--- RLS Policies for workspace_members
 ALTER TABLE workspace_members ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view members in their workspace" ON workspace_members;
 CREATE POLICY "Users can view members in their workspace"
   ON workspace_members FOR SELECT
   USING (
@@ -70,6 +64,7 @@ CREATE POLICY "Users can view members in their workspace"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can insert members" ON workspace_members;
 CREATE POLICY "Admins can insert members"
   ON workspace_members FOR INSERT
   WITH CHECK (
@@ -79,6 +74,7 @@ CREATE POLICY "Admins can insert members"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can update members" ON workspace_members;
 CREATE POLICY "Admins can update members"
   ON workspace_members FOR UPDATE
   USING (
@@ -88,6 +84,7 @@ CREATE POLICY "Admins can update members"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can delete members" ON workspace_members;
 CREATE POLICY "Admins can delete members"
   ON workspace_members FOR DELETE
   USING (
@@ -114,9 +111,9 @@ CREATE TABLE IF NOT EXISTS projects (
   archived BOOLEAN DEFAULT FALSE
 );
 
--- RLS Policies for projects
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view projects in their workspace" ON projects;
 CREATE POLICY "Users can view projects in their workspace"
   ON projects FOR SELECT
   USING (
@@ -126,6 +123,7 @@ CREATE POLICY "Users can view projects in their workspace"
     )
   );
 
+DROP POLICY IF EXISTS "Members can create projects" ON projects;
 CREATE POLICY "Members can create projects"
   ON projects FOR INSERT
   WITH CHECK (
@@ -135,6 +133,7 @@ CREATE POLICY "Members can create projects"
     )
   );
 
+DROP POLICY IF EXISTS "Members can update projects" ON projects;
 CREATE POLICY "Members can update projects"
   ON projects FOR UPDATE
   USING (
@@ -144,6 +143,7 @@ CREATE POLICY "Members can update projects"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can delete projects" ON projects;
 CREATE POLICY "Admins can delete projects"
   ON projects FOR DELETE
   USING (
@@ -163,8 +163,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
-  status TEXT NOT NULL DEFAULT 'todo', -- 'todo', 'in_progress', 'review', 'done'
-  priority TEXT NOT NULL DEFAULT 'medium', -- 'low', 'medium', 'high'
+  status TEXT NOT NULL DEFAULT 'todo',
+  priority TEXT NOT NULL DEFAULT 'medium',
   assignee_id UUID REFERENCES auth.users(id),
   assignee_name TEXT,
   assignee_email TEXT,
@@ -178,15 +178,14 @@ CREATE TABLE IF NOT EXISTS tasks (
   is_guest_task BOOLEAN DEFAULT FALSE
 );
 
--- Index for performance
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_workspace ON tasks(workspace_id);
 
--- RLS Policies for tasks
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view tasks in their workspace" ON tasks;
 CREATE POLICY "Users can view tasks in their workspace"
   ON tasks FOR SELECT
   USING (
@@ -194,9 +193,10 @@ CREATE POLICY "Users can view tasks in their workspace"
       SELECT workspace_id FROM workspace_members 
       WHERE user_id = auth.uid()
     )
-    OR assignee_id = auth.uid() -- Allow guest users to see their assigned tasks
+    OR assignee_id = auth.uid()
   );
 
+DROP POLICY IF EXISTS "Members can create tasks" ON tasks;
 CREATE POLICY "Members can create tasks"
   ON tasks FOR INSERT
   WITH CHECK (
@@ -206,6 +206,7 @@ CREATE POLICY "Members can create tasks"
     )
   );
 
+DROP POLICY IF EXISTS "Members can update tasks in their workspace" ON tasks;
 CREATE POLICY "Members can update tasks in their workspace"
   ON tasks FOR UPDATE
   USING (
@@ -213,9 +214,10 @@ CREATE POLICY "Members can update tasks in their workspace"
       SELECT workspace_id FROM workspace_members 
       WHERE user_id = auth.uid()
     )
-    OR assignee_id = auth.uid() -- Allow guests to update their tasks
+    OR assignee_id = auth.uid()
   );
 
+DROP POLICY IF EXISTS "Members can delete tasks" ON tasks;
 CREATE POLICY "Members can delete tasks"
   ON tasks FOR DELETE
   USING (
@@ -243,13 +245,12 @@ CREATE TABLE IF NOT EXISTS meetings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index for performance
 CREATE INDEX IF NOT EXISTS idx_meetings_project ON meetings(project_id);
 CREATE INDEX IF NOT EXISTS idx_meetings_date ON meetings(date);
 
--- RLS Policies for meetings
 ALTER TABLE meetings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view meetings in their workspace" ON meetings;
 CREATE POLICY "Users can view meetings in their workspace"
   ON meetings FOR SELECT
   USING (
@@ -259,6 +260,7 @@ CREATE POLICY "Users can view meetings in their workspace"
     )
   );
 
+DROP POLICY IF EXISTS "Members can create meetings" ON meetings;
 CREATE POLICY "Members can create meetings"
   ON meetings FOR INSERT
   WITH CHECK (
@@ -268,6 +270,7 @@ CREATE POLICY "Members can create meetings"
     )
   );
 
+DROP POLICY IF EXISTS "Members can update meetings" ON meetings;
 CREATE POLICY "Members can update meetings"
   ON meetings FOR UPDATE
   USING (
@@ -277,6 +280,7 @@ CREATE POLICY "Members can update meetings"
     )
   );
 
+DROP POLICY IF EXISTS "Members can delete meetings" ON meetings;
 CREATE POLICY "Members can delete meetings"
   ON meetings FOR DELETE
   USING (
@@ -299,9 +303,9 @@ CREATE TABLE IF NOT EXISTS guests (
   UNIQUE(workspace_id, email)
 );
 
--- RLS Policies for guests
 ALTER TABLE guests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Members can view guests in their workspace" ON guests;
 CREATE POLICY "Members can view guests in their workspace"
   ON guests FOR SELECT
   USING (
@@ -311,6 +315,7 @@ CREATE POLICY "Members can view guests in their workspace"
     )
   );
 
+DROP POLICY IF EXISTS "Members can create guests" ON guests;
 CREATE POLICY "Members can create guests"
   ON guests FOR INSERT
   WITH CHECK (
@@ -339,9 +344,9 @@ CREATE TABLE IF NOT EXISTS notif_settings (
   UNIQUE(workspace_id)
 );
 
--- RLS Policies for notif_settings
 ALTER TABLE notif_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Members can view notification settings" ON notif_settings;
 CREATE POLICY "Members can view notification settings"
   ON notif_settings FOR SELECT
   USING (
@@ -351,6 +356,7 @@ CREATE POLICY "Members can view notification settings"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can manage notification settings" ON notif_settings;
 CREATE POLICY "Admins can manage notification settings"
   ON notif_settings FOR ALL
   USING (
@@ -371,18 +377,17 @@ CREATE TABLE IF NOT EXISTS notif_logs (
   recipient TEXT NOT NULL,
   task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
   meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
-  status TEXT NOT NULL, -- 'sent', 'failed'
+  status TEXT NOT NULL,
   error_message TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index for performance
 CREATE INDEX IF NOT EXISTS idx_notif_logs_workspace ON notif_logs(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_notif_logs_created ON notif_logs(created_at DESC);
 
--- RLS Policies for notif_logs
 ALTER TABLE notif_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can view notification logs" ON notif_logs;
 CREATE POLICY "Admins can view notification logs"
   ON notif_logs FOR SELECT
   USING (
@@ -396,7 +401,6 @@ CREATE POLICY "Admins can view notification logs"
 -- FUNCTIONS
 -- ============================================================================
 
--- Function to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -405,7 +409,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Add triggers for updated_at
+-- Drop existing triggers if they exist
+DROP TRIGGER IF EXISTS update_workspaces_updated_at ON workspaces;
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
+DROP TRIGGER IF EXISTS update_tasks_updated_at ON tasks;
+DROP TRIGGER IF EXISTS update_meetings_updated_at ON meetings;
+DROP TRIGGER IF EXISTS update_notif_settings_updated_at ON notif_settings;
+
+-- Create triggers
 CREATE TRIGGER update_workspaces_updated_at
   BEFORE UPDATE ON workspaces
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -427,15 +438,19 @@ CREATE TRIGGER update_notif_settings_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
--- STORAGE BUCKETS (for attachments)
+-- STORAGE BUCKETS
 -- ============================================================================
 
--- Create storage bucket for task attachments
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('task-attachments', 'task-attachments', false)
 ON CONFLICT (id) DO NOTHING;
 
--- Storage policies for attachments
+-- Drop existing storage policies
+DROP POLICY IF EXISTS "Users can upload attachments to their workspace" ON storage.objects;
+DROP POLICY IF EXISTS "Users can view attachments in their workspace" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their attachments" ON storage.objects;
+
+-- Create storage policies
 CREATE POLICY "Users can upload attachments to their workspace"
   ON storage.objects FOR INSERT
   WITH CHECK (
@@ -458,42 +473,5 @@ CREATE POLICY "Users can delete their attachments"
   );
 
 -- ============================================================================
--- INITIAL DATA (Optional - for testing)
--- ============================================================================
-
--- Uncomment the following to create a default workspace for testing
--- NOTE: You'll need to update the user_id with an actual auth.users id
-
-/*
--- Create default workspace
-INSERT INTO workspaces (name, domain)
-VALUES ('Default Workspace', 'example.com')
-ON CONFLICT DO NOTHING;
-
--- Add yourself as admin (replace 'your-user-id' with actual UUID)
-INSERT INTO workspace_members (workspace_id, user_id, email, name, role)
-VALUES (
-  (SELECT id FROM workspaces WHERE name = 'Default Workspace'),
-  'your-user-id'::UUID,
-  'admin@example.com',
-  'Admin User',
-  'admin'
-)
-ON CONFLICT DO NOTHING;
-
--- Create default notification settings
-INSERT INTO notif_settings (workspace_id)
-VALUES ((SELECT id FROM workspaces WHERE name = 'Default Workspace'))
-ON CONFLICT DO NOTHING;
-*/
-
--- ============================================================================
 -- COMPLETED
 -- ============================================================================
-
--- All tables, policies, and functions have been created!
--- Next steps:
--- 1. Deploy this schema to your Supabase project
--- 2. Set up the send-email edge function
--- 3. Configure SendGrid credentials
--- 4. Deploy your frontend to Vercel
