@@ -1,9 +1,8 @@
 import { NOTIFICATION_TRIGGERS, STATUS, PRIORITY } from './constants'
 
 // ─── Email sender via Supabase Edge Function ──────────────────────────────────
-// The Edge Function holds the real email provider credentials securely
-// (e.g. SendGrid API key). The app just calls it with to/subject/html —
-// no secrets in the browser.
+// The Edge Function holds the Google Service Account credentials securely.
+// The app just calls it with to/subject/html — no secrets in the browser.
 export async function sendEmail(supabaseUrl, { to, subject, html }) {
   const fnUrl = `${supabaseUrl}/functions/v1/send-email`
   const res = await fetch(fnUrl, {
