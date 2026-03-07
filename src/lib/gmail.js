@@ -184,10 +184,10 @@ export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate
 }
 
 // Kick off the Gmail OAuth popup (implicit flow)
-export function startGmailOAuth(clientId, { silent = false, redirectUri } = {}) {
+export function startGmailOAuth(clientId, { silent = false } = {}) {
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: redirectUri || (window.location.origin + window.location.pathname),
+    redirect_uri: window.location.origin + '/',
     response_type: 'token',
     scope: 'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email',
     prompt: silent ? 'none' : 'select_account',
