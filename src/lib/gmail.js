@@ -1,26 +1,22 @@
 import { NOTIFICATION_TRIGGERS, STATUS, PRIORITY } from './constants'
 
-// ─── SendGrid API sender ──────────────────────────────────────────────────────
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+
+// ─── Email sender via Supabase Edge Function ──────────────────────────────────
+// SendGrid blocks direct browser requests (CORS), so we proxy through
+// a Supabase Edge Function which holds no secrets — the API key is passed
+// from the app's notif_settings stored in the DB.
 export async function sendEmail({ apiKey, fromEmail, fromName = 'Pulse', to, subject, html }) {
-  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: fromEmail, name: fromName },
-      subject,
-      content: [{ type: 'text/html', value: html }],
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ apiKey, fromEmail, fromName, to, subject, html }),
   })
-  // SendGrid returns 202 Accepted on success (no body)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    const msg = err.errors?.[0]?.message || `SendGrid error ${res.status}`
-    throw new Error(msg)
+    throw new Error(err.error || `Email send failed (${res.status})`)
   }
+  return res.json()
 }
 
 // ─── Email templates ──────────────────────────────────────────────────────────
