@@ -234,6 +234,7 @@ function NotificationsTab({ toast }) {
   const { iStyle, lStyle } = useS()
 
   const [apiKey,         setApiKey]         = useState(notifSettings?.sendgrid_api_key || '')
+  const [functionSecret, setFunctionSecret] = useState(notifSettings?.function_secret || '')
   const [fromEmail,      setFromEmail]      = useState(notifSettings?.sendgrid_from_email || '')
   const [fromName,       setFromName]       = useState(notifSettings?.sendgrid_from_name || 'Pulse')
   const [triggers,       setTriggers]       = useState(notifSettings?.enabled_triggers || { task_assigned: true, status_changed: true, task_completed: true, new_task: false })
@@ -245,12 +246,13 @@ function NotificationsTab({ toast }) {
 
   // Sync when notifSettings loads asynchronously
   useEffect(() => {
-    if (notifSettings?.sendgrid_api_key  && !apiKey)    setApiKey(notifSettings.sendgrid_api_key)
-    if (notifSettings?.sendgrid_from_email && !fromEmail) setFromEmail(notifSettings.sendgrid_from_email)
-    if (notifSettings?.sendgrid_from_name  && !fromName)  setFromName(notifSettings.sendgrid_from_name)
-  }, [notifSettings?.sendgrid_api_key, notifSettings?.sendgrid_from_email, notifSettings?.sendgrid_from_name])
+    if (notifSettings?.sendgrid_api_key  && !apiKey)       setApiKey(notifSettings.sendgrid_api_key)
+    if (notifSettings?.function_secret   && !functionSecret) setFunctionSecret(notifSettings.function_secret)
+    if (notifSettings?.sendgrid_from_email && !fromEmail)  setFromEmail(notifSettings.sendgrid_from_email)
+    if (notifSettings?.sendgrid_from_name  && !fromName)   setFromName(notifSettings.sendgrid_from_name)
+  }, [notifSettings?.sendgrid_api_key, notifSettings?.function_secret, notifSettings?.sendgrid_from_email, notifSettings?.sendgrid_from_name])
 
-  const isConnected = !!apiKey.trim()
+  const isConnected = !!apiKey.trim() && !!functionSecret.trim()
 
   async function handleSave() {
     if (!fromEmail.trim()) { toast('From email is required', 'error'); return }
@@ -258,6 +260,7 @@ function NotificationsTab({ toast }) {
     try {
       await updateNotifSettings({
         sendgrid_api_key: apiKey.trim(),
+        function_secret: functionSecret.trim(),
         sendgrid_from_email: fromEmail.trim(),
         sendgrid_from_name: fromName.trim() || 'Pulse',
         enabled_triggers: triggers,
@@ -269,14 +272,16 @@ function NotificationsTab({ toast }) {
   }
 
   async function handleTest() {
-    if (!apiKey.trim())    { toast('Enter your API key first', 'error'); return }
-    if (!fromEmail.trim()) { toast('Enter a From email first', 'error'); return }
+    if (!apiKey.trim())           { toast('Enter your API key first', 'error'); return }
+    if (!functionSecret.trim())   { toast('Enter your Function Secret first', 'error'); return }
+    if (!fromEmail.trim())        { toast('Enter a From email first', 'error'); return }
     const testTo = extraEmails.split(',')[0]?.trim() || fromEmail.trim()
     setTesting(true)
     try {
       const { sendEmail } = await import('../lib/gmail')
       await sendEmail({
         apiKey: apiKey.trim(),
+        functionSecret: functionSecret.trim(),
         fromEmail: fromEmail.trim(),
         fromName: fromName.trim() || 'Pulse',
         to: testTo,
@@ -314,6 +319,24 @@ function NotificationsTab({ toast }) {
             </button>
           </div>
           {isConnected && <div style={{ marginTop: 8, fontSize: 11, color: colors.green }}>✓ API key set</div>}
+        </div>
+
+        <div style={fieldBox}>
+          <label style={{ ...lStyle, marginBottom: 6 }}>Function Secret (Supabase Anon Key)</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              value={functionSecret}
+              onChange={e => setFunctionSecret(e.target.value)}
+              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"
+              type="password"
+              style={{ ...iStyle, flex: 1, fontFamily: 'monospace', fontSize: 12, marginBottom: 0 }}
+            />
+          </div>
+          <div style={{ marginTop: 8, fontSize: 11, color: colors.textMuted, lineHeight: 1.5 }}>
+            Required to call the Supabase Edge Function. Find it in{' '}
+            <strong style={{ color: colors.textDim }}>Supabase → Settings → API → Project API keys → anon public</strong>.
+          </div>
+          {functionSecret.trim() && <div style={{ marginTop: 6, fontSize: 11, color: colors.green }}>✓ Function secret set</div>}
         </div>
 
         <div style={fieldBox}>

@@ -60,7 +60,7 @@ export function DataProvider({ children }) {
   const emailConfig = useCallback(() => {
     const key = notifSettings?.sendgrid_api_key
     if (!key) throw new Error('SendGrid not configured — go to Settings → Notifications')
-    return { apiKey: key, fromEmail: notifSettings.sendgrid_from_email || 'notifications@homzmart.com', fromName: 'Pulse' }
+    return { apiKey: key, functionSecret: notifSettings.function_secret || '', fromEmail: notifSettings.sendgrid_from_email || 'notifications@homzmart.com', fromName: 'Pulse' }
   }, [notifSettings])
 
   // ─── Low-level email sender ───────────────────────────────────────────────
