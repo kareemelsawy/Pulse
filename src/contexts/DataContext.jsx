@@ -60,7 +60,7 @@ export function DataProvider({ children }) {
   const emailConfig = useCallback(() => {
     const key = notifSettings?.sendgrid_api_key
     if (!key) throw new Error('SendGrid not configured — go to Settings → Notifications')
-    return { apiKey: key, functionSecret: notifSettings.function_secret || '', fromEmail: notifSettings.sendgrid_from_email || 'notifications@homzmart.com', fromName: 'Pulse' }
+    return { apiKey: key, fromEmail: notifSettings.sendgrid_from_email || 'notifications@homzmart.com', fromName: 'Pulse' }
   }, [notifSettings])
 
   // ─── Low-level email sender ───────────────────────────────────────────────
@@ -151,15 +151,18 @@ export function DataProvider({ children }) {
     setTasks(prev => [...prev, task])
     const project = projects.find(p => p.id === projectId)
     const actorName = user.user_metadata?.full_name || user.email || 'Someone'
-    // Standard notification to workspace members
+    // Notify extra_emails recipients about the new task
     sendNotification({ trigger: 'new_task', task, projectName: project?.name, actorName })
     if (data.assignee_email) {
-      const isWorkspaceMember = members.some(m => m.email === data.assignee_email)
+      // Case-insensitive check for workspace membership
+      const isWorkspaceMember = members.some(
+        m => m.email?.toLowerCase() === data.assignee_email?.toLowerCase()
+      )
       if (isWorkspaceMember) {
-        // Normal member — send standard task_assigned notification
+        // Workspace member — send task_assigned notification to their email
         sendNotification({ trigger: 'task_assigned', task, projectName: project?.name, actorName })
-      } else if (data.assignee_email.endsWith('@homzmart.com')) {
-        // Guest — send guest invite email directly
+      } else {
+        // Not a workspace member — treat as guest, send invite email
         const appUrl = window.location.origin
         const { subject, html } = buildGuestInviteEmail({
           assigneeName: data.assignee_name || data.assignee_email,
