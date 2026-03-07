@@ -229,61 +229,13 @@ function WorkspaceTab({ toast }) {
 
 // ─── Notifications Tab ────────────────────────────────────────────────────────
 function NotificationsTab({ toast }) {
-  const { notifSettings, updateNotifSettings, workspace } = useData()
+  const { notifSettings, updateNotifSettings } = useData()
   const { colors } = useTheme()
   const { iStyle, lStyle } = useS()
   const [triggers,       setTriggers]       = useState(notifSettings?.enabled_triggers || { task_assigned: true, status_changed: true, task_completed: true, new_task: false })
   const [notifyAssignee, setNotifyAssignee] = useState(notifSettings?.notify_assignee ?? true)
   const [extraEmails,    setExtraEmails]    = useState(notifSettings?.extra_emails || '')
   const [saving,         setSaving]         = useState(false)
-  
-  // SendGrid configuration
-  const [sendgridKey,   setSendgridKey]   = useState('')
-  const [sendgridEmail, setSendgridEmail] = useState(localStorage.getItem('pulse_sendgrid_email') || '')
-  const [sendgridSaving, setSendgridSaving] = useState(false)
-  const [sendgridTesting, setSendgridTesting] = useState(false)
-  const [sendgridConfigured, setSendgridConfigured] = useState(localStorage.getItem('pulse_sendgrid_configured') === 'true')
-
-  async function handleSendgridSave() {
-    if (!sendgridEmail.trim()) {
-      toast('Please enter sender email', 'error')
-      return
-    }
-    
-    setSendgridSaving(true)
-    try {
-      // Store in localStorage for reference
-      localStorage.setItem('pulse_sendgrid_configured', 'true')
-      localStorage.setItem('pulse_sendgrid_email', sendgridEmail)
-      setSendgridConfigured(true)
-      
-      toast('Saved! Now set secrets via Supabase CLI (see instructions below)', 'success')
-    } catch (e) { 
-      toast(e.message, 'error') 
-    } finally { 
-      setSendgridSaving(false) 
-    }
-  }
-
-  async function handleTestEmail() {
-    setSendgridTesting(true)
-    try {
-      const { data, error } = await supabase.functions.invoke('send-email', {
-        body: {
-          to: sendgridEmail || 'test@example.com',
-          subject: 'Pulse Test Email',
-          html: '<h1>Success!</h1><p>Your SendGrid integration is working correctly.</p>'
-        }
-      })
-      
-      if (error) throw new Error(error.message || 'Failed to send test email')
-      toast('Test email sent! Check your inbox.', 'success')
-    } catch (e) {
-      toast(e.message, 'error')
-    } finally {
-      setSendgridTesting(false)
-    }
-  }
 
   async function handleSave() {
     setSaving(true)
@@ -296,54 +248,10 @@ function NotificationsTab({ toast }) {
   return (
     <div>
       <Section>
-        <SectionTitle>SendGrid Email Configuration</SectionTitle>
-        <SectionDesc>Configure SendGrid to send email notifications. Get your API key from SendGrid Settings → API Keys.</SectionDesc>
-        
-        {sendgridConfigured ? (
-          <div style={{ background: colors.bg, border: `1px solid ${colors.green}44`, borderRadius: 12, padding: '12px 16px', fontSize: 13, color: colors.green, marginBottom: 14 }}>
-            ✓ SendGrid is configured
-          </div>
-        ) : (
-          <div style={{ background: colors.bg, border: `1px solid ${colors.yellow}44`, borderRadius: 12, padding: '12px 16px', fontSize: 13, color: colors.yellow, marginBottom: 14 }}>
-            ⚠️ SendGrid not configured. Set up below to enable email notifications.
-          </div>
-        )}
-
-        <div style={{ marginBottom: 14 }}>
-          <label style={lStyle}>Verified Sender Email</label>
-          <input 
-            type="email"
-            value={sendgridEmail} 
-            onChange={e => setSendgridEmail(e.target.value)} 
-            placeholder="notifications@yourdomain.com" 
-            style={iStyle} 
-          />
-          <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 4, lineHeight: 1.4 }}>
-            Verify at: SendGrid → Settings → Sender Authentication → Single Sender Verification
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          <Btn onClick={handleSendgridSave} disabled={sendgridSaving}>
-            {sendgridSaving ? 'Saving…' : 'Save Sender Email'}
-          </Btn>
-          <Btn onClick={handleTestEmail} disabled={sendgridTesting}>
-            {sendgridTesting ? 'Sending…' : 'Send Test Email'}
-          </Btn>
-        </div>
-
-        <div style={{ padding: '12px 14px', background: colors.accent + '12', border: `1px solid ${colors.accent}33`, borderRadius: 10, fontSize: 12, lineHeight: 1.6 }}>
-          <div style={{ fontWeight: 600, color: colors.accent, marginBottom: 8 }}>Required: Set Supabase Secrets</div>
-          <div style={{ color: colors.textMuted, marginBottom: 8 }}>
-            After saving your sender email, run these commands in your terminal:
-          </div>
-          <div style={{ background: colors.bg, padding: 10, borderRadius: 6, fontFamily: 'monospace', fontSize: 11, color: colors.text }}>
-            supabase secrets set SENDGRID_API_KEY=your_sendgrid_api_key<br/>
-            supabase secrets set SENDGRID_FROM_EMAIL={sendgridEmail || 'your_email@domain.com'}
-          </div>
-          <div style={{ color: colors.textMuted, marginTop: 8, fontSize: 11 }}>
-            Get your API key from: <strong>SendGrid → Settings → API Keys</strong>
-          </div>
+        <SectionTitle>Email Notifications</SectionTitle>
+        <SectionDesc>Emails are sent automatically via your Google Workspace account. No setup required.</SectionDesc>
+        <div style={{ background: colors.bg, border: `1px solid ${colors.green}44`, borderRadius: 12, padding: '12px 16px', fontSize: 13, color: colors.green }}>
+          ✓ Connected via Google Service Account — never expires
         </div>
       </Section>
 
