@@ -1,5 +1,5 @@
--- Pulse Application Database Schema (Idempotent)
--- This script can be run multiple times safely
+-- Pulse Application Database Schema (Migration-Safe)
+-- This script handles both new installations and existing databases
 
 -- ============================================================================
 -- WORKSPACES TABLE
@@ -13,6 +13,17 @@ CREATE TABLE IF NOT EXISTS workspaces (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   settings JSONB DEFAULT '{}'::jsonb
 );
+
+-- Add missing columns if they don't exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='workspaces' AND column_name='domain') THEN
+    ALTER TABLE workspaces ADD COLUMN domain TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='workspaces' AND column_name='settings') THEN
+    ALTER TABLE workspaces ADD COLUMN settings JSONB DEFAULT '{}'::jsonb;
+  END IF;
+END $$;
 
 ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
 
@@ -51,6 +62,14 @@ CREATE TABLE IF NOT EXISTS workspace_members (
   joined_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(workspace_id, user_id)
 );
+
+-- Add missing columns
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='workspace_members' AND column_name='avatar_url') THEN
+    ALTER TABLE workspace_members ADD COLUMN avatar_url TEXT;
+  END IF;
+END $$;
 
 ALTER TABLE workspace_members ENABLE ROW LEVEL SECURITY;
 
@@ -110,6 +129,14 @@ CREATE TABLE IF NOT EXISTS projects (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   archived BOOLEAN DEFAULT FALSE
 );
+
+-- Add missing columns
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='projects' AND column_name='archived') THEN
+    ALTER TABLE projects ADD COLUMN archived BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
 
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
@@ -177,6 +204,45 @@ CREATE TABLE IF NOT EXISTS tasks (
   attachments JSONB DEFAULT '[]'::jsonb,
   is_guest_task BOOLEAN DEFAULT FALSE
 );
+
+-- Add missing columns to tasks table
+DO $$ 
+BEGIN
+  -- Add assignee_id if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='assignee_id') THEN
+    ALTER TABLE tasks ADD COLUMN assignee_id UUID REFERENCES auth.users(id);
+  END IF;
+  
+  -- Add assignee_name if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='assignee_name') THEN
+    ALTER TABLE tasks ADD COLUMN assignee_name TEXT;
+  END IF;
+  
+  -- Add assignee_email if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='assignee_email') THEN
+    ALTER TABLE tasks ADD COLUMN assignee_email TEXT;
+  END IF;
+  
+  -- Add completed_at if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='completed_at') THEN
+    ALTER TABLE tasks ADD COLUMN completed_at TIMESTAMPTZ;
+  END IF;
+  
+  -- Add tags if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='tags') THEN
+    ALTER TABLE tasks ADD COLUMN tags TEXT[] DEFAULT ARRAY[]::TEXT[];
+  END IF;
+  
+  -- Add attachments if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='attachments') THEN
+    ALTER TABLE tasks ADD COLUMN attachments JSONB DEFAULT '[]'::jsonb;
+  END IF;
+  
+  -- Add is_guest_task if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='is_guest_task') THEN
+    ALTER TABLE tasks ADD COLUMN is_guest_task BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee_id);
@@ -473,5 +539,5 @@ CREATE POLICY "Users can delete their attachments"
   );
 
 -- ============================================================================
--- COMPLETED
+-- COMPLETED - Migration-Safe Schema Applied
 -- ============================================================================
