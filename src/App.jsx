@@ -72,8 +72,6 @@ function WorkspaceGate({ toast }) {
   )
 
   if (wsError === 'no_workspace') {
-    // Guest users (@homzmart.com) with tasks assigned but no workspace membership
-    if (user?.email?.endsWith('@homzmart.com')) return <GuestView toast={toast} />
     const pendingInvite = sessionStorage.getItem('pendingInvite')
     if (pendingInvite) {
       sessionStorage.removeItem('pendingInvite')
