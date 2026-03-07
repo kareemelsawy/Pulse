@@ -244,6 +244,12 @@ function NotificationsTab({ toast }) {
 
   const tokenExpired = expiresAt && Date.now() > expiresAt
 
+  // Sync clientId if notifSettings loads after mount
+  useEffect(() => {
+    if (notifSettings?.gmail_client_id && !clientId) setClientId(notifSettings.gmail_client_id)
+    if (notifSettings?.gmail_expires_at && !expiresAt) setExpiresAt(notifSettings.gmail_expires_at)
+  }, [notifSettings?.gmail_client_id, notifSettings?.gmail_expires_at])
+
   useEffect(() => {
     const result = parseOAuthToken()
     if (result?.token) {
@@ -289,7 +295,11 @@ function NotificationsTab({ toast }) {
               </div>
             )}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { window.location.href = startGmailOAuth(clientId) }}
+              <button onClick={() => {
+                const id = clientId || notifSettings?.gmail_client_id
+                if (!id) { toast('Client ID missing — please disconnect and re-enter it', 'error'); return }
+                window.location.href = startGmailOAuth(id)
+              }}
                 style={{ background: '#4285F4', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                 {tokenExpired ? '⟳ Reconnect Gmail' : 'Reconnect'}
               </button>
