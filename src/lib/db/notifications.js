@@ -8,7 +8,10 @@ export async function getNotifSettings(workspaceId) {
 export async function saveNotifSettings(workspaceId, settings) {
   const { error } = await supabase
     .from('notif_settings')
-    .upsert({ ...settings, workspace_id: workspaceId, updated_at: new Date().toISOString() })
+    .upsert(
+      { ...settings, workspace_id: workspaceId, updated_at: new Date().toISOString() },
+      { onConflict: 'workspace_id' }
+    )
   if (error) throw error
 }
 
