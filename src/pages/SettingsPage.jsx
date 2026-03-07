@@ -5,7 +5,6 @@ import { useData } from '../contexts/DataContext'
 import { supabase } from '../lib/supabase'
 import { NOTIFICATION_TRIGGERS } from '../lib/constants'
 import { Toggle, Btn, Avatar, Badge, Spinner } from '../components/UI'
-import { startGmailOAuth, parseOAuthToken, getGmailAddress } from '../lib/gmail'
 import { getWorkspaceMembers, regenerateInviteCode, updateWorkspaceName, removeMember } from '../lib/db/workspace'
 
 function useS() {
@@ -233,78 +232,71 @@ function NotificationsTab({ toast }) {
   const { notifSettings, updateNotifSettings } = useData()
   const { colors } = useTheme()
   const { iStyle, lStyle } = useS()
-  const [clientId,       setClientId]       = useState(notifSettings?.gmail_client_id || '')
-  const [token,          setToken]          = useState(notifSettings?.gmail_access_token || null)
-  const [expiresAt,      setExpiresAt]      = useState(notifSettings?.gmail_expires_at || null)
-  const [email,          setEmail]          = useState(notifSettings?.gmail_email || null)
+  const [apiKey,         setApiKey]         = useState(notifSettings?.resend_api_key || '')
+  const [fromEmail,      setFromEmail]      = useState(notifSettings?.resend_from || 'notifications@homzmart.com')
   const [triggers,       setTriggers]       = useState(notifSettings?.enabled_triggers || { task_assigned: true, status_changed: true, task_completed: true, new_task: false })
   const [notifyAssignee, setNotifyAssignee] = useState(notifSettings?.notify_assignee ?? true)
   const [extraEmails,    setExtraEmails]    = useState(notifSettings?.extra_emails || '')
   const [saving,         setSaving]         = useState(false)
+  const [testing,        setTesting]        = useState(false)
 
-  const tokenExpired = expiresAt && Date.now() > expiresAt
-
-  // Sync clientId if notifSettings loads after mount
+  // Sync if notifSettings loads after mount
   useEffect(() => {
-    if (notifSettings?.gmail_client_id && !clientId) setClientId(notifSettings.gmail_client_id)
-    if (notifSettings?.gmail_expires_at && !expiresAt) setExpiresAt(notifSettings.gmail_expires_at)
-  }, [notifSettings?.gmail_client_id, notifSettings?.gmail_expires_at])
-
-  useEffect(() => {
-    const result = parseOAuthToken()
-    if (result?.token) {
-      getGmailAddress(result.token).then(addr => {
-        setToken(result.token)
-        setExpiresAt(result.expiresAt)
-        setEmail(addr)
-        toast(`Gmail connected: ${addr}`, 'success')
-      })
-    }
-  }, [])
+    if (notifSettings?.resend_api_key && !apiKey) setApiKey(notifSettings.resend_api_key)
+    if (notifSettings?.resend_from && !fromEmail) setFromEmail(notifSettings.resend_from)
+  }, [notifSettings?.resend_api_key, notifSettings?.resend_from])
 
   async function handleSave() {
     setSaving(true)
     try {
-      await updateNotifSettings({ gmail_client_id: clientId, gmail_access_token: token, gmail_expires_at: expiresAt, gmail_email: email, enabled_triggers: triggers, notify_assignee: notifyAssignee, extra_emails: extraEmails })
+      await updateNotifSettings({ resend_api_key: apiKey.trim(), resend_from: fromEmail.trim(), enabled_triggers: triggers, notify_assignee: notifyAssignee, extra_emails: extraEmails })
       toast('Saved', 'success')
     } catch (e) { toast(e.message, 'error') } finally { setSaving(false) }
+  }
+
+  async function handleTest() {
+    if (!apiKey.trim()) { toast('Enter API key first', 'error'); return }
+    setTesting(true)
+    try {
+      const { sendEmail } = await import('../lib/gmail')
+      await sendEmail(apiKey.trim(), {
+        to: notifSettings?.extra_emails?.split(',')[0]?.trim() || 'test@homzmart.com',
+        from: fromEmail || 'notifications@homzmart.com',
+        subject: '[Pulse] Test email ✓',
+        html: '<div style="font-family:sans-serif;padding:20px"><h2>◈ Pulse</h2><p>Your Resend integration is working!</p></div>',
+      })
+      toast('Test email sent! Check your inbox.', 'success')
+    } catch(e) { toast(`Test failed: ${e.message}`, 'error') } finally { setTesting(false) }
   }
 
   return (
     <div>
       <Section>
-        <SectionTitle>Gmail Integration</SectionTitle>
-        <SectionDesc>Connect Gmail to send automated notifications to your team.</SectionDesc>
-        {!email ? (
-          <>
-            <label style={lStyle}>Google OAuth Client ID</label>
-            <input value={clientId} onChange={e => setClientId(e.target.value)} placeholder="xxxxxx.apps.googleusercontent.com" style={{ ...iStyle, marginBottom: 14 }} />
-            <button onClick={() => { if (!clientId.trim()) { toast('Enter Client ID first', 'error'); return } window.location.href = startGmailOAuth(clientId.trim()) }}
-              style={{ background: '#4285F4', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer', lineHeight: 1.4 }}>
-              Sign in with Google
-            </button>
-          </>
-        ) : (
-          <div style={{ background: colors.bg, border: `1px solid ${tokenExpired ? colors.red : colors.green}44`, borderRadius: 12, padding: 16 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6, lineHeight: 1.4 }}>
-              {tokenExpired ? '⚠ Token expired — ' : '✉ Connected: '}{email}
-            </div>
-            {tokenExpired && (
-              <div style={{ fontSize: 12, color: colors.red, marginBottom: 10, lineHeight: 1.5 }}>
-                Gmail tokens expire after ~1 hour. Click <strong>Reconnect</strong> to get a fresh token — emails won't send until you do.
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => {
-                const id = clientId || notifSettings?.gmail_client_id
-                if (!id) { toast('Client ID missing — please disconnect and re-enter it', 'error'); return }
-                window.location.href = startGmailOAuth(id)
-              }}
-                style={{ background: '#4285F4', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                {tokenExpired ? '⟳ Reconnect Gmail' : 'Reconnect'}
-              </button>
-              <Btn size="sm" variant="danger" onClick={() => { setToken(null); setExpiresAt(null); setEmail(null) }}>Disconnect</Btn>
-            </div>
+        <SectionTitle>Email Integration (Resend)</SectionTitle>
+        <SectionDesc>Resend sends emails on behalf of Pulse — no OAuth, no expiry, just a permanent API key.</SectionDesc>
+        <label style={lStyle}>Resend API Key</label>
+        <input
+          value={apiKey}
+          onChange={e => setApiKey(e.target.value)}
+          placeholder="re_xxxxxxxxxxxxxxxxxxxx"
+          type="password"
+          style={{ ...iStyle, marginBottom: 12, fontFamily: 'monospace', fontSize: 13 }}
+        />
+        <label style={lStyle}>From Email Address</label>
+        <input
+          value={fromEmail}
+          onChange={e => setFromEmail(e.target.value)}
+          placeholder="notifications@homzmart.com"
+          style={{ ...iStyle, marginBottom: 14 }}
+        />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn size="sm" onClick={handleTest} disabled={testing || !apiKey.trim()}>
+            {testing ? 'Sending…' : 'Send test email'}
+          </Btn>
+        </div>
+        {apiKey && (
+          <div style={{ marginTop: 12, fontSize: 12, color: colors.green }}>
+            ✓ API key set — emails will send permanently without re-authentication
           </div>
         )}
       </Section>
