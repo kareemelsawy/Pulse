@@ -1,261 +1,218 @@
-# Pulse SendGrid Email Integration
+# Pulse - Project Management App
 
-Complete setup files for migrating your Pulse application from Gmail to SendGrid for notification emails.
+A modern project management application built with React, Supabase, and SendGrid.
 
-## 📦 What's Included
+## Features
 
-```
-📁 SendGrid Integration Package
-├── 📄 SENDGRID_SETUP_GUIDE.md      # Complete step-by-step guide
-├── 📄 QUICK_SETUP_CHECKLIST.md     # Quick reference checklist
-├── 📄 TROUBLESHOOTING.md           # Common issues & solutions
-├── 📄 .env.example                 # Updated environment variables template
-├── 🔧 setup-sendgrid.sh            # Automated setup script
-├── 📁 send-email/
-│   └── index.ts                    # Supabase Edge Function (SendGrid)
-└── 📄 test-email-payload.json      # Test payload for verification
-```
+- ✅ Task management with assignments, priorities, and due dates
+- ✅ Project organization
+- ✅ Meeting minutes with action items
+- ✅ Guest user access for external collaborators
+- ✅ Email notifications via SendGrid
+- ✅ File attachments
+- ✅ Real-time updates
+- ✅ Team analytics
+- ✅ Dark theme UI
 
-## 🚀 Quick Start (15 minutes)
+## Tech Stack
 
-### Option A: Automated Setup (Recommended)
+- **Frontend**: React + Vite
+- **Database**: Supabase (PostgreSQL)
+- **Auth**: Supabase Auth (Google OAuth)
+- **Email**: SendGrid
+- **Deployment**: Vercel
+
+## Quick Start
+
+### 1. Clone and Install
 
 ```bash
-# 1. Copy the send-email folder to your project
-cp -r send-email/ pulse-v8-src/supabase/functions/
+git clone <your-repo-url>
+cd pulse
+npm install
+```
 
-# 2. Run the setup script
-cd pulse-v8-src
-chmod +x setup-sendgrid.sh
-./setup-sendgrid.sh
+### 2. Set Up Supabase
+
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Login to Supabase
+supabase login
+
+# Run the setup script
+chmod +x setup-supabase.sh
+./setup-supabase.sh
 ```
 
 The script will:
 - Link your Supabase project
-- Prompt for SendGrid credentials
-- Set up secrets
-- Deploy the function
+- Deploy the database schema
+- Deploy the send-email edge function
+- Create your .env file
 
-### Option B: Manual Setup
+### 3. Configure SendGrid
 
-Follow the detailed guide: **SENDGRID_SETUP_GUIDE.md**
-
-## ✅ Prerequisites
-
-Before starting, make sure you have:
-
-1. **SendGrid Account** (free tier is fine)
+1. **Get SendGrid API Key**:
    - Sign up at [sendgrid.com](https://sendgrid.com)
-   - Complete email verification
+   - Go to Settings → API Keys
+   - Create API Key with "Mail Send" permission
 
-2. **SendGrid API Key**
-   - Create at: Settings → API Keys
-   - Needs "Mail Send" permission
+2. **Verify Sender Email**:
+   - Go to Settings → Sender Authentication → Single Sender Verification
+   - Add and verify your email address
 
-3. **Verified Sender Email**
-   - Set up at: Settings → Sender Authentication → Single Sender
-   - Verify via email link
-
-4. **Supabase Project**
-   - Your existing Pulse project
-   - Get project ref from dashboard URL
-
-5. **Supabase CLI** (will install if needed)
+3. **Set Supabase Secrets**:
    ```bash
-   npm install -g supabase
+   supabase secrets set SENDGRID_API_KEY=your_api_key_here
+   supabase secrets set SENDGRID_FROM_EMAIL=verified@yourdomain.com
    ```
 
-## 📝 Step-by-Step Guide
+4. **Configure in App**:
+   - Start the dev server: `npm run dev`
+   - Go to Settings → Notifications
+   - Enter your verified sender email
+   - Click "Send Test Email" to verify
 
-### 1. SendGrid Setup (5 min)
-
-- Create account → Verify email
-- Create API Key → Copy it
-- Add Single Sender → Verify email
-- ✅ Ready for next step
-
-### 2. Deploy Edge Function (5 min)
+### 4. Run Development Server
 
 ```bash
-# Install & login
-npm install -g supabase
-supabase login
-
-# Link project
-cd pulse-v8-src
-supabase link --project-ref YOUR_PROJECT_REF
-
-# Create function
-supabase functions new send-email
-
-# Copy the provided index.ts content to:
-# supabase/functions/send-email/index.ts
-
-# Set secrets
-supabase secrets set SENDGRID_API_KEY=SG.xxxxx
-supabase secrets set SENDGRID_FROM_EMAIL=verified@email.com
-
-# Deploy
-supabase functions deploy send-email
+npm run dev
 ```
 
-### 3. Test (2 min)
+Visit `http://localhost:5173`
 
-```bash
-# View logs
-supabase functions logs send-email
+## Environment Variables
 
-# Test via dashboard
-# Go to: Supabase → Edge Functions → send-email → Invoke
-# Use test-email-payload.json content
+Create a `.env` file in the root:
 
-# Or test via curl (replace values)
-curl -X POST \
-  'https://YOUR_PROJECT.supabase.co/functions/v1/send-email' \
-  -H 'Content-Type: application/json' \
-  -H 'Authorization: Bearer YOUR_ANON_KEY' \
-  -d @test-email-payload.json
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### 4. Deploy to Vercel (3 min)
+Get these from: Supabase Dashboard → Settings → API
+
+## Deployment
+
+### Deploy to Vercel
 
 ```bash
-# Ensure environment variables are set in Vercel
-# VITE_SUPABASE_URL
-# VITE_SUPABASE_ANON_KEY
+# Install Vercel CLI
+npm install -g vercel
 
 # Deploy
 vercel --prod
 ```
 
-## ✨ What Changes?
+Or connect your GitHub repo to Vercel for automatic deployments.
 
-### Backend (Supabase)
-- **Old**: Edge Function called Gmail API with service account
-- **New**: Edge Function calls SendGrid API with API key
+**Environment Variables in Vercel**:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
-### Frontend (No changes required!)
-- `src/lib/gmail.js` already calls the edge function correctly
-- Email templates remain the same
-- No code changes needed
+## Project Structure
 
-### Configuration
-- **Old**: Gmail service account JSON in Supabase secrets
-- **New**: SendGrid API key and verified email in Supabase secrets
-
-## 🧪 Testing Your Setup
-
-### Quick Test Commands
-
-```bash
-# Check function is deployed
-supabase functions list
-
-# Check secrets are set
-supabase secrets list
-
-# View recent logs
-supabase functions logs send-email
-
-# Test send (update the email)
-supabase functions invoke send-email --payload '{
-  "to": "your-email@example.com",
-  "subject": "Test",
-  "html": "<h1>Hello!</h1>"
-}'
+```
+pulse/
+├── src/
+│   ├── components/       # React components
+│   ├── contexts/         # React contexts (Auth, Data, Theme)
+│   ├── pages/           # Application pages
+│   ├── lib/             # Utilities and database functions
+│   │   ├── gmail.js     # Email templates
+│   │   ├── supabase.js  # Supabase client
+│   │   └── db/          # Database operations
+│   └── ...
+├── supabase/
+│   ├── functions/
+│   │   └── send-email/  # SendGrid email edge function
+│   └── schema.sql       # Database schema
+├── setup-supabase.sh    # Automated setup script
+└── package.json
 ```
 
-### In Your Application
+## Database Schema
 
-1. Create a new task
-2. Assign it to a user
-3. Check that user receives an email notification
-4. Check Supabase logs for confirmation
+Tables:
+- `workspaces` - Organization/team data
+- `workspace_members` - Team members and roles
+- `projects` - Project containers
+- `tasks` - Task items
+- `meetings` - Meeting minutes
+- `guests` - External collaborators
+- `notif_settings` - Notification preferences
+- `notif_logs` - Notification history
 
-## 📖 Documentation
+All tables have Row Level Security (RLS) enabled.
 
-- **Full Setup Guide**: See `SENDGRID_SETUP_GUIDE.md` for detailed instructions
-- **Quick Reference**: See `QUICK_SETUP_CHECKLIST.md` for a condensed checklist
-- **Troubleshooting**: See `TROUBLESHOOTING.md` if you encounter issues
+## Commands
 
-## 🐛 Common Issues
+```bash
+# Development
+npm run dev              # Start dev server
+npm run build            # Build for production
+npm run preview          # Preview production build
 
-| Issue | Solution |
-|-------|----------|
-| "Email service not configured" | Set secrets: `supabase secrets set SENDGRID_API_KEY=...` |
-| "Sender not verified" | Complete Single Sender Verification in SendGrid |
-| "403 Forbidden" | API key needs "Mail Send" permission |
-| Emails in spam | Normal for new senders, will improve over time |
-| Not receiving emails | Check SendGrid Activity dashboard |
+# Supabase
+supabase functions deploy send-email    # Deploy edge function
+supabase functions logs send-email      # View logs
+supabase secrets list                   # List secrets
+supabase db push                        # Push schema changes
+```
 
-Full troubleshooting guide: **TROUBLESHOOTING.md**
+## Configuration
 
-## 📊 SendGrid Limits
+### SendGrid Setup
 
-| Plan | Emails/Day | Price |
-|------|------------|-------|
-| Free | 100 | $0 |
-| Essentials | 100,000 | $19.95/mo |
-| Pro | 1,500,000 | $89.95/mo |
+1. Create account at [sendgrid.com](https://sendgrid.com)
+2. Verify sender email
+3. Get API key
+4. Set Supabase secrets
+5. Configure in app Settings
 
-Start with free tier and upgrade as needed.
+### Google OAuth Setup
 
-## 🔒 Security Best Practices
+1. Go to Supabase Dashboard → Authentication → Providers
+2. Enable Google provider
+3. Add OAuth credentials
+4. Configure redirect URL
 
-1. ✅ Never commit API keys to Git
-2. ✅ Use `.env.example` for documentation only
-3. ✅ Store secrets in Supabase Edge Functions (not frontend)
-4. ✅ Use Domain Authentication in production (not just Single Sender)
-5. ✅ Rotate API keys regularly
-6. ✅ Monitor SendGrid activity for suspicious sends
+## Troubleshooting
 
-## 🎯 Production Recommendations
+### Emails Not Sending
 
-Before launching:
+Check Supabase logs:
+```bash
+supabase functions logs send-email
+```
 
-- [ ] Upgrade to Domain Authentication (better deliverability)
-- [ ] Set up SendGrid webhook for bounce handling
-- [ ] Monitor email sending volume
-- [ ] Test email templates across different clients
-- [ ] Set up alerts for failed sends
-- [ ] Document your SendGrid configuration
+Verify secrets are set:
+```bash
+supabase secrets list
+```
 
-## 🆘 Need Help?
+### Database Connection Issues
 
-1. Check **TROUBLESHOOTING.md** first
-2. View Supabase logs: `supabase functions logs send-email`
+- Verify `VITE_SUPABASE_URL` in .env
+- Check Supabase project is active
+- Ensure you're logged in: `supabase login`
+
+### Build Errors
+
+```bash
+npm install
+npm run build
+```
+
+## License
+
+Private project. All rights reserved.
+
+## Support
+
+For issues or questions:
+1. Check Supabase logs: `supabase functions logs send-email`
+2. Verify secrets: `supabase secrets list`
 3. Check SendGrid Activity dashboard
-4. Verify secrets: `supabase secrets list`
-5. Test directly: Use test-email-payload.json
-
-## 🔄 Migration Checklist
-
-Migrating from Gmail? Here's what to do:
-
-- [ ] Set up SendGrid account
-- [ ] Create and verify sender email
-- [ ] Get SendGrid API key
-- [ ] Deploy new edge function
-- [ ] Set Supabase secrets
-- [ ] Test email sending
-- [ ] Deploy to Vercel
-- [ ] Remove old Gmail credentials (optional)
-- [ ] Update any documentation
-
-## 📞 Support
-
-- **Supabase**: https://supabase.com/docs
-- **SendGrid**: https://docs.sendgrid.com
-- **Issues**: Check TROUBLESHOOTING.md
-
-## 🎉 Success!
-
-Once set up, your Pulse application will:
-- Send beautiful notification emails
-- Use reliable SendGrid infrastructure
-- Scale from 100 to millions of emails
-- Track delivery in SendGrid dashboard
-
----
-
-**Ready to start?** Follow the **QUICK_SETUP_CHECKLIST.md** or run **./setup-sendgrid.sh**
