@@ -232,29 +232,119 @@ function NotificationsTab({ toast }) {
   const { notifSettings, updateNotifSettings } = useData()
   const { colors } = useTheme()
   const { iStyle, lStyle } = useS()
+
+  const [apiKey,         setApiKey]         = useState(notifSettings?.sendgrid_api_key || '')
+  const [fromEmail,      setFromEmail]      = useState(notifSettings?.sendgrid_from_email || '')
+  const [fromName,       setFromName]       = useState(notifSettings?.sendgrid_from_name || 'Pulse')
   const [triggers,       setTriggers]       = useState(notifSettings?.enabled_triggers || { task_assigned: true, status_changed: true, task_completed: true, new_task: false })
   const [notifyAssignee, setNotifyAssignee] = useState(notifSettings?.notify_assignee ?? true)
   const [extraEmails,    setExtraEmails]    = useState(notifSettings?.extra_emails || '')
   const [saving,         setSaving]         = useState(false)
+  const [testing,        setTesting]        = useState(false)
+  const [showKey,        setShowKey]        = useState(false)
+
+  // Sync when notifSettings loads asynchronously
+  useEffect(() => {
+    if (notifSettings?.sendgrid_api_key  && !apiKey)    setApiKey(notifSettings.sendgrid_api_key)
+    if (notifSettings?.sendgrid_from_email && !fromEmail) setFromEmail(notifSettings.sendgrid_from_email)
+    if (notifSettings?.sendgrid_from_name  && !fromName)  setFromName(notifSettings.sendgrid_from_name)
+  }, [notifSettings?.sendgrid_api_key, notifSettings?.sendgrid_from_email, notifSettings?.sendgrid_from_name])
+
+  const isConnected = !!apiKey.trim()
 
   async function handleSave() {
+    if (!fromEmail.trim()) { toast('From email is required', 'error'); return }
     setSaving(true)
     try {
-      await updateNotifSettings({ enabled_triggers: triggers, notify_assignee: notifyAssignee, extra_emails: extraEmails })
+      await updateNotifSettings({
+        sendgrid_api_key: apiKey.trim(),
+        sendgrid_from_email: fromEmail.trim(),
+        sendgrid_from_name: fromName.trim() || 'Pulse',
+        enabled_triggers: triggers,
+        notify_assignee: notifyAssignee,
+        extra_emails: extraEmails,
+      })
       toast('Saved', 'success')
     } catch (e) { toast(e.message, 'error') } finally { setSaving(false) }
   }
 
+  async function handleTest() {
+    if (!apiKey.trim())    { toast('Enter your API key first', 'error'); return }
+    if (!fromEmail.trim()) { toast('Enter a From email first', 'error'); return }
+    const testTo = extraEmails.split(',')[0]?.trim() || fromEmail.trim()
+    setTesting(true)
+    try {
+      const { sendEmail } = await import('../lib/gmail')
+      await sendEmail({
+        apiKey: apiKey.trim(),
+        fromEmail: fromEmail.trim(),
+        fromName: fromName.trim() || 'Pulse',
+        to: testTo,
+        subject: '[Pulse] Test email ✓',
+        html: `<div style="font-family:'Segoe UI',sans-serif;padding:28px;background:#0D0F14;border-radius:12px;max-width:480px;">
+          <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:12px;">◈ Pulse</div>
+          <p style="color:#94A3B8;font-size:14px;margin:0;">Your SendGrid integration is working! Emails will be sent from <strong style="color:#E2E8F0;">${fromEmail.trim()}</strong>.</p>
+        </div>`,
+      })
+      toast(`Test email sent to ${testTo}`, 'success')
+    } catch(e) { toast(`Test failed: ${e.message}`, 'error') } finally { setTesting(false) }
+  }
+
+  const fieldBox = { background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 10 }
+
   return (
     <div>
+      {/* ── SendGrid Config ── */}
       <Section>
-        <SectionTitle>Email Notifications</SectionTitle>
-        <SectionDesc>Emails are sent automatically via your Google Workspace account. No setup required.</SectionDesc>
-        <div style={{ background: colors.bg, border: `1px solid ${colors.green}44`, borderRadius: 12, padding: '12px 16px', fontSize: 13, color: colors.green }}>
-          ✓ Connected via Google Service Account — never expires
+        <SectionTitle>SendGrid Integration</SectionTitle>
+        <SectionDesc>Connect SendGrid to send automated emails to your team. API keys never expire.</SectionDesc>
+
+        <div style={fieldBox}>
+          <label style={{ ...lStyle, marginBottom: 6 }}>API Key</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder="SG.xxxxxxxxxxxxxxxxxxxx"
+              type={showKey ? 'text' : 'password'}
+              style={{ ...iStyle, flex: 1, fontFamily: 'monospace', fontSize: 12, marginBottom: 0 }}
+            />
+            <button onClick={() => setShowKey(s => !s)} style={{ background: 'none', border: `1px solid ${colors.border}`, borderRadius: 7, padding: '6px 10px', color: colors.textMuted, cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>
+              {showKey ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {isConnected && <div style={{ marginTop: 8, fontSize: 11, color: colors.green }}>✓ API key set</div>}
+        </div>
+
+        <div style={fieldBox}>
+          <label style={{ ...lStyle, marginBottom: 6 }}>From Email</label>
+          <input
+            value={fromEmail}
+            onChange={e => setFromEmail(e.target.value)}
+            placeholder="notifications@yourdomain.com"
+            type="email"
+            style={{ ...iStyle, marginBottom: 8 }}
+          />
+          <label style={{ ...lStyle, marginBottom: 6 }}>From Name</label>
+          <input
+            value={fromName}
+            onChange={e => setFromName(e.target.value)}
+            placeholder="Pulse"
+            style={{ ...iStyle, marginBottom: 0 }}
+          />
+          <div style={{ marginTop: 8, fontSize: 11, color: colors.textMuted, lineHeight: 1.5 }}>
+            Must be a verified sender in your SendGrid account. Emails will show as <em>"{fromName || 'Pulse'} &lt;{fromEmail || 'you@domain.com'}&gt;"</em>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <Btn size="sm" onClick={handleTest} disabled={testing || !isConnected || !fromEmail.trim()}>
+            {testing ? 'Sending…' : '✉ Send test email'}
+          </Btn>
         </div>
       </Section>
 
+      {/* ── Triggers ── */}
       <Section>
         <SectionTitle>Notification Triggers</SectionTitle>
         <SectionDesc>Choose which events send an email notification.</SectionDesc>
@@ -271,10 +361,11 @@ function NotificationsTab({ toast }) {
         </div>
       </Section>
 
+      {/* ── Recipients ── */}
       <Section>
         <SectionTitle>Recipients</SectionTitle>
         <SectionDesc>Who receives notification emails.</SectionDesc>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: colors.bg, borderRadius: 10, border: `1px solid ${colors.border}`, marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: colors.bg, borderRadius: 10, border: `1px solid ${colors.border}`, marginBottom: 12 }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.4 }}>Notify task assignee</div>
             <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2, lineHeight: 1.4 }}>Email whoever the task is assigned to</div>
@@ -286,7 +377,7 @@ function NotificationsTab({ toast }) {
       </Section>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Notification Settings'}</Btn>
+        <Btn onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save Settings'}</Btn>
       </div>
     </div>
   )

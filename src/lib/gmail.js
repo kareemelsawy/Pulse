@@ -1,20 +1,26 @@
 import { NOTIFICATION_TRIGGERS, STATUS, PRIORITY } from './constants'
 
-// ─── Email sender via Supabase Edge Function ──────────────────────────────────
-// The Edge Function holds the Google Service Account credentials securely.
-// The app just calls it with to/subject/html — no secrets in the browser.
-export async function sendEmail(supabaseUrl, { to, subject, html }) {
-  const fnUrl = `${supabaseUrl}/functions/v1/send-email`
-  const res = await fetch(fnUrl, {
+// ─── SendGrid API sender ──────────────────────────────────────────────────────
+export async function sendEmail({ apiKey, fromEmail, fromName = 'Pulse', to, subject, html }) {
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to, subject, html }),
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: fromEmail, name: fromName },
+      subject,
+      content: [{ type: 'text/html', value: html }],
+    }),
   })
+  // SendGrid returns 202 Accepted on success (no body)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error || `Email send failed (${res.status})`)
+    const msg = err.errors?.[0]?.message || `SendGrid error ${res.status}`
+    throw new Error(msg)
   }
-  return res.json()
 }
 
 // ─── Email templates ──────────────────────────────────────────────────────────
