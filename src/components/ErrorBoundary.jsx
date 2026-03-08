@@ -20,10 +20,7 @@ export default class ErrorBoundary extends Component {
       }}>
         {/* Glass card */}
         <div style={{
-          background: 'rgba(255,255,255,0.07)',
-          backdropFilter: 'blur(40px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-          border: '1px solid rgba(255,255,255,0.15)',
+          background: COLORS.surface, border: '1px solid rgba(255,255,255,0.15)',
           borderRadius: 24,
           padding: '48px 44px',
           maxWidth: 480, width: '100%',
@@ -79,9 +76,7 @@ export default class ErrorBoundary extends Component {
             background: 'rgba(248,113,113,0.07)',
             border: '1px solid rgba(248,113,113,0.22)',
             borderRadius: 12, padding: '11px 16px',
-            marginBottom: 28, textAlign: 'left',
-            backdropFilter: 'blur(8px)',
-          }}>
+            marginBottom: 28, textAlign: 'left', }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(248,113,113,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>Error</div>
             <code style={{ fontSize: 12, color: 'rgba(248,113,113,0.85)', wordBreak: 'break-all', fontFamily: "'DM Mono', monospace", lineHeight: 1.5 }}>
               {this.state.error?.message || 'Unknown error'}
