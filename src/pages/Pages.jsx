@@ -6,6 +6,7 @@ import { Avatar, Badge, ProgressBar, Modal, Btn, Icon, lStyle, iStyle } from '..
 import { exportTasksCsv } from '../lib/db/tasks'
 import { getMeetings, deleteMeeting } from '../lib/db/meetings'
 import { BoardView, ListView } from '../components/TaskViews'
+import GanttChart from '../components/GanttChart'
 import TaskModal from '../components/TaskModal'
 import MeetingCard from '../components/MeetingCard'
 import MeetingModal from '../components/MeetingModal'
@@ -191,8 +192,22 @@ export function ProjectView({ project, toast }) {
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: 'auto', padding: mainTab === 'meetings' ? 0 : 22 }}>
-        {mainTab === 'tasks'    && (view === 'board' ? <BoardView tasks={filtered} onTaskClick={setTaskModal} /> : <ListView tasks={filtered} onTaskClick={setTaskModal} />)}
+      <div style={{ flex: 1, overflow: 'auto', padding: mainTab === 'meetings' ? 0 : 22, display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {mainTab === 'tasks' && filtered.some(t => t.due_date) && (
+          <div style={{ marginBottom: 18 }}>
+            <GanttChart
+              title={`${project.name} — Timeline`}
+              mode="tasks"
+              rows={filtered.filter(t => t.due_date).map(t => ({
+                id: t.id, label: t.title, status: t.status,
+                start: t.created_at?.split('T')[0] || t.due_date,
+                end: t.due_date,
+              }))}
+            />
+          </div>
+        )}
+        {mainTab === 'tasks' && view === 'board' && <BoardView tasks={filtered} onTaskClick={setTaskModal} />}
+        {mainTab === 'tasks' && view === 'list'  && <ListView tasks={filtered} onTaskClick={setTaskModal} />}
         {mainTab === 'meetings' && <MeetingsTab project={project} toast={toast} />}
       </div>
 

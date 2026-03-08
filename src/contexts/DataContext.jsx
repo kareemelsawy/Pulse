@@ -111,7 +111,8 @@ export function DataProvider({ children }) {
     if (notifSettings.extra_emails) notifSettings.extra_emails.split(',').map(e => e.trim()).filter(Boolean).forEach(e => recipients.add(e))
     if (!recipients.size) return
     const cfg = emailConfig()
-    const { subject, html } = buildNotificationEmail({ trigger, task, projectName, actorName, extraInfo })
+    const appUrl = window.location.origin
+    const { subject, html } = buildNotificationEmail({ trigger, task, projectName, actorName, extraInfo, appUrl })
     let successes = 0, failures = 0
     await Promise.all([...recipients].map(async to => {
       let status = 'success'
@@ -222,7 +223,7 @@ export function DataProvider({ children }) {
       setWorkspace,
       addProject, editProject, removeProject, importProjects,
       addTask, editTask, removeTask, importTasks,
-      updateNotifSettings, sendNotification, sendMeetingInvites, sendRawEmail,
+      updateNotifSettings, sendNotification, sendMeetingInvites, sendRawEmail, fireNotification: sendNotification,
       getProjectTasks, myTasks,
     }}>
       {children}

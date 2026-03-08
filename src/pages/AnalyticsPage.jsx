@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useData } from '../contexts/DataContext'
 import { COLORS, STATUS, PRIORITY } from '../lib/constants'
 import { Icon } from '../components/UI'
+import GanttChart from '../components/GanttChart'
 
 function StatCard({ title, value, sub, color, icon }) {
   return (
@@ -294,6 +295,29 @@ export default function AnalyticsPage() {
             </div>
           </div>
         )}
+
+        {/* ── All-Projects Gantt ── */}
+        <GanttChart
+          title="All Projects — Timeline"
+          mode="projects"
+          rows={projects.map(p => {
+            const ptasks = tasks.filter(t => t.project_id === p.id && t.due_date)
+            const dates  = ptasks.map(t => t.due_date).sort()
+            const start  = ptasks.find(t => t.created_at)?.created_at?.split('T')[0] || dates[0] || null
+            return { id: p.id, label: p.name, color: p.color, start, end: dates[dates.length - 1] || null }
+          })}
+        />
+
+        {/* ── All-Tasks Gantt ── */}
+        <GanttChart
+          title="All Tasks — Timeline"
+          mode="tasks"
+          rows={tasks.filter(t => t.due_date).map(t => ({
+            id: t.id, label: t.title, status: t.status,
+            start: t.created_at?.split('T')[0] || t.due_date,
+            end: t.due_date,
+          }))}
+        />
       </div>
     </div>
   )

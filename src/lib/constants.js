@@ -68,4 +68,6 @@ export const NOTIFICATION_TRIGGERS = {
   status_changed:{ label: 'Status Changed',    desc: 'When a task status changes' },
   task_completed:{ label: 'Task Completed',    desc: 'When a task is marked done' },
   new_task:      { label: 'New Task Created',  desc: 'When a new task is added' },
+  comment_added: { label: 'Comment Added',     desc: 'When a comment is posted on a task' },
+  file_added:    { label: 'File Attached',     desc: 'When a file is attached to a task' },
 }

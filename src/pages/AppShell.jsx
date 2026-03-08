@@ -13,7 +13,7 @@ import AnalyticsPage from './AnalyticsPage'
 export default function AppShell({ toast }) {
   const { user, signOut } = useAuth()
   const { workspace, projects, getProjectTasks, loading } = useData()
-  const { isDark, toggleTheme, setAutoTheme } = useTheme()
+  const { isDark, toggleTheme } = useTheme()
   const [view, setView]                       = useState('overview')
   const [activeProjectId, setActiveProjectId] = useState(null)
   const [sidebarOpen, setSidebarOpen]         = useState(true)
@@ -161,17 +161,15 @@ export default function AppShell({ toast }) {
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </span>
           <div style={{ marginLeft: 'auto' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden' }}>
-            <button onClick={toggleTheme} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              style={{ background: 'none', border: 'none', padding: '5px 10px', cursor: 'pointer', color: COLORS.textDim, display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}>
-              {isDark ? <Icon name="sun" size={15} color={COLORS.textMuted} /> : <Icon name="moon" size={15} color={COLORS.textMuted} />}
-              <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.textDim }}>{isDark ? 'Light' : 'Dark'}</span>
-            </button>
-            <button onClick={setAutoTheme} title="Auto: dark 6 PM to 6 AM, light otherwise"
-              style={{ background: 'none', border: 'none', borderLeft: `1px solid ${COLORS.border}`, padding: '5px 8px', cursor: 'pointer', fontSize: 11, color: COLORS.textMuted, fontFamily: 'inherit' }}>
-              Auto
-            </button>
-          </div>
+          <button
+            onClick={toggleTheme}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 8, width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s, border-color 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = COLORS.inputBg; e.currentTarget.style.borderColor = COLORS.borderStrong }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = COLORS.border }}
+          >
+            {isDark ? <Icon name="sun" size={15} color={COLORS.textMuted} /> : <Icon name="moon" size={15} color={COLORS.textMuted} />}
+          </button>
         </header>
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {view === 'overview'  && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} workspaceName={workspace?.name} />}

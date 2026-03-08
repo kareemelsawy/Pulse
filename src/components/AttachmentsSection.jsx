@@ -2,10 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { COLORS } from '../lib/constants'
 import { Icon } from './UI'
 import { getAttachments, uploadAttachment, deleteAttachment } from '../lib/db/tasks'
+import { useData } from '../contexts/DataContext'
+import { useAuth } from '../contexts/AuthContext'
 
-export default function AttachmentsSection({ taskId, toast }) {
+export default function AttachmentsSection({ taskId, task, toast }) {
   const [attachments, setAttachments] = useState([])
   const [loading,     setLoading]     = useState(true)
+  const { projects, fireNotification } = useData()
+  const { user } = useAuth()
   const [uploading,   setUploading]   = useState(false)
   const [storageOk,   setStorageOk]   = useState(true)
   const fileRef = useRef(null)
@@ -26,6 +30,10 @@ export default function AttachmentsSection({ taskId, toast }) {
       const rec = await uploadAttachment(taskId, file)
       setAttachments(prev => [...prev, rec])
       toast?.('File uploaded', 'success')
+      if (task) {
+        const proj = projects?.find(p => p.id === task.project_id)
+        fireNotification?.({ trigger: 'file_added', task, projectName: proj?.name || '', actorName: user?.user_metadata?.full_name || user?.email || 'Someone' })
+      }
     } catch(err) {
       if (err?.message?.includes('Bucket') || err?.message?.includes('bucket')) setStorageOk(false)
       else toast?.(err.message, 'error')

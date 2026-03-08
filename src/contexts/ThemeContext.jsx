@@ -14,26 +14,12 @@ function applyTheme(isDark) {
 }
 
 function shouldAutoDark() {
-  const h = new Date().getHours()
-  return h >= 18 || h < 6  // dark from 6 PM to 6 AM
-}
-
-// ms until the next 06:00 or 18:00 boundary
-function msUntilNextBoundary() {
-  const now  = new Date()
-  const h    = now.getHours()
-  const m    = now.getMinutes()
-  const s    = now.getSeconds()
-  const ms   = now.getMilliseconds()
-  const elapsed = ((h % 12) * 3600 + m * 60 + s) * 1000 + ms
-  const halfDay = 12 * 3600 * 1000
-  return halfDay - (elapsed % halfDay)
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
 }
 
 export function ThemeProvider({ children }) {
-  // manual override: null = follow auto, 'dark'/'light' = user chose
+  // null = follow system, 'dark'/'light' = user explicit override
   const [override, setOverride] = useState(() => localStorage.getItem('pulse_theme_override') || null)
-  const [tick,     setTick]     = useState(0)   // increment to force re-render on boundary
 
   const isDark = override === 'dark' ? true
                : override === 'light' ? false
@@ -69,7 +55,6 @@ export function ThemeProvider({ children }) {
   const setAutoTheme = useCallback(() => {
     setOverride(null)
     localStorage.removeItem('pulse_theme_override')
-    setTick(t => t + 1)
   }, [])
 
   const colors = isDark ? DARK_THEME : LIGHT_THEME

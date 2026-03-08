@@ -23,7 +23,7 @@ export async function sendEmail({ apiKey, functionSecret, fromEmail, fromName = 
 
 // ─── Email templates ──────────────────────────────────────────────────────────
 
-export function buildNotificationEmail({ trigger, task, projectName, actorName, extraInfo }) {
+export function buildNotificationEmail({ trigger, task, projectName, actorName, extraInfo, appUrl }) {
   const triggerLabel = NOTIFICATION_TRIGGERS[trigger]?.label || trigger
   const statusColor = STATUS[task.status]?.color || '#888'
   const statusLabel = STATUS[task.status]?.label || task.status
@@ -35,14 +35,14 @@ export function buildNotificationEmail({ trigger, task, projectName, actorName, 
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:20px;background:#f1f5f9;font-family:'Segoe UI',sans-serif;">
   <div style="max-width:540px;margin:0 auto;background:#0D0F14;border-radius:16px;overflow:hidden;border:1px solid #252A3A;">
-    <div style="background:linear-gradient(135deg,#4F8EF7,#A78BFA);padding:22px 26px;display:flex;align-items:center;">
-      <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px;flex:1;">◈ Pulse</span>
-      <span style="background:rgba(255,255,255,0.2);color:#fff;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600;">${triggerLabel}</span>
+    <div style="background:linear-gradient(135deg,#4F8EF7,#A78BFA);padding:22px 26px;">
+      <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px;">◈ Pulse</span>
     </div>
     <div style="padding:26px;">
       <p style="color:#94A3B8;font-size:13px;margin:0 0 6px;">
         <strong style="color:#E2E8F0;">${actorName}</strong> — ${projectName}
       </p>
+      <p style="color:#94A3B8;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin:0 0 6px;">${triggerLabel}</p>
       <h2 style="color:#E2E8F0;font-size:19px;margin:0 0 20px;font-weight:700;">${task.title}</h2>
       <table style="width:100%;border-collapse:collapse;background:#141720;border-radius:10px;overflow:hidden;border:1px solid #252A3A;">
         <tr>
@@ -65,13 +65,16 @@ export function buildNotificationEmail({ trigger, task, projectName, actorName, 
         </tr>` : ''}
       </table>
       ${extraInfo ? `<p style="margin:14px 0 0;color:#94A3B8;font-size:12px;">${extraInfo}</p>` : ''}
-      <p style="margin:22px 0 0;color:#475569;font-size:11px;text-align:center;">Sent by ◈ Pulse</p>
+      <div style="margin-top:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <p style="color:#475569;font-size:11px;margin:0;">Sent by ◈ Pulse</p>
+        <a href="${appUrl || '#'}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#A78BFA);color:#fff;text-decoration:none;padding:10px 22px;border-radius:10px;font-weight:700;font-size:13px;">View Task →</a>
+      </div>
     </div>
   </div>
 </body>
 </html>`
 
-  return { subject: `[Pulse] ${triggerLabel}: ${task.title}`, html }
+  return { subject: `${triggerLabel}: ${task.title}`, html }
 }
 
 export function buildGuestInviteEmail({ assigneeName, assignerName, taskTitle, projectName, appUrl }) {
@@ -96,15 +99,18 @@ export function buildGuestInviteEmail({ assigneeName, assignerName, taskTitle, p
           <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;">${assignerName}</td>
         </tr>
       </table>
-      <div style="margin-top:22px;text-align:center;">
+      <div style="margin-top:22px;">
         <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#A78BFA);color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;">View Your Tasks →</a>
       </div>
-      <p style="margin:20px 0 0;color:#475569;font-size:11px;text-align:center;">Sign in with your @homzmart.com Google account to see your assigned tasks and meetings.</p>
+      <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <p style="color:#475569;font-size:11px;margin:0;">Sent by ◈ Pulse</p>
+        <p style="color:#475569;font-size:11px;margin:0;">Sign in with your Google account to view your tasks.</p>
+      </div>
     </div>
   </div>
 </body>
 </html>`
-  return { subject: `[Pulse] You've been assigned: ${taskTitle}`, html }
+  return { subject: `You've been assigned: ${taskTitle}`, html }
 }
 
 export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate, projectName, attendeeList, summary, actionItems, appUrl }) {
@@ -156,13 +162,15 @@ export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate
         </tr>` : ''}
       </table>
       ${actionsHtml}
-      <div style="margin-top:22px;text-align:center;">
+      <div style="margin-top:22px;">
         <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#A78BFA);color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;">Open in Pulse →</a>
       </div>
-      <p style="margin:18px 0 0;color:#475569;font-size:11px;text-align:center;">Sent via ◈ Pulse</p>
+      <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <p style="color:#475569;font-size:11px;margin:0;">Sent by ◈ Pulse</p>
+      </div>
     </div>
   </div>
 </body>
 </html>`
-  return { subject: `[Pulse] Meeting minutes: ${meetingTitle}`, html }
+  return { subject: `Meeting minutes: ${meetingTitle}`, html }
 }
