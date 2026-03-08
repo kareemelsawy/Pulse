@@ -9,7 +9,7 @@ function applyTheme(isDark) {
   const root = document.documentElement
   Object.entries(t).forEach(([k, v]) => root.style.setProperty(`--color-${k}`, v))
   root.setAttribute('data-theme', isDark ? 'dark' : 'light')
-  document.body.style.background = t.bg
+  // Background is a CSS gradient — don't override it
   document.body.style.color = t.text
 }
 

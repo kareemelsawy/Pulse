@@ -156,7 +156,7 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
               const iconName = k === 'high' ? 'priorityHigh' : k === 'medium' ? 'priorityMed' : 'priorityLow'
               const active = priority === k
               return (
-                <button key={k} onClick={() => setPriority(k)} style={{ flex: 1, padding: '10px 8px', borderRadius: 10, border: `2px solid ${active ? v.color : COLORS.border}`, background: active ? v.color + '18' : COLORS.inputBg, color: active ? v.color : COLORS.textMuted, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}>
+                <button key={k} onClick={() => setPriority(k)} style={{ flex: 1, padding: '10px 8px', borderRadius: 10, border: `2px solid ${active ? v.color : COLORS.border}`, background: active ? v.color + '25' : 'rgba(255,255,255,0.06)', color: active ? v.color : COLORS.textMuted, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}>
                   <Icon name={iconName} size={14} color={active ? v.color : COLORS.textMuted} />
                   {v.label}
                 </button>
@@ -182,7 +182,7 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
                 ].map(m => {
                   const active = assigneeId === m.user_id
                   return (
-                    <button key={m.user_id} onClick={() => setAssigneeId(m.user_id)} style={{ padding: '6px 14px', borderRadius: 20, border: `2px solid ${active ? COLORS.accent : COLORS.border}`, background: active ? COLORS.accent + '18' : COLORS.inputBg, color: active ? COLORS.accent : COLORS.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: active ? 700 : 400, fontSize: 12, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button key={m.user_id} onClick={() => setAssigneeId(m.user_id)} style={{ padding: '6px 14px', borderRadius: 20, border: `2px solid ${active ? COLORS.accent : COLORS.border}`, background: active ? COLORS.accent + '25' : 'rgba(255,255,255,0.07)', color: active ? COLORS.accent : COLORS.textDim, cursor: 'pointer', fontFamily: 'inherit', fontWeight: active ? 700 : 400, fontSize: 12, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {!m.isUnassigned && <Avatar name={m.display} size={16} />}
                       {m.display}
                     </button>
@@ -225,7 +225,7 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
                 {comments.map(c => (
                   <div key={c.id} style={{ display: 'flex', gap: 10 }}>
                     <Avatar name={c.author_name} size={28} />
-                    <div style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '9px 12px' }}>
+                    <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 10, padding: '9px 12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                         <span style={{ fontWeight: 700, fontSize: 12 }}>{c.author_name}</span>
                         <span style={{ fontSize: 10, color: COLORS.textMuted }}>{new Date(c.created_at).toLocaleString()}</span>

@@ -76,7 +76,7 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
                   const ov = ptasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date()).length
                   return (
                     <div key={p.id} onClick={() => onOpenProject(p)}
-                      style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, cursor: 'pointer', borderLeft: `4px solid ${p.color}`, transition: 'all 0.2s' }}
+                      style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 18, cursor: 'pointer', borderLeft: `4px solid ${p.color}`, transition: 'all 0.2s' }}
                       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = COLORS.cardShadow }}
                       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}>
                       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{p.name}</div>
@@ -94,7 +94,7 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
           <div>
             <h2 style={{ fontWeight: 600, fontSize: 13, color: COLORS.textDim, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 14, margin: '0 0 14px' }}>My Tasks</h2>
             {myTasks.length === 0 ? (
-              <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: '28px 20px', textAlign: 'center' }}>
+              <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '28px 20px', textAlign: 'center' }}>
                 <Icon name="check" size={28} color={COLORS.green} />
                 <div style={{ fontWeight: 600, fontSize: 14, marginTop: 10 }}>All caught up!</div>
                 <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>No open tasks assigned to you</div>
@@ -155,7 +155,7 @@ export function ProjectView({ project, toast }) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '0 22px', height: 54, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 10, background: COLORS.surface, flexShrink: 0 }}>
+      <div style={{ padding: '0 22px', height: 54, borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', flexShrink: 0 }}>
         <div style={{ width: 11, height: 11, borderRadius: '50%', background: project.color, flexShrink: 0 }} />
         <h1 style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.01em', paddingBottom: 1 }}>{project.name}</h1>
         <button onClick={() => setEditProjOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: '2px 6px', display: 'flex', alignItems: 'center' }}><Icon name="edit" size={14} color={COLORS.textMuted} /></button>
@@ -182,9 +182,9 @@ export function ProjectView({ project, toast }) {
       </div>
 
       {mainTab === 'tasks' && (
-        <div style={{ padding: '8px 22px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 8, alignItems: 'center', background: COLORS.surface, flexShrink: 0 }}>
+        <div style={{ padding: '8px 22px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', gap: 8, alignItems: 'center', background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', flexShrink: 0 }}>
           <span style={{ fontSize: 12, color: COLORS.textMuted }}>Status:</span>
-          <select value={filterS} onChange={e => setFilterS(e.target.value)} style={{ background: COLORS.inputBg, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '4px 8px', fontSize: 12, outline: 'none' }}>
+          <select value={filterS} onChange={e => setFilterS(e.target.value)} style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)', color: COLORS.textDim, borderRadius: 8, padding: '4px 8px', fontSize: 12, outline: 'none' }}>
             <option value="all">All</option>
             {Object.entries(STATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
@@ -487,7 +487,7 @@ export function PipelineView({ onConvertToProject, toast }) {
 function PipelineCard({ project: p, converting, onEdit, onConvert, onDelete }) {
   const [confirmDel, setConfirmDel] = useState(false)
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', borderLeft: `4px solid ${p.color}` }}>
+    <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', borderLeft: `4px solid ${p.color}` }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />

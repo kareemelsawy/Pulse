@@ -7,8 +7,8 @@ import { Icon, Spinner } from '../components/UI'
 export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }) {
   const { user } = useAuth()
   const { colors: C } = useTheme()
-  const wrap = { minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 20 }
-  const card = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: '44px 40px', width: 460, maxWidth: '100%', boxShadow: `0 32px 80px ${C.shadow}` }
+  const wrap = { minHeight: '100vh', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 20 }
+  const card = { background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(32px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, padding: '44px 40px', width: 460, maxWidth: '100%', boxShadow: `0 32px 80px ${C.shadow}` }
   const inp  = { width: '100%', background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 14, fontFamily: 'inherit', outline: 'none' }
   const lbl  = { fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }
   const [code,    setCode]    = useState(defaultCode)

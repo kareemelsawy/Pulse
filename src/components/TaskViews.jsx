@@ -8,8 +8,8 @@ export function BoardView({ tasks, onTaskClick }) {
       {Object.entries(STATUS).map(([sk, sm]) => {
         const col = tasks.filter(t => t.status === sk)
         return (
-          <div key={sk} style={{ flex: '0 0 260px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 15px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div key={sk} style={{ flex: '0 0 264px', background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: '1px solid rgba(255,255,255,0.11)', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 15px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: sm.color }} />
               <span style={{ fontWeight: 700, fontSize: 13 }}>{sm.label}</span>
               <span style={{ marginLeft: 'auto', background: COLORS.border, borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700, color: COLORS.textMuted }}>{col.length}</span>
@@ -17,9 +17,9 @@ export function BoardView({ tasks, onTaskClick }) {
             <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 6, minHeight: 60 }}>
               {col.map(t => (
                 <div key={t.id} onClick={() => onTaskClick(t)}
-                  style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '11px 13px', cursor: 'pointer', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = COLORS.surfaceHover; e.currentTarget.style.transform = 'translateY(-1px)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = COLORS.bg; e.currentTarget.style.transform = '' }}>
+                  style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 10, padding: '12px 14px', cursor: 'pointer', transition: 'all 0.18s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.10)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginBottom: 8 }}>
                     <span style={{ fontWeight: 500, fontSize: 13, lineHeight: 1.4 }}>{t.title}</span>
                     <PriorityIcon priority={t.priority} />
@@ -41,14 +41,14 @@ export function BoardView({ tasks, onTaskClick }) {
 
 export function ListView({ tasks, onTaskClick }) {
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: 'hidden' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 120px 90px 90px', padding: '9px 15px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+    <div style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: '1px solid rgba(255,255,255,0.11)', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 120px 90px 90px', padding: '9px 15px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', background: 'rgba(255,255,255,0.04)' }}>
         <span>Task</span><span>Status</span><span>Assignee</span><span>Priority</span><span>Due</span>
       </div>
       {tasks.map((t, i) => (
         <div key={t.id} onClick={() => onTaskClick(t)}
-          style={{ display: 'grid', gridTemplateColumns: '1fr 110px 120px 90px 90px', padding: '11px 15px', borderBottom: i < tasks.length-1 ? `1px solid ${COLORS.border}` : 'none', cursor: 'pointer', alignItems: 'center', transition: 'background 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
+          style={{ display: 'grid', gridTemplateColumns: '1fr 110px 120px 90px 90px', padding: '11px 15px', borderBottom: i < tasks.length-1 ? '1px solid rgba(255,255,255,0.07)' : 'none', cursor: 'pointer', alignItems: 'center', transition: 'background 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
           onMouseLeave={e => e.currentTarget.style.background = ''}>
           <span style={{ fontWeight: 500, paddingRight: 12 }}>{t.title}</span>
           <Badge color={STATUS[t.status]?.color || '#888'}>{STATUS[t.status]?.label}</Badge>

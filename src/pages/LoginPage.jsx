@@ -5,29 +5,60 @@ import { useTheme } from '../contexts/ThemeContext'
 
 function useC() { const { colors } = useTheme(); return colors }
 function mkS(C) {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light'
   return {
-    wrap: { minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans','Segoe UI',sans-serif", padding: 20 },
-    card: { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: '44px 40px', width: 420, maxWidth: '100%', boxShadow: `0 24px 64px ${C.shadow}`, display: 'flex', flexDirection: 'column', alignItems: 'center' },
-    inp:  { width: '100%', background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 14px', color: C.text, fontSize: 14, marginBottom: 12, outline: 'none', fontFamily: 'inherit' },
+    wrap: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
+    card: {
+      background: isLight ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.07)',
+      backdropFilter: 'blur(40px) saturate(200%)',
+      WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+      border: `1px solid ${isLight ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.15)'}`,
+      borderRadius: 24, padding: '44px 40px', width: 420, maxWidth: '100%',
+      boxShadow: isLight
+        ? '0 24px 80px rgba(60,50,120,0.16), inset 0 1px 0 rgba(255,255,255,1)'
+        : '0 24px 80px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.10)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      animation: 'slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+    },
+    inp:  {
+      width: '100%',
+      background: isLight ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.07)',
+      backdropFilter: 'blur(8px)',
+      border: `1px solid ${isLight ? 'rgba(120,100,200,0.22)' : 'rgba(255,255,255,0.13)'}`,
+      borderRadius: 10, padding: '10px 14px',
+      color: C.text, fontSize: 14, marginBottom: 12,
+      outline: 'none', fontFamily: 'inherit',
+      transition: 'border-color 0.15s, box-shadow 0.15s',
+    },
     lbl:  { fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 },
-    btn:  { width: '100%', padding: '12px 20px', background: C.accent, color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 2px 12px rgba(79,142,247,0.3)', fontFamily: 'inherit' },
-    gBtn: { width: '100%', padding: '11px 20px', background: C.surface, color: C.text, border: `1px solid ${C.border}`, borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontFamily: 'inherit', marginBottom: 12 },
+    btn:  {
+      width: '100%', padding: '12px 20px',
+      background: 'linear-gradient(135deg, #6B8EF7, #C084FC)',
+      color: '#fff', border: '1px solid rgba(255,255,255,0.20)',
+      borderRadius: 12, fontWeight: 700, fontSize: 14,
+      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+      boxShadow: '0 4px 20px rgba(107,142,247,0.45), inset 0 1px 0 rgba(255,255,255,0.20)',
+      fontFamily: 'inherit', transition: 'all 0.18s',
+    },
+    gBtn: {
+      width: '100%', padding: '11px 20px',
+      background: isLight ? 'rgba(255,255,255,0.60)' : 'rgba(255,255,255,0.08)',
+      backdropFilter: 'blur(12px)',
+      color: C.text,
+      border: `1px solid ${isLight ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.15)'}`,
+      borderRadius: 12, fontWeight: 600, fontSize: 14,
+      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+      fontFamily: 'inherit', marginBottom: 12, transition: 'all 0.18s',
+    },
   }
 }
 
-function Glows() {
-  return (
-    <>
-      <div style={{ position: 'fixed', top: -200, right: -200, width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(79,142,247,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
-      <div style={{ position: 'fixed', bottom: -200, left: -200, width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(167,139,250,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
-    </>
-  )
-}
+function Glows() { return null }
 
 function Logo({ C }) {
   return (
     <>
-      <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, boxShadow: '0 8px 24px rgba(79,142,247,0.3)', fontSize: 26, color: '#fff' }}>✦</div>
+      <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#6B8EF7,#C084FC)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, boxShadow: '0 8px 32px rgba(107,142,247,0.50), inset 0 1px 0 rgba(255,255,255,0.25)', fontSize: 28, color: '#fff' }}>✦</div>
       <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 30, letterSpacing: '-0.04em', marginBottom: 4, color: C.accent }}>Pulse</h1>
       <p style={{ color: C.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 4, lineHeight: 1.6 }}>Project management, built for Homzmart.</p>
       <p style={{ color: C.textMuted, fontSize: 11, textAlign: 'center', marginBottom: 28, fontStyle: 'italic', opacity: 0.7 }}>Internal tool — authorised access only</p>

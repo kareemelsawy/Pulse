@@ -6,7 +6,7 @@ import GanttChart from '../components/GanttChart'
 
 function StatCard({ title, value, sub, color, icon }) {
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: '20px 22px', borderTop: `3px solid ${color || COLORS.accent}` }}>
+    <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px', borderTop: `3px solid ${color || COLORS.accent}` }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{title}</div>
         {icon && <span style={{ display: "flex", alignItems: "center" }}>{icon}</span>}
@@ -25,7 +25,7 @@ function MiniBar({ label, value, max, color }) {
         <span style={{ color: COLORS.textDim, fontWeight: 500 }}>{label}</span>
         <span style={{ fontWeight: 700 }}>{value}</span>
       </div>
-      <div style={{ height: 6, borderRadius: 3, background: COLORS.border }}>
+      <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.10)' }}>
         <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: color || COLORS.accent, transition: 'width 0.5s ease' }} />
       </div>
     </div>
@@ -49,7 +49,7 @@ function DonutChart({ data, size = 120 }) {
 
   return (
     <svg width={size} height={size} viewBox="0 0 120 120">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={COLORS.border} strokeWidth="18" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke='rgba(255,255,255,0.12)' strokeWidth="18" />
       {slices.map((s, i) => (
         <circle key={i} cx={cx} cy={cy} r={r} fill="none"
           stroke={s.color} strokeWidth="18"
@@ -223,7 +223,7 @@ export default function AnalyticsPage() {
                   </div>
                   <span style={{ fontSize: 12, color: COLORS.textMuted }}>{p.done}/{p.total} ({p.rate}%)</span>
                 </div>
-                <div style={{ height: 6, borderRadius: 3, background: COLORS.border }}>
+                <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.10)' }}>
                   <div style={{ height: '100%', borderRadius: 3, width: `${p.rate}%`, background: p.color, transition: 'width 0.5s ease' }} />
                 </div>
               </div>
@@ -256,19 +256,19 @@ export default function AnalyticsPage() {
 
         {/* Insights row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 24 }}>
-          <div style={{ ...card, borderTop: `3px solid ${COLORS.purple}` }}>
+          <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px', borderTop: `3px solid ${COLORS.purple}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Avg Task Age</div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{stats.avgAge}d</div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>average days open tasks have been open</div>
           </div>
-          <div style={{ ...card, borderTop: `3px solid ${COLORS.amber}` }}>
+          <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px', borderTop: `3px solid ${COLORS.amber}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Unassigned Tasks</div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>
               {tasks.filter(t => !t.assignee_name && t.status !== 'done').length}
             </div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>open tasks with no assignee</div>
           </div>
-          <div style={{ ...card, borderTop: `3px solid ${COLORS.green}` }}>
+          <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px', borderTop: `3px solid ${COLORS.green}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Team Members</div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{members.length}</div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>{Math.round(tasks.length / Math.max(members.length, 1))} tasks per member avg</div>
@@ -283,7 +283,7 @@ export default function AnalyticsPage() {
               {stats.overdue.slice(0, 8).map(t => {
                 const daysAgo = Math.floor((new Date() - new Date(t.due_date)) / (1000 * 60 * 60 * 24))
                 return (
-                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: COLORS.bg, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(8px)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.10)' }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 500, fontSize: 13 }}>{t.title}</div>
                       {t.assignee_name && <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>Assigned to {t.assignee_name}</div>}

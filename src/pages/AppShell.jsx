@@ -10,6 +10,15 @@ import GlobalMeetingsPage from './GlobalMeetingsPage'
 import SettingsPage from './SettingsPage'
 import AnalyticsPage from './AnalyticsPage'
 
+// ── Glass style helpers ───────────────────────────────────────────────────────
+const glassPanel = (extra = {}) => ({
+  background: 'rgba(255,255,255,0.06)',
+  backdropFilter: 'blur(32px) saturate(180%)',
+  WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+  border: '1px solid rgba(255,255,255,0.11)',
+  ...extra,
+})
+
 export default function AppShell({ toast }) {
   const { user, signOut } = useAuth()
   const { workspace, projects, getProjectTasks, loading } = useData()
@@ -21,131 +30,121 @@ export default function AppShell({ toast }) {
   const [newPipelineOpen, setNewPipelineOpen] = useState(false)
   const [userMenu, setUserMenu]               = useState(false)
 
-  const activeProject = projects.find(p => p.id === activeProjectId) || null
-  const activeProjects  = projects.filter(p => !p.is_pipeline)
+  const activeProject    = projects.find(p => p.id === activeProjectId) || null
+  const activeProjects   = projects.filter(p => !p.is_pipeline)
   const pipelineProjects = projects.filter(p => p.is_pipeline)
-
-  const displayName = user?.user_metadata?.full_name || user?.email || 'You'
-  const avatarName  = user?.user_metadata?.full_name || user?.email || 'U'
-
-  const isOwner     = workspace?.owner_id === user?.id
+  const displayName      = user?.user_metadata?.full_name || user?.email || 'You'
+  const isOwner          = workspace?.owner_id === user?.id
 
   function openProject(p) { setActiveProjectId(p.id); setView('project') }
-  function openOverview() { setActiveProjectId(null); setView('overview') }
+  function openOverview()  { setActiveProjectId(null); setView('overview') }
 
   if (loading) return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: COLORS.bg, gap: 16 }}>
-      <div style={{ fontSize: 40, color: COLORS.accent, fontWeight: 900 }}>✦</div>
-      <Spinner size={28} />
+    <div style={{ height:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20 }}>
+      <div style={{
+        width:56, height:56, borderRadius:16,
+        background:'linear-gradient(135deg,#6B8EF7,#C084FC)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        fontSize:28, color:'#fff', fontWeight:900,
+        boxShadow:'0 8px 32px rgba(107,142,247,0.45)',
+      }}>✦</div>
+      <Spinner size={24} />
     </div>
   )
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: COLORS.bg, color: COLORS.text, overflow: 'hidden' }}>
+    <div style={{ display:'flex', height:'100vh', color: COLORS.text, overflow:'hidden' }}>
 
+      {/* ── Sidebar ───────────────────────────────────────────────────── */}
       {sidebarOpen && (
-        <aside style={{ width: 240, background: COLORS.surface, borderRight: `1px solid ${COLORS.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0, height: '100vh' }}>
-
-          {/* Workspace header */}
-          <div style={{ padding: '14px 16px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18, color: '#fff', fontWeight: 900, letterSpacing: '-2px' }}>✦</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: COLORS.accent }}>Pulse</div>
+        <aside style={{
+          width: 240, flexShrink: 0, height:'100vh',
+          display:'flex', flexDirection:'column',
+          ...glassPanel({
+            borderTop:'none', borderBottom:'none', borderLeft:'none',
+            borderRight:'1px solid rgba(255,255,255,0.10)',
+          }),
+        }}>
+          {/* Logo */}
+          <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{
+                width:34, height:34, borderRadius:10, flexShrink:0,
+                background:'linear-gradient(135deg,#6B8EF7,#C084FC)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:18, color:'#fff', fontWeight:900, letterSpacing:'-2px',
+                boxShadow:'0 4px 16px rgba(107,142,247,0.40)',
+              }}>✦</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16, letterSpacing:'-0.03em', color: COLORS.text }}>Pulse</div>
+                {workspace?.name && <div style={{ fontSize:10, color: COLORS.textMuted, marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{workspace.name}</div>}
               </div>
             </div>
           </div>
 
-          {/* Nav */}
-          <nav style={{ padding: '10px 8px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <NavItem icon={<Icon name="grid" size={15} />}    label="Home"      active={view === 'overview'}  onClick={openOverview} />
-            {isOwner && <NavItem icon={<Icon name="barChart" size={15} />} label="Analytics" active={view === 'analytics'} onClick={() => { setActiveProjectId(null); setView('analytics') }} />}
-            <NavItem icon={<Icon name="messageCircle" size={15} />} label="Meetings" active={view === 'meetings'} onClick={() => { setActiveProjectId(null); setView('meetings') }} />
+          {/* Primary nav */}
+          <nav style={{ padding:'8px 8px 6px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+            <NavItem icon="grid"          label="Overview"   active={view==='overview'}   onClick={openOverview} />
+            {isOwner && <NavItem icon="barChart" label="Analytics" active={view==='analytics'} onClick={() => { setActiveProjectId(null); setView('analytics') }} />}
+            <NavItem icon="messageCircle" label="Meetings"   active={view==='meetings'}   onClick={() => { setActiveProjectId(null); setView('meetings') }} />
           </nav>
 
-          {/* Scrollable middle — Projects + Pipeline */}
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-
-            {/* Active projects */}
-            <div style={{ padding: '10px 8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 10px 8px' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Projects</span>
-                <button onClick={() => setNewProjectOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '2px 4px' }}>+</button>
-              </div>
-              {activeProjects.length === 0 && <div style={{ padding: '4px 10px 6px', fontSize: 12, color: COLORS.textMuted }}>No projects yet.</div>}
-              {activeProjects.map(p => {
-                const ptasks   = getProjectTasks(p.id)
-                const done     = ptasks.filter(t => t.status === 'done').length
-                const isActive = activeProjectId === p.id && view === 'project'
-                return (
-                  <div key={p.id} onClick={() => openProject(p)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 1, background: isActive ? COLORS.surfaceHover : 'transparent', transition: 'background 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
-                    onMouseLeave={e => e.currentTarget.style.background = isActive ? COLORS.surfaceHover : 'transparent'}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                    <span style={{ fontSize: 11, color: COLORS.textMuted }}>{done}/{ptasks.length}</span>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Pipeline section */}
-            <div style={{ padding: '4px 8px 10px', borderTop: `1px solid ${COLORS.border}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px 6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Pipeline</span>
-                  {pipelineProjects.length > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, background: COLORS.purple + '22', color: COLORS.purple, borderRadius: 10, padding: '1px 6px' }}>{pipelineProjects.length}</span>
-                  )}
-                </div>
-                <button onClick={() => setNewPipelineOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '2px 4px' }}>+</button>
-              </div>
-
-              {/* Pipeline view nav item */}
-              <div onClick={() => { setActiveProjectId(null); setView('pipeline') }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 4, background: view === 'pipeline' ? COLORS.surfaceHover : 'transparent', color: view === 'pipeline' ? COLORS.text : COLORS.textDim, transition: 'background 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
-                onMouseLeave={e => e.currentTarget.style.background = view === 'pipeline' ? COLORS.surfaceHover : 'transparent'}>
-                <span style={{ fontSize: 14, lineHeight: 1, color: COLORS.purple }}>🔭</span>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>View All Pipeline</span>
-                {pipelineProjects.length > 0 && <span style={{ marginLeft: 'auto', fontSize: 11, color: COLORS.textMuted }}>{pipelineProjects.length}</span>}
-              </div>
-
-              {/* Individual pipeline items */}
-              {pipelineProjects.map(p => (
-                <div key={p.id}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, cursor: 'default', marginBottom: 1, opacity: 0.75 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', border: `2px dashed ${p.color}`, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 12, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                </div>
-              ))}
-
-              {pipelineProjects.length === 0 && (
-                <div style={{ padding: '2px 10px 4px', fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>No pipeline items yet.</div>
+          {/* Projects */}
+          <div style={{ flex:1, overflowY:'auto', minHeight:0, padding:'8px 8px' }}>
+            <SidebarSection label="Projects" onAdd={() => setNewProjectOpen(true)}>
+              {activeProjects.length === 0 && (
+                <div style={{ padding:'6px 10px', fontSize:12, color: COLORS.textMuted, fontStyle:'italic' }}>No projects yet</div>
               )}
-            </div>
+              {activeProjects.map(p => {
+                const ptasks = getProjectTasks(p.id)
+                const done = ptasks.filter(t => t.status === 'done').length
+                return <ProjectItem key={p.id} project={p} done={done} total={ptasks.length} active={activeProjectId===p.id && view==='project'} onClick={() => openProject(p)} />
+              })}
+            </SidebarSection>
+
+            <div style={{ height:8 }} />
+
+            <SidebarSection label="Pipeline" onAdd={() => setNewPipelineOpen(true)}>
+              <NavItem icon="inbox" label="All Pipeline" active={view==='pipeline'}
+                onClick={() => { setActiveProjectId(null); setView('pipeline') }}
+                meta={pipelineProjects.length > 0 ? String(pipelineProjects.length) : null} />
+            </SidebarSection>
           </div>
 
           {/* Bottom */}
-          <div style={{ padding: 8, borderTop: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <NavItem icon={<Icon name="settings" size={15} />} label="Settings" active={view === 'settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
-            <NavItem icon={<Icon name="fileText" size={15} />} label="Docs" active={view === 'docs'} onClick={() => { setActiveProjectId(null); setView('docs') }} />
-            <div style={{ position: 'relative' }}>
-              <div onClick={() => setUserMenu(p => !p)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
-                onMouseLeave={e => e.currentTarget.style.background = ''}>
-                <Avatar name={avatarName} size={26} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-                  <div style={{ fontSize: 11, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</div>
-                </div>
+          <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', padding:'6px 8px 10px', flexShrink:0 }}>
+            <NavItem icon="settings" label="Settings" active={view==='settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
+            <NavItem icon="fileText" label="Docs"     active={view==='docs'}     onClick={() => { setActiveProjectId(null); setView('docs') }} />
+
+            {/* User row */}
+            <div style={{ position:'relative', marginTop:4 }}>
+              <div onClick={() => setUserMenu(p => !p)} style={{
+                display:'flex', alignItems:'center', gap:9,
+                padding:'7px 10px', borderRadius:10, cursor:'pointer',
+                transition:'background 0.15s',
+                background: userMenu ? 'rgba(255,255,255,0.08)' : 'transparent',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}
+              onMouseLeave={e => { if(!userMenu) e.currentTarget.style.background='transparent' }}>
+                <Avatar name={displayName} size={26} />
+                <span style={{ flex:1, fontSize:13, fontWeight:500, color: COLORS.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</span>
+                <Icon name="chevronDown" size={13} color={COLORS.textMuted} />
               </div>
+
               {userMenu && (
-                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 6, marginBottom: 4, zIndex: 50, boxShadow: `0 8px 32px ${COLORS.shadow}` }}>
-                  <button onClick={() => { setUserMenu(false); setView('settings') }} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: COLORS.textDim, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}>⚙ Settings</button>
-                  <button onClick={() => { setUserMenu(false); signOut() }} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: COLORS.red, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>Sign out</button>
+                <div style={{
+                  position:'absolute', bottom:'100%', left:0, right:0,
+                  background: isDark ? 'rgba(15,12,45,0.90)' : 'rgba(255,255,255,0.90)',
+                  backdropFilter:'blur(32px)',
+                  WebkitBackdropFilter:'blur(32px)',
+                  border:'1px solid rgba(255,255,255,0.14)',
+                  borderRadius:14, padding:6, marginBottom:6, zIndex:50,
+                  boxShadow:'0 12px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.10)',
+                  animation:'slideUp 0.18s cubic-bezier(0.34,1.56,0.64,1)',
+                }}>
+                  <MenuBtn onClick={() => { setUserMenu(false); setView('settings') }}>Settings</MenuBtn>
+                  <div style={{ height:1, background:'rgba(255,255,255,0.08)', margin:'4px 0' }} />
+                  <MenuBtn danger onClick={() => { setUserMenu(false); signOut() }}>Sign out</MenuBtn>
                 </div>
               )}
             </div>
@@ -153,25 +152,52 @@ export default function AppShell({ toast }) {
         </aside>
       )}
 
-      {/* Main */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-        <header style={{ height: 52, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 10, flexShrink: 0 }}>
-          <button onClick={() => setSidebarOpen(p => !p)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 20, cursor: 'pointer', padding: '4px 6px', borderRadius: 6 }}>☰</button>
-          <span style={{ fontSize: 12, color: COLORS.textMuted }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+      {/* ── Main ─────────────────────────────────────────────────────── */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
+
+        {/* Header */}
+        <header style={{
+          height:50, flexShrink:0,
+          display:'flex', alignItems:'center', padding:'0 18px', gap:10,
+          ...glassPanel({
+            borderTop:'none', borderLeft:'none', borderRight:'none',
+            borderBottom:'1px solid rgba(255,255,255,0.08)',
+          }),
+        }}>
+          <button onClick={() => setSidebarOpen(p => !p)} style={{
+            background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)',
+            borderRadius:8, padding:'5px 7px', cursor:'pointer',
+            display:'flex', alignItems:'center',
+            transition:'all 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'}
+          onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+            <Icon name="list" size={15} color={COLORS.textMuted} />
+          </button>
+
+          <span style={{ fontSize:12, color: COLORS.textMuted, fontFamily:"'DM Mono',monospace", fontWeight:500 }}>
+            {new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}
           </span>
-          <div style={{ marginLeft: 'auto' }} />
-          <button
-            onClick={toggleTheme}
-            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 8, width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s, border-color 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = COLORS.inputBg; e.currentTarget.style.borderColor = COLORS.borderStrong }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = COLORS.border }}
-          >
-            {isDark ? <Icon name="sun" size={15} color={COLORS.textMuted} /> : <Icon name="moon" size={15} color={COLORS.textMuted} />}
+
+          <div style={{ flex:1 }} />
+
+          <button onClick={toggleTheme} title={isDark ? 'Light mode' : 'Dark mode'} style={{
+            background:'rgba(255,255,255,0.07)',
+            border:'1px solid rgba(255,255,255,0.12)',
+            borderRadius:8, width:32, height:32,
+            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+            transition:'all 0.15s',
+            backdropFilter:'blur(8px)',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.14)'}
+          onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}>
+            {isDark
+              ? <Icon name="sun"  size={15} color={COLORS.textMuted} />
+              : <Icon name="moon" size={15} color={COLORS.textMuted} />}
           </button>
         </header>
-        <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+
+        <main style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', minHeight:0 }}>
           {view === 'overview'  && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} workspaceName={workspace?.name} />}
           {view === 'analytics' && isOwner && <AnalyticsPage />}
           {view === 'project'   && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
@@ -188,14 +214,79 @@ export default function AppShell({ toast }) {
   )
 }
 
-function NavItem({ icon, label, active, onClick }) {
+// ── Sub-components ───────────────────────────────────────────────────────────
+function NavItem({ icon, label, active, onClick, meta }) {
+  const activeStyle = {
+    background: 'rgba(107,142,247,0.18)',
+    border: '1px solid rgba(107,142,247,0.25)',
+    backdropFilter: 'blur(8px)',
+  }
   return (
-    <div onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: active ? COLORS.surfaceHover : 'transparent', color: active ? COLORS.text : COLORS.textDim, marginBottom: 1, transition: 'all 0.15s' }}
-      onMouseEnter={e => { if (!active) e.currentTarget.style.background = COLORS.surfaceHover }}
-      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
-      <span style={{ width: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</span>
-      <span style={{ fontWeight: 500, fontSize: 13 }}>{label}</span>
+    <div onClick={onClick} style={{
+      display:'flex', alignItems:'center', gap:9,
+      padding:'7px 10px', borderRadius:10,
+      cursor:'pointer', marginBottom:2,
+      border: '1px solid transparent',
+      background: active ? 'rgba(107,142,247,0.16)' : 'transparent',
+      ...(active ? { borderColor: 'rgba(107,142,247,0.22)' } : {}),
+      color: active ? COLORS.accent : COLORS.textDim,
+      transition: 'all 0.15s', userSelect:'none',
+    }}
+    onMouseEnter={e => { if(!active){ e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.10)' }}}
+    onMouseLeave={e => { if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='transparent' }}}>
+      <Icon name={icon} size={15} color={active ? COLORS.accent : COLORS.textMuted} />
+      <span style={{ fontWeight: active ? 600 : 400, fontSize:13, flex:1, letterSpacing:'-0.01em' }}>{label}</span>
+      {meta && <span style={{ fontSize:11, color: COLORS.textMuted, background:'rgba(255,255,255,0.08)', borderRadius:6, padding:'1px 6px', fontFamily:"'DM Mono',monospace" }}>{meta}</span>}
     </div>
+  )
+}
+
+function SidebarSection({ label, onAdd, children }) {
+  return (
+    <div style={{ marginBottom:2 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'3px 10px 5px' }}>
+        <span style={{ fontSize:10, fontWeight:700, color: COLORS.textMuted, letterSpacing:'0.06em', textTransform:'uppercase' }}>{label}</span>
+        <button onClick={onAdd} style={{ background:'none', border:'none', color: COLORS.textMuted, cursor:'pointer', padding:2, borderRadius:5, display:'flex', lineHeight:1, transition:'color 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.color = COLORS.accent}
+          onMouseLeave={e => e.currentTarget.style.color = COLORS.textMuted}>
+          <Icon name="plus" size={14} color="currentColor" />
+        </button>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function ProjectItem({ project: p, done, total, active, onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      display:'flex', alignItems:'center', gap:9,
+      padding:'7px 10px', borderRadius:10, cursor:'pointer', marginBottom:2,
+      background: active ? 'rgba(107,142,247,0.16)' : 'transparent',
+      border: `1px solid ${active ? 'rgba(107,142,247,0.22)' : 'transparent'}`,
+      transition:'all 0.15s', userSelect:'none',
+    }}
+    onMouseEnter={e => { if(!active){ e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.10)' }}}
+    onMouseLeave={e => { if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='transparent' }}}>
+      <div style={{ width:9, height:9, borderRadius:3, background:p.color, flexShrink:0, boxShadow:`0 0 6px ${p.color}80` }} />
+      <span style={{ flex:1, fontSize:13, fontWeight: active ? 600 : 400, color: active ? COLORS.text : COLORS.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>{p.name}</span>
+      <span style={{ fontSize:11, color: COLORS.textMuted, fontFamily:"'DM Mono',monospace", flexShrink:0 }}>{done}/{total}</span>
+    </div>
+  )
+}
+
+function MenuBtn({ children, onClick, danger }) {
+  return (
+    <button onClick={onClick} style={{
+      width:'100%', textAlign:'left',
+      background:'none', border:'none',
+      color: danger ? COLORS.red : COLORS.textDim,
+      padding:'8px 12px', borderRadius:8,
+      cursor:'pointer', fontSize:13, fontWeight:400,
+      fontFamily: 'inherit', letterSpacing:'-0.01em',
+      transition:'background 0.12s',
+    }}
+    onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}
+    onMouseLeave={e => e.currentTarget.style.background=''}>{children}</button>
   )
 }

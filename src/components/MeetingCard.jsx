@@ -22,7 +22,7 @@ export default function MeetingCard({ meeting, fmt, onEdit, onDelete, accentColo
   const taskCount = meeting.task_count ?? 0
 
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: 'hidden', borderLeft: `3px solid ${color}` }}>
+    <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, overflow: 'hidden', borderLeft: `3px solid ${color}` }}>
       <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: color + '18', border: `1px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Icon name="messageCircle" size={18} color={color} />
