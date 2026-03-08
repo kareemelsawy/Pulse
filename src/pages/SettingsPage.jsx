@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
 import { supabase } from '../lib/supabase'
-import { NOTIFICATION_TRIGGERS, COLORS } from '../lib/constants'
-import { Toggle, Btn, Avatar, Badge, Spinner, Icon } from '../components/UI'
+import { NOTIFICATION_TRIGGERS, COLORS, PROJECT_COLORS } from '../lib/constants'
+import { Toggle, Btn, Avatar, Badge, Spinner, Icon, Modal } from '../components/UI'
 import { getWorkspaceMembers, regenerateInviteCode, updateWorkspaceName, removeMember } from '../lib/db/workspace'
 
 // ── Glass primitives ──────────────────────────────────────────────────────────
@@ -112,12 +112,18 @@ function StatusDot({ ok }) {
 
 // ── Account Tab ───────────────────────────────────────────────────────────────
 function AccountTab({ toast }) {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const [newName, setNewName]     = useState(user?.user_metadata?.full_name || '')
   const [newEmail, setNewEmail]   = useState('')
   const [newPass, setNewPass]     = useState('')
   const [confirmPass, setConfirmPass] = useState('')
   const [saving, setSaving]       = useState(false)
+
+  // Derive which providers this user has actually authenticated with
+  // Supabase puts each linked identity in user.identities[]
+  const identityProviders = new Set((user?.identities || []).map(i => i.provider))
+  const hasGoogle = identityProviders.has('google')
+  const hasEmail  = identityProviders.has('email')
 
   async function handleUpdateName() {
     if (!newName.trim()) return
@@ -202,7 +208,10 @@ function AccountTab({ toast }) {
               <div style={{ fontWeight: 600, fontSize: 13 }}>Google</div>
               <div style={{ fontSize: 11, color: COLORS.textMuted }}>Sign in with your Google account</div>
             </div>
-            <Btn size="sm" variant="secondary" onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}>Connect</Btn>
+            {hasGoogle
+              ? <Badge color={COLORS.green}>Active</Badge>
+              : <Btn size="sm" variant="secondary" onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })}>Connect</Btn>
+            }
           </InfoRow>
           <InfoRow>
             <div style={{ width: 32, height: 32, background: COLORS.accent + '22', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -212,20 +221,11 @@ function AccountTab({ toast }) {
               <div style={{ fontWeight: 600, fontSize: 13 }}>Email + Password</div>
               <div style={{ fontSize: 11, color: COLORS.textMuted }}>{user?.email}</div>
             </div>
-            <Badge color={COLORS.green}>Active</Badge>
+            {hasEmail
+              ? <Badge color={COLORS.green}>Active</Badge>
+              : <Badge color={COLORS.textMuted}>Not linked</Badge>
+            }
           </InfoRow>
-        </div>
-      </Panel>
-
-      {/* Danger zone */}
-      <Panel>
-        <PanelHeader title="Danger Zone" icon="warning" />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>Sign out of Pulse</div>
-            <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>Ends your current session on this device.</div>
-          </div>
-          <Btn variant="danger" onClick={signOut}>Sign Out</Btn>
         </div>
       </Panel>
     </div>
@@ -532,16 +532,438 @@ function IntegrationsTab({ toast }) {
   )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-const TABS = [
-  { id: 'account',       label: 'Account',       icon: 'user'      },
-  { id: 'workspace',     label: 'Workspace',     icon: 'folder'    },
-  { id: 'notifications', label: 'Notifications', icon: 'bell'      },
-  { id: 'integrations',  label: 'Integrations',  icon: 'zap'       },
-]
+// ── Data Import Tab (owner only) ──────────────────────────────────────────────
+const TASK_FIELDS   = ['project_name','title','status','priority','assignee_name','assignee_email','due_date']
+const PROJECT_FIELDS = ['name','description','color']
+const VALID_STATUSES  = ['new','inprogress','review','done']
+const VALID_PRIORITIES = ['high','medium','low']
 
+function parseCsvLine(line) {
+  const vals = []; let cur = ''; let inQ = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') { inQ = !inQ }
+    else if (ch === ',' && !inQ) { vals.push(cur.trim()); cur = '' }
+    else { cur += ch }
+  }
+  vals.push(cur.trim())
+  return vals.map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"'))
+}
+
+function parseCsv(text) {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim())
+  if (lines.length < 2) return { headers: [], rows: [] }
+  const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim())
+  const rows = lines.slice(1).map(line => {
+    const vals = parseCsvLine(line)
+    const row = {}
+    headers.forEach((h, i) => { row[h] = (vals[i] || '').trim() })
+    return row
+  }).filter(r => Object.values(r).some(v => v))
+  return { headers, rows }
+}
+
+function DownloadTemplateBtn({ mode }) {
+  function download() {
+    let csv
+    if (mode === 'tasks') {
+      csv = TASK_FIELDS.join(',') + '\n'
+        + '"Website Redesign","Fix login bug","inprogress","high","Alice Smith","alice@co.com","2025-06-30"\n'
+        + '"Website Redesign","Write unit tests","new","medium","Bob Lee","bob@co.com","2025-07-15"\n'
+    } else {
+      csv = PROJECT_FIELDS.join(',') + '\n'
+        + '"Mobile App","New mobile experience","#4F8EF7"\n'
+        + '"Backend API","REST API refactor","#22C55E"\n'
+    }
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `pulse-${mode}-template.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
+  return (
+    <button onClick={download} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '5px 12px', fontSize: 12, color: COLORS.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', transition: 'border-color 0.15s, color 0.15s' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = COLORS.accent; e.currentTarget.style.color = COLORS.accent }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.color = COLORS.textMuted }}>
+      <Icon name="folder" size={13} color="currentColor" />
+      Download template
+    </button>
+  )
+}
+
+function ValidationBadge({ errors, warnings }) {
+  if (errors > 0) return <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.red, background: COLORS.red + '18', border: `1px solid ${COLORS.red}33`, borderRadius: 6, padding: '2px 8px' }}>{errors} error{errors !== 1 ? 's' : ''}</span>
+  if (warnings > 0) return <span style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B', background: '#F59E0B18', border: '1px solid #F59E0B33', borderRadius: 6, padding: '2px 8px' }}>{warnings} warning{warnings !== 1 ? 's' : ''}</span>
+  return <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.green, background: COLORS.green + '18', border: `1px solid ${COLORS.green}33`, borderRadius: 6, padding: '2px 8px' }}>✓ Valid</span>
+}
+
+function DataImportTab({ toast }) {
+  const { workspace, projects, tasks, importProjects, importTasks, editProject, editTask } = useData()
+  const { user } = useAuth()
+  const fileRef = useRef()
+  const [mode, setMode]           = useState('tasks')   // 'tasks' | 'projects'
+  const [rawRows, setRawRows]     = useState(null)       // parsed CSV rows
+  const [headers, setHeaders]     = useState([])
+  const [fileName, setFileName]   = useState('')
+  const [importing, setImporting] = useState(false)
+  const [result, setResult]       = useState(null)       // { created, updated, skipped }
+  const [previewPage, setPreviewPage] = useState(0)
+  const PAGE_SIZE = 8
+
+  // Validate rows and annotate each with _errors / _warnings / _action
+  const annotated = rawRows ? rawRows.map((row, i) => {
+    const errors = []; const warnings = []
+
+    if (mode === 'tasks') {
+      if (!row.title) errors.push('Missing title')
+      if (!row.project_name) errors.push('Missing project_name')
+      else {
+        const projMatch = projects.find(p => p.name.toLowerCase() === row.project_name.toLowerCase())
+        if (!projMatch) errors.push(`Project "${row.project_name}" not found`)
+      }
+      if (row.status && !VALID_STATUSES.includes(row.status)) warnings.push(`Unknown status "${row.status}" → will use "new"`)
+      if (row.priority && !VALID_PRIORITIES.includes(row.priority)) warnings.push(`Unknown priority "${row.priority}" → will use "medium"`)
+      if (row.due_date && isNaN(Date.parse(row.due_date))) warnings.push(`Invalid due_date "${row.due_date}"`)
+
+      // Detect existing task for UPDATE (match by title + project)
+      const projMatch = projects.find(p => p.name.toLowerCase() === (row.project_name || '').toLowerCase())
+      const existingTask = projMatch ? tasks.find(t => t.project_id === projMatch.id && t.title.toLowerCase() === (row.title || '').toLowerCase()) : null
+
+      return { ...row, _index: i + 2, _errors: errors, _warnings: warnings, _existing: existingTask || null, _action: existingTask ? 'update' : 'create' }
+
+    } else {
+      // projects mode
+      if (!row.name) errors.push('Missing name')
+      const existingProj = projects.find(p => p.name.toLowerCase() === (row.name || '').toLowerCase())
+      if (row.color && !/^#[0-9a-fA-F]{3,6}$/.test(row.color)) warnings.push(`Invalid color "${row.color}" → will use default`)
+      return { ...row, _index: i + 2, _errors: errors, _warnings: warnings, _existing: existingProj || null, _action: existingProj ? 'update' : 'create' }
+    }
+  }) : null
+
+  const errorCount   = annotated ? annotated.reduce((n, r) => n + r._errors.length, 0) : 0
+  const warningCount = annotated ? annotated.reduce((n, r) => n + r._warnings.length, 0) : 0
+  const createCount  = annotated ? annotated.filter(r => r._action === 'create' && r._errors.length === 0).length : 0
+  const updateCount  = annotated ? annotated.filter(r => r._action === 'update' && r._errors.length === 0).length : 0
+  const skipCount    = annotated ? annotated.filter(r => r._errors.length > 0).length : 0
+  const totalPages   = annotated ? Math.ceil(annotated.length / PAGE_SIZE) : 0
+  const pageRows     = annotated ? annotated.slice(previewPage * PAGE_SIZE, (previewPage + 1) * PAGE_SIZE) : []
+
+  function handleFile(file) {
+    if (!file) return
+    setFileName(file.name)
+    setResult(null)
+    setPreviewPage(0)
+    const r = new FileReader()
+    r.onload = ev => {
+      const { headers: h, rows } = parseCsv(ev.target.result)
+      setHeaders(h)
+      setRawRows(rows)
+    }
+    r.readAsText(file)
+  }
+
+  async function handleImport() {
+    if (!annotated) return
+    setImporting(true)
+    let created = 0; let updated = 0; let skipped = 0
+
+    try {
+      if (mode === 'tasks') {
+        const toCreate = annotated.filter(r => r._action === 'create' && r._errors.length === 0)
+        const toUpdate = annotated.filter(r => r._action === 'update' && r._errors.length === 0)
+        skipped = annotated.filter(r => r._errors.length > 0).length
+
+        // Build project map name → id
+        const projectMap = {}
+        projects.forEach(p => { projectMap[p.name] = p.id })
+
+        // Create new tasks via context importTasks
+        if (toCreate.length > 0) {
+          const rows = toCreate.map(r => ({
+            title: r.title,
+            status: VALID_STATUSES.includes(r.status) ? r.status : 'new',
+            priority: VALID_PRIORITIES.includes(r.priority) ? r.priority : 'medium',
+            assignee_name: r.assignee_name || '',
+            assignee_email: r.assignee_email || '',
+            due_date: r.due_date && !isNaN(Date.parse(r.due_date)) ? r.due_date : null,
+            project_name: r.project_name,
+          }))
+          const newTasks = await importTasks(rows, projectMap)
+          created = newTasks.length
+        }
+
+        // Update existing tasks via context editTask
+        for (const r of toUpdate) {
+          const fields = {}
+          if (r.status && VALID_STATUSES.includes(r.status)) fields.status = r.status
+          if (r.priority && VALID_PRIORITIES.includes(r.priority)) fields.priority = r.priority
+          if (r.assignee_name !== undefined) fields.assignee_name = r.assignee_name
+          if (r.assignee_email !== undefined) fields.assignee_email = r.assignee_email
+          if (r.due_date && !isNaN(Date.parse(r.due_date))) fields.due_date = r.due_date
+          if (Object.keys(fields).length > 0) {
+            await editTask(r._existing.id, { ...r._existing, ...fields }, r._existing)
+            updated++
+          } else { skipped++ }
+        }
+
+      } else {
+        // projects
+        const toCreate = annotated.filter(r => r._action === 'create' && r._errors.length === 0)
+        const toUpdate = annotated.filter(r => r._action === 'update' && r._errors.length === 0)
+        skipped = annotated.filter(r => r._errors.length > 0).length
+
+        if (toCreate.length > 0) {
+          const rows = toCreate.map(r => ({
+            name: r.name,
+            description: r.description || '',
+            color: /^#[0-9a-fA-F]{3,6}$/.test(r.color) ? r.color : PROJECT_COLORS[0],
+          }))
+          const newProjs = await importProjects(rows)
+          created = newProjs.length
+        }
+
+        for (const r of toUpdate) {
+          const fields = {}
+          if (r.description !== undefined) fields.description = r.description
+          if (r.color && /^#[0-9a-fA-F]{3,6}$/.test(r.color)) fields.color = r.color
+          if (Object.keys(fields).length > 0) {
+            await editProject(r._existing.id, fields)
+            updated++
+          } else { skipped++ }
+        }
+      }
+
+      setResult({ created, updated, skipped })
+      setRawRows(null); setHeaders([]); setFileName('')
+      toast(`Done — ${created} created, ${updated} updated${skipped > 0 ? `, ${skipped} skipped` : ''}`, 'success')
+    } catch (e) {
+      toast(e.message, 'error')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  function reset() {
+    setRawRows(null); setHeaders([]); setFileName(''); setResult(null); setPreviewPage(0)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const modeFields = mode === 'tasks' ? TASK_FIELDS : PROJECT_FIELDS
+  const statusColor = s => ({ new: COLORS.textMuted, inprogress: COLORS.blue, review: '#F59E0B', done: COLORS.green }[s] || COLORS.textMuted)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* Mode selector */}
+      <Panel>
+        <PanelHeader title="Mass Upload & Edit via CSV" desc="Import or bulk-update projects and tasks. Existing records are matched by name and updated; new rows are created automatically." icon="folder" />
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {[['tasks','Tasks'],['projects','Projects']].map(([id, label]) => (
+            <button key={id} onClick={() => { setMode(id); reset() }} style={{
+              padding: '8px 20px', borderRadius: 10, border: `2px solid ${mode === id ? COLORS.accent : COLORS.border}`,
+              background: mode === id ? COLORS.accent + '18' : 'transparent',
+              color: mode === id ? COLORS.accent : COLORS.textDim,
+              fontSize: 13, fontWeight: mode === id ? 700 : 400,
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+            }}>{label}</button>
+          ))}
+          <div style={{ flex: 1 }} />
+          <DownloadTemplateBtn mode={mode} />
+        </div>
+
+        {/* Schema reference */}
+        <div style={{ background: 'rgba(107,142,247,0.06)', border: `1px solid ${COLORS.accent}22`, borderRadius: 10, padding: '12px 16px', marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            {mode === 'tasks' ? 'Tasks CSV columns' : 'Projects CSV columns'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {modeFields.map(f => (
+              <code key={f} style={{ fontSize: 11, fontFamily: "'DM Mono',monospace", background: COLORS.accent + '18', color: COLORS.accent, borderRadius: 5, padding: '2px 8px' }}>{f}</code>
+            ))}
+          </div>
+          {mode === 'tasks' && (
+            <div style={{ marginTop: 10, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.7 }}>
+              <strong style={{ color: COLORS.textDim }}>Matching:</strong> Tasks matched by <code style={{ color: COLORS.accent }}>title + project_name</code> — existing tasks are updated, new rows created.<br/>
+              <strong style={{ color: COLORS.textDim }}>status:</strong> new · inprogress · review · done &nbsp;|&nbsp; <strong style={{ color: COLORS.textDim }}>priority:</strong> high · medium · low
+            </div>
+          )}
+          {mode === 'projects' && (
+            <div style={{ marginTop: 10, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.7 }}>
+              <strong style={{ color: COLORS.textDim }}>Matching:</strong> Projects matched by <code style={{ color: COLORS.accent }}>name</code> — existing projects are updated, new rows created.<br/>
+              <strong style={{ color: COLORS.textDim }}>color:</strong> hex value e.g. <code style={{ color: COLORS.accent }}>#4F8EF7</code>
+            </div>
+          )}
+        </div>
+
+        {/* Drop zone */}
+        {!rawRows && (
+          <div
+            onClick={() => fileRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = COLORS.accent; e.currentTarget.style.background = COLORS.accent + '08' }}
+            onDragLeave={e => { e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.background = 'transparent' }}
+            onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.background = 'transparent'; handleFile(e.dataTransfer.files[0]) }}
+            style={{ border: `2px dashed ${COLORS.border}`, borderRadius: 12, padding: '32px 20px', textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
+            onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.accent + '18', border: `1px solid ${COLORS.accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <Icon name="folder" size={20} color={COLORS.accent} />
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Drop a CSV file here</div>
+            <div style={{ fontSize: 12, color: COLORS.textMuted }}>or click to browse</div>
+            <input ref={fileRef} type="file" accept=".csv" onChange={e => handleFile(e.target.files[0])} style={{ display: 'none' }} />
+          </div>
+        )}
+
+        {/* Result banner */}
+        {result && (
+          <div style={{ background: COLORS.green + '12', border: `1px solid ${COLORS.green}33`, borderRadius: 12, padding: '16px 20px', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.green, marginBottom: 6 }}>Import complete</div>
+            <div style={{ display: 'flex', gap: 20, fontSize: 13, color: COLORS.textDim }}>
+              <span><strong style={{ color: COLORS.green }}>{result.created}</strong> created</span>
+              <span><strong style={{ color: COLORS.accent }}>{result.updated}</strong> updated</span>
+              {result.skipped > 0 && <span><strong style={{ color: COLORS.red }}>{result.skipped}</strong> skipped (had errors)</span>}
+            </div>
+            <button onClick={() => setResult(null)} style={{ marginTop: 10, background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '4px 12px', fontSize: 12, color: COLORS.textMuted, cursor: 'pointer', fontFamily: 'inherit' }}>Import another file</button>
+          </div>
+        )}
+      </Panel>
+
+      {/* Preview + validation */}
+      {rawRows && annotated && (
+        <Panel>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{fileName}</div>
+              <div style={{ fontSize: 12, color: COLORS.textMuted }}>{annotated.length} row{annotated.length !== 1 ? 's' : ''} · {createCount} to create · {updateCount} to update · {skipCount} skipped</div>
+            </div>
+            <ValidationBadge errors={errorCount} warnings={warningCount} />
+            <Btn size="sm" variant="secondary" onClick={reset}>Clear</Btn>
+          </div>
+
+          {/* Summary chips */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            {createCount > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.green + '14', border: `1px solid ${COLORS.green}30`, borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: COLORS.green }}>
+                <Icon name="plus" size={12} color={COLORS.green} />
+                {createCount} new {mode === 'tasks' ? 'task' : 'project'}{createCount !== 1 ? 's' : ''}
+              </div>
+            )}
+            {updateCount > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.accent + '14', border: `1px solid ${COLORS.accent}30`, borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: COLORS.accent }}>
+                <Icon name="edit" size={12} color={COLORS.accent} />
+                {updateCount} update{updateCount !== 1 ? 's' : ''}
+              </div>
+            )}
+            {skipCount > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.red + '14', border: `1px solid ${COLORS.red}30`, borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: COLORS.red }}>
+                <Icon name="x" size={12} color={COLORS.red} />
+                {skipCount} skip{skipCount !== 1 ? 's' : ''} (errors)
+              </div>
+            )}
+          </div>
+
+          {/* Table preview */}
+          <div style={{ overflowX: 'auto', borderRadius: 10, border: `1px solid ${COLORS.border}`, marginBottom: 14 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', width: 60 }}>Row</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', width: 72 }}>Action</th>
+                  {modeFields.map(f => (
+                    <th key={f} style={{ padding: '8px 12px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{f}</th>
+                  ))}
+                  <th style={{ padding: '8px 12px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Issues</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.map((row, ri) => {
+                  const hasErr = row._errors.length > 0
+                  const rowBg = hasErr ? COLORS.red + '08' : row._action === 'update' ? COLORS.accent + '06' : 'transparent'
+                  return (
+                    <tr key={ri} style={{ borderBottom: `1px solid ${COLORS.border}`, background: rowBg, transition: 'background 0.1s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
+                      onMouseLeave={e => e.currentTarget.style.background = rowBg}>
+                      <td style={{ padding: '8px 12px', color: COLORS.textMuted, fontFamily: "'DM Mono',monospace" }}>{row._index}</td>
+                      <td style={{ padding: '8px 12px' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 5, padding: '2px 7px',
+                          color: hasErr ? COLORS.red : row._action === 'update' ? COLORS.accent : COLORS.green,
+                          background: hasErr ? COLORS.red + '18' : row._action === 'update' ? COLORS.accent + '18' : COLORS.green + '18',
+                          border: `1px solid ${hasErr ? COLORS.red + '33' : row._action === 'update' ? COLORS.accent + '33' : COLORS.green + '33'}`,
+                        }}>
+                          {hasErr ? 'SKIP' : row._action === 'update' ? 'UPDATE' : 'CREATE'}
+                        </span>
+                      </td>
+                      {modeFields.map(f => (
+                        <td key={f} style={{ padding: '8px 12px', color: COLORS.textDim, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {f === 'status' && row[f] ? (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: statusColor(row[f]), background: statusColor(row[f]) + '20', borderRadius: 5, padding: '2px 7px' }}>{row[f]}</span>
+                          ) : f === 'color' && row[f] ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: 3, background: /^#[0-9a-fA-F]{3,6}$/.test(row[f]) ? row[f] : '#888', flexShrink: 0 }} />
+                              {row[f]}
+                            </span>
+                          ) : (
+                            <span title={row[f] || ''}>{row[f] || <span style={{ color: COLORS.textMuted, fontStyle: 'italic' }}>—</span>}</span>
+                          )}
+                        </td>
+                      ))}
+                      <td style={{ padding: '8px 12px', minWidth: 180 }}>
+                        {[...row._errors.map(e => ({ msg: e, type: 'error' })), ...row._warnings.map(w => ({ msg: w, type: 'warning' }))].map((issue, ii) => (
+                          <div key={ii} style={{ fontSize: 11, color: issue.type === 'error' ? COLORS.red : '#F59E0B', lineHeight: 1.5 }}>
+                            {issue.type === 'error' ? '✕ ' : '⚠ '}{issue.msg}
+                          </div>
+                        ))}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
+              <button onClick={() => setPreviewPage(p => Math.max(0, p - 1))} disabled={previewPage === 0} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '4px 10px', cursor: previewPage === 0 ? 'not-allowed' : 'pointer', color: COLORS.textMuted, fontSize: 12, fontFamily: 'inherit', opacity: previewPage === 0 ? 0.4 : 1 }}>← Prev</button>
+              <span style={{ fontSize: 12, color: COLORS.textMuted }}>Page {previewPage + 1} of {totalPages}</span>
+              <button onClick={() => setPreviewPage(p => Math.min(totalPages - 1, p + 1))} disabled={previewPage === totalPages - 1} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '4px 10px', cursor: previewPage === totalPages - 1 ? 'not-allowed' : 'pointer', color: COLORS.textMuted, fontSize: 12, fontFamily: 'inherit', opacity: previewPage === totalPages - 1 ? 0.4 : 1 }}>Next →</button>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {errorCount > 0 && (
+              <div style={{ fontSize: 12, color: COLORS.red, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Icon name="warning" size={13} color={COLORS.red} />
+                {errorCount} row{errorCount !== 1 ? 's' : ''} with errors will be skipped
+              </div>
+            )}
+            <div style={{ flex: 1 }} />
+            <Btn variant="secondary" onClick={reset} disabled={importing}>Cancel</Btn>
+            <Btn onClick={handleImport} disabled={importing || (createCount === 0 && updateCount === 0)}>
+              {importing ? 'Importing…' : `Import ${createCount + updateCount} row${createCount + updateCount !== 1 ? 's' : ''}`}
+            </Btn>
+          </div>
+        </Panel>
+      )}
+    </div>
+  )
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function SettingsPage({ toast }) {
+  const { workspace } = useData()
+  const { user } = useAuth()
+  const isOwner = workspace?.owner_id === user?.id || workspace?.role === 'owner'
   const [tab, setTab] = useState('account')
+
+  const TABS = [
+    { id: 'account',       label: 'Account',       icon: 'user'      },
+    { id: 'workspace',     label: 'Workspace',     icon: 'folder'    },
+    { id: 'notifications', label: 'Notifications', icon: 'bell'      },
+    { id: 'integrations',  label: 'Integrations',  icon: 'zap'       },
+    ...(isOwner ? [{ id: 'data-import', label: 'Data Import', icon: 'list' }] : []),
+  ]
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', minHeight: 0 }}>
@@ -586,11 +1008,13 @@ export default function SettingsPage({ toast }) {
             {tab === 'workspace'     && 'Configure your workspace and manage members.'}
             {tab === 'notifications' && 'Set up email alerts and notification preferences.'}
             {tab === 'integrations'  && 'Connect third-party services and authentication providers.'}
+            {tab === 'data-import'   && 'Bulk create or update projects and tasks by uploading a CSV file.'}
           </p>
           {tab === 'account'       && <AccountTab       toast={toast} />}
           {tab === 'workspace'     && <WorkspaceTab     toast={toast} />}
           {tab === 'notifications' && <NotificationsTab toast={toast} />}
           {tab === 'integrations'  && <IntegrationsTab  toast={toast} />}
+          {tab === 'data-import'   && isOwner && <DataImportTab toast={toast} />}
         </div>
       </div>
     </div>
