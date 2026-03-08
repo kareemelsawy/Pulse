@@ -9,7 +9,6 @@ function applyTheme(isDark) {
   const root = document.documentElement
   Object.entries(t).forEach(([k, v]) => root.style.setProperty(`--color-${k}`, v))
   root.setAttribute('data-theme', isDark ? 'dark' : 'light')
-  // Background is a CSS gradient — don't override it
   document.body.style.color = t.text
 }
 
@@ -18,40 +17,31 @@ function shouldAutoDark() {
 }
 
 export function ThemeProvider({ children }) {
-  // null = follow system, 'dark'/'light' = user explicit override
   const [override, setOverride] = useState(() => localStorage.getItem('pulse_theme_override') || null)
 
   const isDark = override === 'dark' ? true
                : override === 'light' ? false
                : shouldAutoDark()
 
-  // Apply theme + flush inline styles on every change
   useEffect(() => {
     applyTheme(isDark)
-  }, [isDark, tick])
+  }, [isDark])
 
-  // Schedule re-render at each 6 AM / 6 PM boundary (only matters in auto mode)
+  // React live to OS theme changes (only when no manual override)
   useEffect(() => {
-    let timer
-    function schedule() {
-      const delay = msUntilNextBoundary()
-      timer = setTimeout(() => {
-        setTick(t => t + 1)   // triggers re-render → isDark recomputed → applyTheme fires
-        schedule()             // schedule next boundary
-      }, delay)
-    }
-    schedule()
-    return () => clearTimeout(timer)
-  }, [])
+    if (override) return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = () => applyTheme(mq.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [override])
 
   const toggleTheme = useCallback(() => {
-    // Manual toggle: set explicit override opposite of current
     const next = isDark ? 'light' : 'dark'
     setOverride(next)
     localStorage.setItem('pulse_theme_override', next)
   }, [isDark])
 
-  // Allow clearing the override to return to auto (exposed for future settings toggle)
   const setAutoTheme = useCallback(() => {
     setOverride(null)
     localStorage.removeItem('pulse_theme_override')
