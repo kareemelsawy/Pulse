@@ -221,6 +221,19 @@ export function DataProvider({ children }) {
   const getProjectTasks = useCallback((projectId) => tasks.filter(t => t.project_id === projectId), [tasks])
   const myTasks = tasks.filter(t => t.status !== 'done' && t.assignee_email === user?.email).sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
 
+  // ─── Role helpers ─────────────────────────────────────────────────────────
+  // Roles: 'owner'/'admin' → full access | 'pm' → program manager | 'member'/'user' → basic user
+  const userRole    = workspace?.role || 'member'
+  const isAdmin     = userRole === 'owner' || userRole === 'admin'
+  const isPM        = userRole === 'pm'
+  const isBasicUser = !isAdmin && !isPM
+  // Projects/tasks the user has access to based on role
+  const myProjects  = isAdmin
+    ? projects.filter(p => !p.is_pipeline)
+    : isPM
+      ? projects.filter(p => !p.is_pipeline && tasks.some(t => t.project_id === p.id && (t.assignee_email === user?.email || p.pm_email === user?.email)))
+      : projects.filter(p => !p.is_pipeline && tasks.some(t => t.project_id === p.id && t.assignee_email === user?.email))
+
   // ─── Due-tomorrow reminder scheduler ─────────────────────────────────────
   // Runs on load and when tasks/notifSettings change.
   // Sends one reminder per task due tomorrow, deduped by day via localStorage.
@@ -275,7 +288,7 @@ export function DataProvider({ children }) {
       addProject, editProject, removeProject, importProjects,
       addTask, editTask, removeTask, importTasks,
       updateNotifSettings, sendNotification, sendMeetingInvites, sendRawEmail, fireNotification: sendNotification,
-      getProjectTasks, myTasks,
+      getProjectTasks, myTasks, userRole, isAdmin, isPM, isBasicUser, myProjects,
     }}>
       {children}
     </DataContext.Provider>

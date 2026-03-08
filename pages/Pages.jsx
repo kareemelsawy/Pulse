@@ -13,9 +13,8 @@ import MeetingModal from '../components/MeetingModal'
 
 // ─── HomePage (merged Overview + My Tasks) ────────────────────────────────────
 export function HomePage({ onOpenProject, onNewProject, workspaceName, toast }) {
-  const { projects, tasks, myTasks, getProjectTasks, workspace } = useData()
+  const { projects, tasks, myTasks, getProjectTasks, workspace, isAdmin, isPM, isBasicUser, myProjects } = useData()
   const { user } = useAuth()
-  const isAdmin = workspace?.role === 'owner' || workspace?.owner_id === user?.id
   const firstName  = (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there').split(' ')[0]
   const myEmail    = user?.email
   const byStatus   = Object.keys(STATUS).map(s => ({ s, count: tasks.filter(t => t.status === s).length }))
@@ -149,10 +148,11 @@ export const OverviewPage = HomePage
 
 // ─── ProjectView ─────────────────────────────────────────────────────────────
 export function ProjectView({ project, toast }) {
-  const { getProjectTasks, editProject, removeProject, workspace } = useData()
+  const { getProjectTasks, editProject, removeProject, workspace, isAdmin, isPM } = useData()
   const { user } = useAuth()
-  const isAdmin = workspace?.role === 'owner' || workspace?.owner_id === user?.id
-  const tasks = getProjectTasks(project.id)
+  const _allTasks = getProjectTasks(project.id)
+  // Basic users only see their own assigned tasks
+  const tasks = (isAdmin || isPM) ? _allTasks : _allTasks.filter(t => t.assignee_email === user?.email)
   const [view,         setView]         = useState('board')
   const [search,       setSearch]       = useState('')
   const [filterS,      setFilterS]      = useState('all')
@@ -448,9 +448,8 @@ function CsvImportModal({ projectId, project, onClose, toast }) {
 
 // ─── PipelineView ─────────────────────────────────────────────────────────────
 export function PipelineView({ onConvertToProject, toast }) {
-  const { projects, editProject, removeProject, workspace } = useData()
+  const { projects, editProject, removeProject, workspace, isAdmin } = useData()
   const { user } = useAuth()
-  const isAdmin = workspace?.role === 'owner' || workspace?.owner_id === user?.id
   const pipeline = projects.filter(p => p.is_pipeline)
   const [newOpen, setNewOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(null)

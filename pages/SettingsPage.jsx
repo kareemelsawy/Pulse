@@ -242,7 +242,7 @@ function WorkspaceTab({ toast }) {
   const [copying, setCopying] = useState(false)
   const [saving,  setSaving]  = useState(false)
   const [loading, setLoading] = useState(true)
-  const isOwner = workspace?.owner_id === user?.id || workspace?.role === 'owner'
+  const isOwner = workspace?.owner_id === user?.id || ['owner','admin'].includes(workspace?.role)
 
   useEffect(() => {
     if (workspace?.id) getWorkspaceMembers(workspace.id).then(m => { setMembers(m); setLoading(false) }).catch(() => setLoading(false))
@@ -951,19 +951,326 @@ function DataImportTab({ toast }) {
   )
 }
 
+
+// ── UsersTab ──────────────────────────────────────────────────────────────────
+function UsersTab({ toast }) {
+  const { workspace, projects } = useData()
+  const { user } = useAuth()
+  const [members,     setMembers]     = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [view,        setView]        = useState('members') // 'members' | 'invite'
+  const [inviting,    setInviting]    = useState(false)
+
+  // Invite form
+  const [emails,      setEmails]      = useState([])
+  const [emailInput,  setEmailInput]  = useState('')
+  const [role,        setRole]        = useState('user')
+  const [selProjects, setSelProjects] = useState([])
+  const [inviteResult,setInviteResult]= useState(null)
+
+  const allProjects = projects?.filter(p => !p.is_pipeline) || []
+  const code        = workspace?.invite_code || ''
+  const inviteUrl   = `${window.location.origin}?invite=${code}`
+
+  const ROLE_DEFS = [
+    {
+      v: 'admin',
+      icon: '👑',
+      label: 'Admin',
+      desc: 'Full dashboard access. Can add/remove users, manage all programs, settings, and technical config.',
+      color: '#C084FC',
+    },
+    {
+      v: 'pm',
+      icon: '📋',
+      label: 'Program Manager',
+      desc: 'Access to assigned programs and their tasks. Sees meetings they attended. Can view analytics & overview for their programs.',
+      color: '#6B8EF7',
+    },
+    {
+      v: 'user',
+      icon: '👤',
+      label: 'User',
+      desc: 'Sees only tasks assigned to them. Limited to their meetings, no pipeline access.',
+      color: '#34D17A',
+    },
+  ]
+
+  const roleColor = { admin: '#C084FC', pm: '#6B8EF7', user: '#34D17A', owner: '#C084FC', member: '#34D17A' }
+  const roleLabel = { admin: 'Admin', pm: 'Program Manager', user: 'User', owner: 'Admin', member: 'User' }
+
+  useEffect(() => {
+    if (workspace?.id) getWorkspaceMembers(workspace.id).then(m => { setMembers(m); setLoading(false) }).catch(() => setLoading(false))
+  }, [workspace?.id])
+
+  function addEmail() {
+    const e = emailInput.trim().toLowerCase()
+    if (!e || !e.includes('@')) return
+    if (emails.includes(e)) return
+    setEmails(prev => [...prev, e])
+    setEmailInput('')
+  }
+
+  async function handleInvite() {
+    const valid = [...emails, ...(emailInput.trim() ? [emailInput.trim().toLowerCase()] : [])].filter(e => e.includes('@'))
+    if (!valid.length) { toast('Enter at least one valid email', 'error'); return }
+    setInviting(true)
+    try {
+      // Store invite records
+      for (const email of valid) {
+        try {
+          await supabase.from('workspace_invites').upsert({
+            workspace_id: workspace.id,
+            email: email,
+            role,
+            project_ids: selProjects.length ? selProjects : null,
+            invite_code: code,
+            invited_by: user?.email,
+            created_at: new Date().toISOString(),
+          }, { onConflict: 'workspace_id,email', ignoreDuplicates: false })
+        } catch(e) { /* table may not exist */ }
+      }
+      setInviteResult({ emails: valid, url: inviteUrl })
+      setEmails([])
+      setEmailInput('')
+      toast(`Invite link ready for ${valid.length} recipient${valid.length > 1 ? 's' : ''}`, 'success')
+    } catch(e) {
+      toast(e.message, 'error')
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  async function handleRemove(userId) {
+    if (!confirm('Remove this member from the workspace?')) return
+    try {
+      await removeMember(workspace.id, userId)
+      setMembers(prev => prev.filter(m => m.user_id !== userId))
+      toast('Member removed', 'success')
+    } catch(e) { toast(e.message, 'error') }
+  }
+
+  async function handleChangeRole(userId, newRole) {
+    try {
+      await supabase.from('workspace_members').update({ role: newRole }).eq('workspace_id', workspace.id).eq('user_id', userId)
+      setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role: newRole } : m))
+      toast('Role updated', 'success')
+    } catch(e) { toast(e.message, 'error') }
+  }
+
+  return (
+    <div>
+      {/* Sub-nav */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: G.panelBg, borderRadius: 10, padding: 4, width: 'fit-content' }}>
+        {[['members', '👥 Members'], ['invite', '✉ Invite User']].map(([v, l]) => (
+          <button key={v} onClick={() => setView(v)} style={{
+            padding: '6px 16px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+            background: view === v ? COLORS.surface : 'none',
+            border: view === v ? `1px solid ${COLORS.border}` : '1px solid transparent',
+            color: view === v ? COLORS.text : COLORS.textMuted,
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s',
+          }}>{l}</button>
+        ))}
+      </div>
+
+      {/* Members list */}
+      {view === 'members' && (
+        <div>
+          {loading ? (
+            <div style={{ color: COLORS.textMuted, fontSize: 13 }}>Loading members…</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {members.map(m => {
+                const isMe = m.user_id === user?.id
+                const rDef = ROLE_DEFS.find(r => r.v === m.role || (m.role === 'owner' && r.v === 'admin') || (m.role === 'member' && r.v === 'user'))
+                return (
+                  <div key={m.user_id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 14px', background: G.panelBg,
+                    borderRadius: 10, border: `1px solid ${COLORS.border}`,
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                      background: `${roleColor[m.role] || '#888'}22`,
+                      border: `1px solid ${roleColor[m.role] || '#888'}44`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 14, fontWeight: 700, color: roleColor[m.role] || '#888',
+                    }}>
+                      {(m.full_name || m.email || '?')[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>
+                        {m.full_name || m.email || m.user_id.slice(0, 8) + '…'}
+                        {isMe && <span style={{ fontSize: 10, color: COLORS.textMuted, marginLeft: 6 }}>you</span>}
+                      </div>
+                      {m.email && <div style={{ fontSize: 11, color: COLORS.textMuted }}>{m.email}</div>}
+                    </div>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 20,
+                      background: `${roleColor[m.role] || '#888'}18`,
+                      color: roleColor[m.role] || '#888',
+                      border: `1px solid ${roleColor[m.role] || '#888'}33`,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {rDef?.icon} {roleLabel[m.role] || m.role}
+                    </span>
+                    {!isMe && (
+                      <select
+                        value={m.role === 'owner' ? 'admin' : m.role === 'member' ? 'user' : m.role}
+                        onChange={e => handleChangeRole(m.user_id, e.target.value)}
+                        style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '4px 8px', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
+                        <option value="admin">Admin</option>
+                        <option value="pm">Program Manager</option>
+                        <option value="user">User</option>
+                      </select>
+                    )}
+                    {!isMe && (
+                      <button onClick={() => handleRemove(m.user_id)} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 10px', color: COLORS.red, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <div style={{ marginTop: 16 }}>
+            <Btn onClick={() => setView('invite')} size="sm">+ Invite User →</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* Invite form */}
+      {view === 'invite' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+          {/* Email input */}
+          <div>
+            <label style={G.label}>Email addresses</label>
+            <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '0 0 10px' }}>Add one or more emails. Press Enter or comma to add multiple.</p>
+            {emails.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {emails.map(e => (
+                  <span key={e} style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}44`, borderRadius: 20, padding: '3px 10px', fontSize: 12, color: COLORS.accent }}>
+                    {e}
+                    <button onClick={() => setEmails(prev => prev.filter(x => x !== e))} style={{ background: 'none', border: 'none', color: COLORS.accent, cursor: 'pointer', padding: 0, opacity: 0.7 }}>✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                value={emailInput}
+                onChange={e => setEmailInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addEmail() } }}
+                placeholder="colleague@company.com"
+                style={G.input}
+              />
+              <Btn size="sm" variant="secondary" onClick={addEmail}>Add</Btn>
+            </div>
+          </div>
+
+          {/* Role selection */}
+          <div>
+            <label style={G.label}>User Role</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {ROLE_DEFS.map(r => (
+                <button key={r.v} onClick={() => setRole(r.v)} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                  padding: '12px 14px', borderRadius: 10, textAlign: 'left',
+                  background: role === r.v ? `${r.color}12` : G.panelBg,
+                  border: `1px solid ${role === r.v ? r.color + '55' : COLORS.border}`,
+                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s', width: '100%',
+                }}>
+                  <div style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{r.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: role === r.v ? r.color : COLORS.text }}>{r.label}</span>
+                      {role === r.v && <span style={{ fontSize: 9, fontWeight: 800, background: r.color + '22', color: r.color, borderRadius: 4, padding: '1px 6px', letterSpacing: '0.05em' }}>SELECTED</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>{r.desc}</div>
+                  </div>
+                  <div style={{
+                    width: 16, height: 16, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                    border: `2px solid ${role === r.v ? r.color : COLORS.border}`,
+                    background: role === r.v ? r.color : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {role === r.v && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Program access (PM only) */}
+          {role === 'pm' && allProjects.length > 0 && (
+            <div>
+              <label style={G.label}>Assign Programs</label>
+              <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '0 0 10px' }}>Select which programs this PM will manage. Leave empty to assign later.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {allProjects.map(p => (
+                  <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: G.panelBg, borderRadius: 8, border: `1px solid ${selProjects.includes(p.id) ? COLORS.accent + '55' : COLORS.border}`, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={selProjects.includes(p.id)} onChange={e => {
+                      if (e.target.checked) setSelProjects(prev => [...prev, p.id])
+                      else setSelProjects(prev => prev.filter(x => x !== p.id))
+                    }} style={{ accentColor: COLORS.accent }} />
+                    <div style={{ width: 9, height: 9, borderRadius: 3, background: p.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: COLORS.text }}>{p.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Result / invite link */}
+          {inviteResult && (
+            <div style={{ background: `${COLORS.green}12`, border: `1px solid ${COLORS.green}33`, borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.green, marginBottom: 8 }}>
+                ✓ Invite ready for {inviteResult.emails.join(', ')}
+              </div>
+              <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '0 0 10px', lineHeight: 1.5 }}>
+                Share this link with the invitee. They'll be prompted to sign up and join automatically.
+              </p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: G.panelBg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '9px 12px' }}>
+                <span style={{ fontSize: 11, color: COLORS.textMuted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inviteResult.url}</span>
+                <Btn size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(inviteResult.url); toast('Link copied!', 'success') }}>Copy</Btn>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn onClick={handleInvite} disabled={inviting || (emails.length === 0 && !emailInput.trim())}>
+              {inviting ? 'Preparing…' : `Generate Invite Link →`}
+            </Btn>
+            <Btn variant="secondary" onClick={() => setView('members')}>Back to Members</Btn>
+          </div>
+
+          <p style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6, marginTop: -8 }}>
+            💡 The invite link includes the workspace code and role. Recipients sign up with Google or email and join automatically. To send the invite by email directly, configure Resend in Notifications settings.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function SettingsPage({ toast }) {
-  const { workspace } = useData()
+  const { workspace, isAdmin, isPM, isBasicUser } = useData()
   const { user } = useAuth()
-  const isOwner = workspace?.owner_id === user?.id || workspace?.role === 'owner'
+  const isOwner = isAdmin  // alias
   const [tab, setTab] = useState('account')
 
   const TABS = [
     { id: 'account',       label: 'Account',       icon: 'user'      },
-    { id: 'workspace',     label: 'Workspace',     icon: 'folder'    },
+    ...(isAdmin ? [{ id: 'workspace', label: 'Workspace', icon: 'folder' }] : []),
     { id: 'notifications', label: 'Notifications', icon: 'bell'      },
-    { id: 'integrations',  label: 'Integrations',  icon: 'zap'       },
-    ...(isOwner ? [{ id: 'data-import', label: 'Data Import', icon: 'list' }] : []),
+    ...(isAdmin ? [
+      { id: 'users',        label: 'Users',         icon: 'users'     },
+      { id: 'integrations', label: 'Integrations',  icon: 'zap'       },
+      { id: 'data-import',  label: 'Data Import',   icon: 'list'      },
+    ] : []),
   ]
 
   return (
@@ -1006,16 +1313,18 @@ export default function SettingsPage({ toast }) {
           </h1>
           <p style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 24, lineHeight: 1.5 }}>
             {tab === 'account'       && 'Manage your personal profile and security.'}
-            {tab === 'workspace'     && 'Configure your workspace and manage members.'}
+            {tab === 'workspace'     && 'Configure your workspace name and invite code.'}
             {tab === 'notifications' && 'Set up email alerts and notification preferences.'}
+            {tab === 'users'         && 'Invite teammates and manage their roles and access.'}
             {tab === 'integrations'  && 'Connect third-party services and authentication providers.'}
-            {tab === 'data-import'   && 'Bulk create or update projects and tasks by uploading a CSV file.'}
+            {tab === 'data-import'   && 'Bulk create or update programs and tasks by uploading a CSV file.'}
           </p>
           {tab === 'account'       && <AccountTab       toast={toast} />}
-          {tab === 'workspace'     && <WorkspaceTab     toast={toast} />}
+          {tab === 'workspace'     && isAdmin && <WorkspaceTab toast={toast} />}
           {tab === 'notifications' && <NotificationsTab toast={toast} />}
-          {tab === 'integrations'  && <IntegrationsTab  toast={toast} />}
-          {tab === 'data-import'   && isOwner && <DataImportTab toast={toast} />}
+          {tab === 'users'         && isAdmin && <UsersTab toast={toast} />}
+          {tab === 'integrations'  && isAdmin && <IntegrationsTab toast={toast} />}
+          {tab === 'data-import'   && isAdmin && <DataImportTab toast={toast} />}
         </div>
       </div>
     </div>

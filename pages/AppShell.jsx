@@ -53,7 +53,7 @@ function LogoutIcon({ size = 15, color = 'currentColor' }) {
 
 export default function AppShell({ toast }) {
   const { user, signOut } = useAuth()
-  const { workspace, projects, tasks, getProjectTasks, loading } = useData()
+  const { workspace, projects, tasks, getProjectTasks, loading, isAdmin, isPM, isBasicUser, myProjects } = useData()
   const { isDark } = useTheme()
   const [view, setView]                     = useState('overview')
   const [activeProjectId, setActiveProjectId] = useState(null)
@@ -67,7 +67,7 @@ export default function AppShell({ toast }) {
   const activeProjects   = projects.filter(p => !p.is_pipeline)
   const pipelineProjects = projects.filter(p => p.is_pipeline)
   const displayName      = user?.user_metadata?.full_name || user?.email || 'You'
-  const isOwner          = workspace?.owner_id === user?.id
+  const isOwner          = isAdmin
 
   // ── Overdue task count ───────────────────────────────────────────────────
   const overdueCount = useMemo(() => {
@@ -120,17 +120,17 @@ export default function AppShell({ toast }) {
       {/* Primary nav */}
       <nav style={{ padding:'8px 8px 6px', borderBottom:`1px solid ${COLORS.border}`, flexShrink:0 }}>
         <NavItem icon="grid"          label="Overview"   active={view==='overview'}   onClick={openOverview} />
-        {isOwner && <NavItem icon="barChart" label="Analytics" active={view==='analytics'} onClick={() => go('analytics')} />}
+        {(isAdmin || isPM) && <NavItem icon="barChart" label="Analytics" active={view==='analytics'} onClick={() => go('analytics')} />}
         <NavItem icon="messageCircle" label="Meetings"   active={view==='meetings'}   onClick={() => go('meetings')} />
       </nav>
 
       {/* Projects */}
       <div style={{ flex:1, overflowY:'auto', minHeight:0, padding:'8px 8px' }}>
-        <SidebarSection label="Projects" onAdd={() => { setNewProjectOpen(true); setMobileMenuOpen(false) }}>
+        <SidebarSection label="Programs" onAdd={() => { setNewProjectOpen(true); setMobileMenuOpen(false) }}>
           {activeProjects.length === 0 && (
             <div style={{ padding:'6px 10px', fontSize:12, color: COLORS.textMuted, fontStyle:'italic' }}>No projects yet</div>
           )}
-          {activeProjects.map(p => {
+          {activeProjects.filter(p => isAdmin || myProjects.some(mp => mp.id === p.id)).map(p => {
             const ptasks = getProjectTasks(p.id)
             const done = ptasks.filter(t => t.status === 'done').length
             return <ProjectItem key={p.id} project={p} done={done} total={ptasks.length} active={activeProjectId===p.id && view==='project'} onClick={() => openProject(p)} />
@@ -139,11 +139,11 @@ export default function AppShell({ toast }) {
 
         <div style={{ height:8 }} />
 
-        <SidebarSection label="Pipeline" onAdd={() => { setNewPipelineOpen(true); setMobileMenuOpen(false) }}>
+        {!isBasicUser && <SidebarSection label="Pipeline" onAdd={() => { setNewPipelineOpen(true); setMobileMenuOpen(false) }}>
           <NavItem icon="inbox" label="All Pipeline" active={view==='pipeline'}
             onClick={() => go('pipeline')}
             meta={pipelineProjects.length > 0 ? String(pipelineProjects.length) : null} />
-        </SidebarSection>
+        </SidebarSection>}
       </div>
 
       {/* Bottom */}
@@ -268,7 +268,7 @@ export default function AppShell({ toast }) {
 
         <main style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', minHeight:0 }}>
           {view === 'overview'  && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} workspaceName={workspace?.name} toast={toast} />}
-          {view === 'analytics' && isOwner && <AnalyticsPage />}
+          {view === 'analytics' && (isAdmin || isPM) && <AnalyticsPage />}
           {view === 'project'   && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
           {view === 'settings'  && <SettingsPage toast={toast} />}
           {view === 'pipeline'  && <PipelineView onConvertToProject={() => setView('overview')} toast={toast} />}
@@ -346,7 +346,7 @@ function ProjectItem({ project: p, done, total, active, onClick }) {
 
 // ── Overdue Tasks Modal ───────────────────────────────────────────────────────
 function OverdueTasksModal({ tasks, projects, workspace, user, onClose, toast }) {
-  const isAdmin = workspace?.role === 'owner' || workspace?.owner_id === user?.id
+  const isAdmin = workspace?.owner_id === user?.id || ['owner','admin'].includes(workspace?.role)
   const today = new Date().toISOString().split('T')[0]
   const overdueTasks = tasks.filter(t => t.status !== 'done' && t.due_date && t.due_date < today)
   const [selectedTask, setSelectedTask] = useState(null)
