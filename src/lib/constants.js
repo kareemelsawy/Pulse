@@ -4,6 +4,7 @@ export const DARK_THEME = {
   bg:          '#060a14',
   bgCard:      'rgba(255,255,255,0.04)',
   bgCardHover: 'rgba(255,255,255,0.07)',
+  surface:     'rgba(255,255,255,0.04)',   // alias used by MeetingCard
   sidebar:     'rgba(6,10,20,0.85)',
   header:      'rgba(6,10,20,0.80)',
   border:      'rgba(255,255,255,0.08)',
@@ -11,6 +12,7 @@ export const DARK_THEME = {
   text:        '#ffffff',
   textMuted:   'rgba(255,255,255,0.45)',
   textFaint:   'rgba(255,255,255,0.22)',
+  textDim:     'rgba(255,255,255,0.60)',   // alias used by MeetingCard
   accent:      '#4F8EF7',
   accentBg:    'rgba(79,142,247,0.14)',
   accentHover: '#6B9EF8',
@@ -20,6 +22,7 @@ export const DARK_THEME = {
   warnBg:      'rgba(245,158,11,0.12)',
   danger:      '#ef4444',
   dangerBg:    'rgba(239,68,68,0.12)',
+  red:         '#ef4444',                  // alias used by MeetingCard
   inputBg:     'rgba(255,255,255,0.05)',
 }
 

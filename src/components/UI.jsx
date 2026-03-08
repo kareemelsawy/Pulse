@@ -183,7 +183,7 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', disab
 }
 
 // ─── Badge ────────────────────────────────────────────────────────────────────
-export function Badge({ label, color, bg, size = 'sm' }) {
+export function Badge({ children, label, color, bg, size = 'sm' }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
@@ -194,7 +194,7 @@ export function Badge({ label, color, bg, size = 'sm' }) {
       fontSize: size === 'sm' ? 11 : 12,
       fontWeight: 600, whiteSpace: 'nowrap',
     }}>
-      {label}
+      {children ?? label}
     </span>
   )
 }

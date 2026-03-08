@@ -121,6 +121,16 @@ export async function deleteAttachment(attachmentId, filePath) {
   if (error) throw error
 }
 
+export async function getTasksByMeeting(meetingId) {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('meeting_id', meetingId)
+    .order('created_at')
+  if (error) throw error
+  return data || []
+}
+
 // ─── CSV Export ───────────────────────────────────────────────────────────────
 export function exportTasksCsv(tasks, projects) {
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p.name]))
