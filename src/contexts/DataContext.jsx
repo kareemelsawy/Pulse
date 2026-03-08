@@ -58,14 +58,17 @@ export function DataProvider({ children }) {
   // ─── Low-level email sender ───────────────────────────────────────────────
   // ─── Helper: build SendGrid config from notifSettings ────────────────────
   const emailConfig = useCallback(() => {
-    const key = notifSettings?.sendgrid_api_key
-    if (!key) throw new Error('SendGrid not configured — go to Settings → Notifications')
-    return { apiKey: key, fromEmail: notifSettings.sendgrid_from_email || 'notifications@homzmart.com', fromName: 'Pulse' }
+    const key = notifSettings?.resend_api_key || notifSettings?.sendgrid_api_key
+    if (!key) throw new Error('Resend not configured — go to Settings → Notifications')
+    const fromEmail = notifSettings?.from_email || notifSettings?.sendgrid_from_email || ''
+    const fromName  = notifSettings?.from_name  || notifSettings?.sendgrid_from_name  || 'Pulse'
+    const functionSecret = notifSettings?.function_secret
+    return { apiKey: key, fromEmail, fromName, functionSecret }
   }, [notifSettings])
 
   // ─── Low-level email sender ───────────────────────────────────────────────
   const sendRawEmail = useCallback(async ({ to, subject, html }) => {
-    if (!notifSettings?.sendgrid_api_key) return false
+    if (!notifSettings?.resend_api_key && !notifSettings?.sendgrid_api_key) return false
     try {
       await sendEmail({ ...emailConfig(), to, subject, html })
       return true
@@ -101,7 +104,7 @@ export function DataProvider({ children }) {
 
   // ─── Notifications ────────────────────────────────────────────────────────
   const sendNotification = useCallback(async ({ trigger, task, projectName, actorName, extraInfo }) => {
-    if (!notifSettings?.sendgrid_api_key) return
+    if (!notifSettings?.resend_api_key && !notifSettings?.sendgrid_api_key) return
     if (!notifSettings?.enabled_triggers?.[trigger]) return
     const recipients = new Set()
     if (notifSettings.notify_assignee && task.assignee_email) recipients.add(task.assignee_email)

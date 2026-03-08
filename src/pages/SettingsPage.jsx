@@ -233,9 +233,9 @@ function NotificationsTab({ toast }) {
   const { colors } = useTheme()
   const { iStyle, lStyle } = useS()
 
-  const [apiKey,         setApiKey]         = useState(notifSettings?.sendgrid_api_key || '')
-  const [fromEmail,      setFromEmail]      = useState(notifSettings?.sendgrid_from_email || '')
-  const [fromName,       setFromName]       = useState(notifSettings?.sendgrid_from_name || 'Pulse')
+  const [apiKey,         setApiKey]         = useState(notifSettings?.resend_api_key || notifSettings?.sendgrid_api_key || '')
+  const [fromEmail,      setFromEmail]      = useState(notifSettings?.from_email || notifSettings?.sendgrid_from_email || '')
+  const [fromName,       setFromName]       = useState(notifSettings?.from_name || notifSettings?.sendgrid_from_name || 'Pulse')
   const [triggers,       setTriggers]       = useState(notifSettings?.enabled_triggers || { task_assigned: true, status_changed: true, task_completed: true, new_task: false })
   const [notifyAssignee, setNotifyAssignee] = useState(notifSettings?.notify_assignee ?? true)
   const [extraEmails,    setExtraEmails]    = useState(notifSettings?.extra_emails || '')
@@ -245,10 +245,10 @@ function NotificationsTab({ toast }) {
 
   // Sync when notifSettings loads asynchronously
   useEffect(() => {
-    if (notifSettings?.sendgrid_api_key  && !apiKey)    setApiKey(notifSettings.sendgrid_api_key)
-    if (notifSettings?.sendgrid_from_email && !fromEmail) setFromEmail(notifSettings.sendgrid_from_email)
-    if (notifSettings?.sendgrid_from_name  && !fromName)  setFromName(notifSettings.sendgrid_from_name)
-  }, [notifSettings?.sendgrid_api_key, notifSettings?.sendgrid_from_email, notifSettings?.sendgrid_from_name])
+    if ((notifSettings?.resend_api_key || notifSettings?.sendgrid_api_key) && !apiKey) setApiKey(notifSettings.resend_api_key || notifSettings.sendgrid_api_key)
+    if ((notifSettings?.from_email || notifSettings?.sendgrid_from_email) && !fromEmail) setFromEmail(notifSettings.from_email || notifSettings.sendgrid_from_email)
+    if ((notifSettings?.from_name || notifSettings?.sendgrid_from_name) && !fromName) setFromName(notifSettings.from_name || notifSettings.sendgrid_from_name)
+  }, [notifSettings?.resend_api_key, notifSettings?.sendgrid_api_key, notifSettings?.from_email, notifSettings?.sendgrid_from_email])
 
   const isConnected = !!apiKey.trim()
 
@@ -257,9 +257,9 @@ function NotificationsTab({ toast }) {
     setSaving(true)
     try {
       await updateNotifSettings({
-        sendgrid_api_key: apiKey.trim(),
-        sendgrid_from_email: fromEmail.trim(),
-        sendgrid_from_name: fromName.trim() || 'Pulse',
+        resend_api_key: apiKey.trim(),
+        from_email: fromEmail.trim(),
+        from_name: fromName.trim() || 'Pulse',
         enabled_triggers: triggers,
         notify_assignee: notifyAssignee,
         extra_emails: extraEmails,
