@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'TOKEN_REFRESHED' && getCachedUser()) return
+      // Never skip setting authReady — even TOKEN_REFRESHED must unblock DataContext
       const u = session?.user ?? null
       setUser(u)
       if (u) localStorage.setItem('pulse_session_user', JSON.stringify(u))
