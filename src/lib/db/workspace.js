@@ -6,7 +6,6 @@ export async function getMyWorkspace(userId) {
     .from('workspace_members')
     .select('workspace_id, role')
     .eq('user_id', userId)
-    .order('joined_at', { ascending: true })
     .limit(1)
 
   if (memberErr || !memberRows?.length) return null
