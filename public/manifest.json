@@ -1,23 +1,17 @@
 {
-  "name": "Pulse",
+  "name": "Pulse — Homzmart",
   "short_name": "Pulse",
-  "description": "Project management workspace",
+  "description": "Program management for Homzmart. Projects, tasks, meetings and decisions in one workspace.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#060a14",
-  "theme_color": "#060a14",
-  "orientation": "any",
+  "background_color": "#0F0F12",
+  "theme_color": "#0F0F12",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],

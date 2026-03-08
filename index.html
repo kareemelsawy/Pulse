@@ -2,50 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Mobile-first viewport -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-
-    <!-- PWA + installability -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#060a14" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0F0F12" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)" />
+    <meta name="description" content="Pulse — Program Management for Homzmart. Projects, tasks, meetings, and decisions in one workspace." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Pulse" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-
-    <!-- Security headers (CSP set server-side; these are supplemental) -->
-    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- Security headers via meta tags (real headers should be set server-side) -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-
-    <!-- SEO / social -->
-    <meta name="description" content="Pulse — project management workspace" />
-    <meta name="robots" content="noindex, nofollow" />
-
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Pulse</title>
-
-    <!-- Fonts -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <title>Pulse — Homzmart</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Syne:wght@600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
-    <style>
-      /* Prevent FOUC */
-      html { background: #060a14; }
-    </style>
   </head>
   <body>
-    <div id="gradient-bg"><div class="grain"></div></div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-
-    <!-- Register service worker for PWA -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {})
-        })
-      }
-    </script>
   </body>
 </html>

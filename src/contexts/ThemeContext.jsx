@@ -1,31 +1,27 @@
-import { createContext, useContext, useEffect, useCallback } from 'react'
+import { createContext, useContext, useCallback } from 'react'
 import { setThemeColors, DARK_THEME } from '../lib/constants'
 
 const ThemeContext = createContext(null)
 
-function applyDarkTheme() {
-  setThemeColors(true)
-  const root = document.documentElement
-  Object.entries(DARK_THEME).forEach(([k, v]) => root.style.setProperty(`--color-${k}`, v))
-  root.setAttribute('data-theme', 'dark')
-  document.body.style.color = DARK_THEME.text
-}
+// Apply dark theme once on module load
+setThemeColors(true)
+const root = document.documentElement
+Object.entries(DARK_THEME).forEach(([k, v]) => root.style.setProperty(`--color-${k}`, v))
+root.setAttribute('data-theme', 'dark')
+document.body.style.color = DARK_THEME.text
+document.body.style.background = DARK_THEME.bg
 
 export function ThemeProvider({ children }) {
-  // Always dark — light view is disabled
+  // Light mode is permanently disabled — Pulse always runs in dark mode.
   const isDark = true
-
-  useEffect(() => {
-    applyDarkTheme()
-    localStorage.removeItem('pulse_theme_override')
+  const toggleTheme = useCallback(() => {
+    // no-op: light view disabled
   }, [])
-
-  // Kept for interface compatibility — toggling is disabled
-  const toggleTheme = useCallback(() => {}, [])
   const setAutoTheme = useCallback(() => {}, [])
+  const colors = DARK_THEME
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme, setAutoTheme, colors: DARK_THEME }}>
+    <ThemeContext.Provider value={{ isDark, toggleTheme, setAutoTheme, colors }}>
       {children}
     </ThemeContext.Provider>
   )

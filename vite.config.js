@@ -3,44 +3,42 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-
   build: {
-    // Target modern browsers only — smaller bundle
-    target: 'es2020',
-
-    // Chunk splitting for better caching
+    // Production optimizations
+    target: 'es2015',
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,    // Remove console.log in production
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug'],
+      },
+    },
     rollupOptions: {
       output: {
+        // Code splitting for better caching
         manualChunks: {
-          'react-core':  ['react', 'react-dom'],
-          'supabase':    ['@supabase/supabase-js'],
-          'date-fns':    ['date-fns'],
+          vendor: ['react', 'react-dom'],
+          supabase: ['@supabase/supabase-js'],
         },
       },
     },
-
-    // Inline small assets for fewer requests
-    assetsInlineLimit: 4096,
-
-    // Report bundle size warnings at 500 kB
-    chunkSizeWarningLimit: 500,
-
-    // Source maps in production for error tracking (omit if privacy-sensitive)
-    sourcemap: false,
-
-    // Minification
-    minify: 'esbuild',
+    // Chunk size warnings
+    chunkSizeWarningLimit: 600,
   },
-
-  // Aggressive dependency pre-bundling
+  // Security: prevent source maps in production
+  sourcemap: false,
+  // Optimize deps
   optimizeDeps: {
-    include: ['react', 'react-dom', '@supabase/supabase-js', 'date-fns'],
+    include: ['react', 'react-dom', '@supabase/supabase-js'],
   },
-
   server: {
-    // Security: restrict dev server to localhost
-    host: 'localhost',
-    port: 5173,
+    // Security headers for dev server
+    headers: {
+      'X-Frame-Options': 'DENY',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    },
   },
 })
-

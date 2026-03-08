@@ -1,4 +1,4 @@
-// Pulse Service Worker — enables installable PWA
+// Pulse Service Worker — enables PWA installability and offline caching
 const CACHE_NAME = 'pulse-v1'
 const STATIC_ASSETS = ['/', '/index.html']
 
@@ -18,22 +18,23 @@ self.addEventListener('activate', event => {
   self.clients.claim()
 })
 
-// Network-first strategy — always try network, fall back to cache
 self.addEventListener('fetch', event => {
-  // Skip non-GET and cross-origin requests
-  if (event.request.method !== 'GET') return
-  if (!event.request.url.startsWith(self.location.origin)) return
-
+  const { request } = event
+  // Only cache GET requests
+  if (request.method !== 'GET') return
+  // Don't cache Supabase API calls
+  if (request.url.includes('supabase.co')) return
+  
   event.respondWith(
-    fetch(event.request)
+    fetch(request)
       .then(response => {
-        // Cache successful responses for HTML/JS/CSS
+        // Cache successful responses
         if (response.ok) {
           const clone = response.clone()
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone))
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone))
         }
         return response
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(request))
   )
 })

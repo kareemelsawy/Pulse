@@ -1,42 +1,25 @@
 import { supabase } from '../supabase'
 
-export function subscribeTasks(workspaceId, onChange) {
-  supabase
-    .from('tasks')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .order('created_at')
-    .then(({ data }) => { if (data) onChange(data) })
-
-  const channel = supabase
-    .channel(`tasks:${workspaceId}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `workspace_id=eq.${workspaceId}` },
-      () => {
-        supabase.from('tasks').select('*').eq('workspace_id', workspaceId).order('created_at')
-          .then(({ data }) => { if (data) onChange(data) })
-      }
-    )
-    .subscribe()
-
-  return () => supabase.removeChannel(channel)
+export async function getTasks(workspaceId) {
+  const { data, error } = await supabase
+    .from('tasks').select('*').eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data || []
 }
 
-export async function createTask({ projectId, workspaceId, userId, title, description, status, priority, assignee_email, assignee_name, due_date, start_date }) {
+export async function createTask({ projectId, workspaceId, userId, title, status, priority, assignee_name, assignee_email, due_date, meeting_id }) {
   const { data, error } = await supabase
     .from('tasks')
-    .insert({
-      project_id: projectId, workspace_id: workspaceId, created_by: userId,
-      title, description, status: status || 'new', priority, assignee_email,
-      assignee_name, due_date, start_date,
-    })
-    .select()
-    .single()
+    .insert({ project_id: projectId, workspace_id: workspaceId, created_by: userId, title, status: status || 'new', priority, assignee_name, assignee_email, due_date, meeting_id })
+    .select().single()
   if (error) throw error
   return data
 }
 
-export async function updateTask(id, updates) {
-  const { error } = await supabase.from('tasks').update(updates).eq('id', id)
+export async function updateTask(id, fields) {
+  const { error } = await supabase
+    .from('tasks').update({ ...fields, updated_at: new Date().toISOString() }).eq('id', id)
   if (error) throw error
 }
 
@@ -45,80 +28,32 @@ export async function deleteTask(id) {
   if (error) throw error
 }
 
-export async function bulkCreateTasks(rows, workspaceId, userId, projectMap) {
-  const inserts = rows.map(r => ({
-    workspace_id: workspaceId, created_by: userId,
-    project_id: projectMap[r.project_name] || r.project_id,
-    title: r.title, description: r.description || null,
-    status: r.status || 'new', priority: r.priority || null,
-    assignee_email: r.assignee_email || null,
-    assignee_name: r.assignee_name || null,
-    due_date: r.due_date || null,
-    start_date: r.start_date || null,
-  }))
-  const { data, error } = await supabase.from('tasks').insert(inserts).select()
+export function subscribeTasks(workspaceId, callback) {
+  getTasks(workspaceId).then(callback).catch(() => callback([]))
+  const channel = supabase.channel(`tasks:${workspaceId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `workspace_id=eq.${workspaceId}` },
+      () => getTasks(workspaceId).then(callback).catch(() => {}))
+    .subscribe(status => {
+      if (status === 'CHANNEL_ERROR') getTasks(workspaceId).then(callback).catch(() => {})
+    })
+  return () => supabase.removeChannel(channel)
+}
+
+export async function bulkCreateTasks(tasks, workspaceId, userId, projectMap) {
+  const rows = tasks.map(t => ({
+    title: t.title,
+    status: ['new','inprogress','review','done'].includes(t.status) ? t.status : 'new',
+    priority: t.priority || 'medium',
+    assignee_name: t.assignee_name || '',
+    assignee_email: t.assignee_email || '',
+    due_date: t.due_date || null,
+    workspace_id: workspaceId,
+    created_by: userId,
+    project_id: projectMap[t.project_name] || projectMap[Object.keys(projectMap)[0]],
+  })).filter(t => t.project_id)
+  const { data, error } = await supabase.from('tasks').insert(rows).select()
   if (error) throw error
   return data
-}
-
-// ─── Comments ─────────────────────────────────────────────────────────────────
-export async function getTaskComments(taskId) {
-  const { data, error } = await supabase
-    .from('task_comments')
-    .select('*')
-    .eq('task_id', taskId)
-    .order('created_at')
-  if (error) throw error
-  return data || []
-}
-
-export async function addTaskComment(taskId, userId, authorName, body) {
-  const { data, error } = await supabase
-    .from('task_comments')
-    .insert({ task_id: taskId, user_id: userId, author_name: authorName, body })
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-export async function deleteTaskComment(commentId) {
-  const { error } = await supabase.from('task_comments').delete().eq('id', commentId)
-  if (error) throw error
-}
-
-// ─── Attachments ──────────────────────────────────────────────────────────────
-export async function getTaskAttachments(taskId) {
-  const { data, error } = await supabase
-    .from('task_attachments')
-    .select('*')
-    .eq('task_id', taskId)
-    .order('created_at')
-  if (error) throw error
-  return data || []
-}
-
-export async function uploadAttachment(taskId, workspaceId, file) {
-  const ext = file.name.split('.').pop()
-  const path = `${workspaceId}/${taskId}/${Date.now()}.${ext}`
-  const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file)
-  if (uploadError) throw uploadError
-
-  const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(path)
-
-  const { data, error } = await supabase
-    .from('task_attachments')
-    .insert({ task_id: taskId, file_name: file.name, file_url: publicUrl, file_size: file.size, file_type: file.type })
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-export async function deleteAttachment(attachmentId, filePath) {
-  if (filePath) await supabase.storage.from('attachments').remove([filePath])
-  const { error } = await supabase.from('task_attachments').delete().eq('id', attachmentId)
-  if (error) throw error
 }
 
 export async function getTasksByMeeting(meetingId) {
@@ -126,26 +61,84 @@ export async function getTasksByMeeting(meetingId) {
     .from('tasks')
     .select('*')
     .eq('meeting_id', meetingId)
-    .order('created_at')
-  if (error) throw error
+    .order('created_at', { ascending: true })
+  if (error) {
+    if (error.code === '42703') return []
+    throw error
+  }
   return data || []
 }
 
-// ─── CSV Export ───────────────────────────────────────────────────────────────
-export function exportTasksCsv(tasks, projects) {
-  const projectMap = Object.fromEntries(projects.map(p => [p.id, p.name]))
-  const rows = [
-    ['Title', 'Project', 'Status', 'Priority', 'Assignee', 'Due Date', 'Start Date', 'Description'],
-    ...tasks.map(t => [
-      t.title, projectMap[t.project_id] || '', t.status, t.priority || '',
-      t.assignee_name || t.assignee_email || '', t.due_date || '', t.start_date || '',
-      (t.description || '').replace(/\n/g, ' '),
-    ]),
-  ]
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+export async function getComments(taskId) {
+  const { data, error } = await supabase
+    .from('task_comments')
+    .select('*, profiles(full_name, email)')
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: true })
+  if (error) return []
+  return (data || []).map(c => ({
+    ...c,
+    author_name: c.profiles?.full_name || c.profiles?.email || 'Unknown',
+  }))
+}
+
+export async function addComment(taskId, userId, body) {
+  const { data, error } = await supabase
+    .from('task_comments')
+    .insert({ task_id: taskId, user_id: userId, body })
+    .select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteComment(commentId) {
+  const { error } = await supabase.from('task_comments').delete().eq('id', commentId)
+  if (error) throw error
+}
+
+export async function uploadAttachment(taskId, file) {
+  const path = `${taskId}/${Date.now()}_${file.name.replace(/[^a-z0-9._-]/gi, '_')}`
+  const { data, error } = await supabase.storage.from('task-attachments').upload(path, file)
+  if (error) throw error
+  const { data: { publicUrl } } = supabase.storage.from('task-attachments').getPublicUrl(path)
+  const { data: rec, error: recErr } = await supabase.from('task_attachments').insert({
+    task_id: taskId, file_name: file.name, file_path: path, file_url: publicUrl, file_size: file.size
+  }).select().single()
+  if (recErr) throw recErr
+  return rec
+}
+
+export async function getAttachments(taskId) {
+  const { data, error } = await supabase.from('task_attachments').select('*').eq('task_id', taskId).order('created_at')
+  if (error) {
+    if (error.code === '42P01') return []
+    throw error
+  }
+  return data || []
+}
+
+export async function deleteAttachment(id, filePath) {
+  await supabase.storage.from('task-attachments').remove([filePath])
+  const { error } = await supabase.from('task_attachments').delete().eq('id', id)
+  if (error) throw error
+}
+
+export function exportTasksCsv(tasks, projectName) {
+  const headers = ['title', 'status', 'priority', 'assignee_name', 'assignee_email', 'due_date']
+  const rows = tasks.map(t => [
+    `"${(t.title || '').replace(/"/g, '""')}"`,
+    t.status || 'new',
+    t.priority || 'medium',
+    `"${(t.assignee_name || '').replace(/"/g, '""')}"`,
+    t.assignee_email || '',
+    t.due_date || '',
+  ].join(','))
+  const csv = [headers.join(','), ...rows].join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = 'tasks.csv'; a.click()
+  a.href = url
+  a.download = `${(projectName || 'tasks').replace(/\s+/g, '-').toLowerCase()}-tasks.csv`
+  a.click()
   URL.revokeObjectURL(url)
 }
