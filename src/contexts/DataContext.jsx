@@ -24,35 +24,38 @@ export function DataProvider({ children }) {
   const [wsError,      setWsError]      = useState(null)
 
   useEffect(() => {
-    // Don't attempt anything until Supabase has confirmed the session
     if (!authReady) return
-    if (!user) { setWorkspace(null); setProjects([]); setTasks([]); setLoading(false); return }
+    if (!user) {
+      setWorkspace(null); setProjects([]); setTasks([])
+      setLoading(false); setWsError(null)
+      return
+    }
+
+    let cancelled = false
     setLoading(true)
     setWsError(null)
-    const timeout = setTimeout(() => { setWsError('no_workspace'); setLoading(false) }, 10000)
 
-    const loadWorkspace = (attempt = 1) => getMyWorkspace(user.id).then(ws => {
+    getMyWorkspace(user.id).then(ws => {
+      if (cancelled) return
       if (!ws) {
-        if (attempt < 5) return setTimeout(() => loadWorkspace(attempt + 1), 600 * attempt)
-        clearTimeout(timeout)
-        setWsError('no_workspace'); setLoading(false); return
+        setWsError('no_workspace')
+        setLoading(false)
+        return
       }
-      clearTimeout(timeout)
       setWorkspace(ws)
-      const unsubProjects = subscribeProjects(ws.id, (data) => { setProjects(data); setLoading(false) })
-      const unsubTasks    = subscribeTasks(ws.id, setTasks)
-      getNotifSettings(ws.id).then(setNotifSettings).catch(() => {})
-      getNotifLogs(ws.id).then(setNotifLogs).catch(() => {})
-      const unsubMembers  = subscribeMembers(ws.id, setMembers)
+      const unsubProjects = subscribeProjects(ws.id, (data) => {
+        if (!cancelled) { setProjects(data); setLoading(false) }
+      })
+      const unsubTasks   = subscribeTasks(ws.id, data => { if (!cancelled) setTasks(data) })
+      const unsubMembers = subscribeMembers(ws.id, data => { if (!cancelled) setMembers(data) })
+      getNotifSettings(ws.id).then(d => { if (!cancelled) setNotifSettings(d) }).catch(() => {})
+      getNotifLogs(ws.id).then(d => { if (!cancelled) setNotifLogs(d) }).catch(() => {})
       window.__pulseUnsub = () => { unsubProjects(); unsubTasks(); unsubMembers() }
     }).catch(() => {
-      if (attempt < 5) return setTimeout(() => loadWorkspace(attempt + 1), 600 * attempt)
-      clearTimeout(timeout)
-      setWsError('no_workspace'); setLoading(false)
+      if (!cancelled) { setWsError('no_workspace'); setLoading(false) }
     })
-    loadWorkspace()
 
-    return () => { clearTimeout(timeout); window.__pulseUnsub?.() }
+    return () => { cancelled = true; window.__pulseUnsub?.() }
   }, [user?.id, authReady])
 
   // ─── Low-level email sender ───────────────────────────────────────────────

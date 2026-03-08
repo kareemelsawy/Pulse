@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Detect missing config and show a clear error
 export const configError = (!supabaseUrl || supabaseUrl.includes('your-project') ||
   !supabaseAnonKey || supabaseAnonKey.includes('your-anon'))
   ? 'Missing Supabase config. Copy .env.example to .env and fill in your project URL and anon key.'
@@ -14,34 +13,15 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder',
   {
     auth: {
-      detectSessionInUrl: true,   // Required — reads OAuth token from URL hash on redirect
+      detectSessionInUrl: true,
       persistSession: true,
       autoRefreshToken: true,
-      storageKey: 'pulse_auth',
-      // Security: use PKCE for OAuth flows
-      flowType: 'pkce',
+      // Do NOT use PKCE — it prevents onAuthStateChange from firing with
+      // the existing session on page load, breaking the workspace redirect
+      flowType: 'implicit',
     },
     realtime: {
       params: { eventsPerSecond: 10 },
     },
-    global: {
-      headers: {
-        // Identify the client
-        'X-Client-Info': 'pulse-web/1.0',
-      },
-    },
   }
 )
-
-// ── Session helpers ────────────────────────────────────────────────────────────
-export async function getSession() {
-  const { data: { session }, error } = await supabase.auth.getSession()
-  if (error) return null
-  return session
-}
-
-export async function getCurrentUser() {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error) return null
-  return user
-}
