@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useData } from '../contexts/DataContext'
 import { useAuth } from '../contexts/AuthContext'
 import { COLORS, STATUS, PRIORITY, PROJECT_COLORS } from '../lib/constants'
@@ -15,6 +15,8 @@ import MeetingModal from '../components/MeetingModal'
 export function HomePage({ onOpenProject, onNewProject, workspaceName, toast }) {
   const { projects, tasks, myTasks, getProjectTasks } = useData()
   const { user } = useAuth()
+  const { workspace } = useData()
+  const isAdmin = workspace?.role === 'owner' || workspace?.owner_id === user?.id
   const firstName  = (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there').split(' ')[0]
   const myEmail    = user?.email
   const byStatus   = Object.keys(STATUS).map(s => ({ s, count: tasks.filter(t => t.status === s).length }))
@@ -134,7 +136,7 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName, toast }) 
         <TaskModal
           task={selectedTask}
           projectId={selectedTask.project_id}
-          isAdmin={false}
+          isAdmin={isAdmin}
           onClose={() => setSelectedTask(null)}
           toast={toast}
         />
@@ -247,11 +249,11 @@ function MeetingsTab({ project, toast }) {
   const [editing,   setEditing]   = useState(null)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useState(() => {
+  useEffect(() => {
     getMeetings(project.id)
       .then(d => { setMeetings(d); setLoading(false) })
       .catch(() => setLoading(false))
-  })
+  }, [project.id])
 
   function handleSaved(meeting, isNew) {
     if (isNew) setMeetings(prev => [meeting, ...prev])
@@ -448,6 +450,9 @@ function CsvImportModal({ projectId, project, onClose, toast }) {
 // ─── PipelineView ─────────────────────────────────────────────────────────────
 export function PipelineView({ onConvertToProject, toast }) {
   const { projects, editProject, removeProject } = useData()
+  const { user } = useAuth()
+  const { workspace } = useData()
+  const isAdmin = workspace?.role === 'owner' || workspace?.owner_id === user?.id
   const pipeline = projects.filter(p => p.is_pipeline)
   const [newOpen, setNewOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(null)
@@ -488,7 +493,7 @@ export function PipelineView({ onConvertToProject, toast }) {
       </div>
       {newOpen  && <NewPipelineModal onClose={() => setNewOpen(false)} toast={toast} />}
       {editOpen && (
-        <EditProjectModal project={editOpen} isAdmin={true}
+        <EditProjectModal project={editOpen} isAdmin={isAdmin}
           onSave={async d => { await editProject(editOpen.id, d); setEditOpen(null); toast?.('Updated', 'success') }}
           onDelete={async () => { await removeProject(editOpen.id); setEditOpen(null); toast?.('Removed') }}
           onClose={() => setEditOpen(null)} />

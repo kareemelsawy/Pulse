@@ -395,7 +395,8 @@ function NotificationsTab({ toast }) {
         </div>
 
         <div style={{ padding: '10px 14px', background: 'rgba(107,142,247,0.08)', border: '1px solid rgba(107,142,247,0.18)', borderRadius: 10, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.6, marginBottom: 14 }}>
-          <strong style={{ color: COLORS.accent }}>Note:</strong> From email must be a verified domain in your Resend account. Emails display as <em>"{fromName || 'Pulse'} &lt;{fromEmail || 'you@domain.com'}&gt;"</em>
+          <strong style={{ color: COLORS.accent }}>Note:</strong> From email must be a verified domain in your Resend account. Emails display as <em>"{fromName || 'Pulse'} &lt;{fromEmail || 'you@domain.com'}&gt;"</em><br/>
+          <strong style={{ color: COLORS.accent }}>Security:</strong> Your API key is stored encrypted in the database and proxied through a Supabase Edge Function — it is never sent directly from the browser to Resend.
         </div>
 
         <Btn size="sm" variant="secondary" onClick={handleTest} disabled={testing || !isConnected || !fromEmail.trim()}>
@@ -443,15 +444,15 @@ function NotificationsTab({ toast }) {
 
 // ── Integrations Tab ──────────────────────────────────────────────────────────
 function IntegrationsTab({ toast }) {
-  const [googleClientId, setGoogleClientId]         = useState(() => localStorage.getItem('pulse_google_client_id') || '')
-  const [googleClientSecret, setGoogleClientSecret] = useState(() => localStorage.getItem('pulse_google_client_secret') || '')
+  const [googleClientId, setGoogleClientId]         = useState(() => sessionStorage.getItem('pulse_google_client_id') || '')
+  const [googleClientSecret, setGoogleClientSecret] = useState(() => sessionStorage.getItem('pulse_google_client_secret') || '')
   const [saving, setSaving]   = useState(false)
   const [testing, setTesting] = useState(false)
 
   async function handleSave() {
     setSaving(true)
-    localStorage.setItem('pulse_google_client_id',     googleClientId.trim())
-    localStorage.setItem('pulse_google_client_secret', googleClientSecret.trim())
+    sessionStorage.setItem('pulse_google_client_id',     googleClientId.trim())
+    sessionStorage.setItem('pulse_google_client_secret', googleClientSecret.trim())
     toast('Credentials saved locally', 'success')
     setSaving(false)
   }
