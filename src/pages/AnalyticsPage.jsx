@@ -49,7 +49,7 @@ function DonutChart({ data, size = 120 }) {
 
  return (
  <svg width={size} height={size} viewBox="0 0 120 120">
- <circle cx={cx} cy={cy} r={r} fill="none" stroke=COLORS.border strokeWidth="18" />
+ <circle cx={cx} cy={cy} r={r} fill="none" stroke={COLORS.border} strokeWidth="18" />
  {slices.map((s, i) => (
  <circle key={i} cx={cx} cy={cy} r={r} fill="none"
  stroke={s.color} strokeWidth="18"
