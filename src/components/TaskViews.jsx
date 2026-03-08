@@ -17,7 +17,7 @@ export function BoardView({ tasks, onTaskClick }) {
             <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 6, minHeight: 60 }}>
               {col.map(t => (
                 <div key={t.id} onClick={() => onTaskClick(t)}
-                  style={{ background: COLORS.surface, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', transition: 'all 0.18s' }}
+                  style={{ background: COLORS.surface, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '12px 14px', cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s, box-shadow 0.15s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.10)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.20)'; e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,100,255,0.12)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; e.currentTarget.style.boxShadow = '' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginBottom: 8 }}>
@@ -48,8 +48,7 @@ export function ListView({ tasks, onTaskClick }) {
       {tasks.map((t, i) => (
         <div key={t.id} onClick={() => onTaskClick(t)}
           style={{ display: 'grid', gridTemplateColumns: '1fr 110px 120px 90px 90px', padding: '11px 15px', borderBottom: i < tasks.length-1 ? '1px solid rgba(255,255,255,0.07)' : 'none', cursor: 'pointer', alignItems: 'center', transition: 'background 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
-          onMouseLeave={e => e.currentTarget.style.background = ''}>
+          className="list-row">
           <span style={{ fontWeight: 500, paddingRight: 12 }}>{t.title}</span>
           <Badge color={STATUS[t.status]?.color || '#888'}>{STATUS[t.status]?.label}</Badge>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -73,7 +72,7 @@ function NextStepButton({ task }) {
   return (
     <button
       onClick={e => { e.stopPropagation(); editTask(task.id, { status: next }, task) }}
-      style={{ marginTop: 8, width: '100%', background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 0', fontSize: 11, color: COLORS.textMuted, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+      style={{ marginTop: 8, width: '100%', background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 0', fontSize: 11, color: COLORS.textMuted, cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s, border-color 0.15s, opacity 0.15s' }}
       onMouseEnter={e => { e.currentTarget.style.background = COLORS.accent + '22'; e.currentTarget.style.color = COLORS.accent; e.currentTarget.style.borderColor = COLORS.accent }}
       onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = COLORS.textMuted; e.currentTarget.style.borderColor = COLORS.border }}>
       <Icon name="arrowRight" size={11} color={COLORS.textMuted} style={{ marginRight: 4 }} />{STATUS[next].label}

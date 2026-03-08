@@ -193,7 +193,7 @@ export function Btn({ children, onClick, variant='primary', size='md', disabled,
       opacity: disabled ? 0.45 : 1,
       display:'inline-flex', alignItems:'center', gap:6,
       lineHeight: 1.4, whiteSpace:'nowrap',
-      transition:'all 0.18s ease',
+      transition:'background 0.15s, box-shadow 0.15s, opacity 0.15s',
       fontFamily: 'inherit', letterSpacing: '-0.01em',
       ...xStyle,
     }}

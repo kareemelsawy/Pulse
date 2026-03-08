@@ -563,7 +563,7 @@ export default function SettingsPage({ toast }) {
             border: `1px solid ${tab === t.id ? 'rgba(107,142,247,0.25)' : 'transparent'}`,
             color: tab === t.id ? COLORS.accent : COLORS.textDim,
             fontSize: 13, fontWeight: tab === t.id ? 600 : 400,
-            cursor: 'pointer', transition: 'all 0.15s',
+            cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s, opacity 0.15s',
             fontFamily: 'inherit', textAlign: 'left', width: '100%',
             letterSpacing: '-0.01em',
           }}

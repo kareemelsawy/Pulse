@@ -92,7 +92,7 @@ export default function GlobalMeetingsPage({ toast }) {
         <span style={{ fontSize: 12, color: COLORS.textMuted, flexShrink: 0 }}>Project:</span>
         {[{ id: 'all', name: 'All Projects', color: COLORS.textMuted }, ...activeProjects].map(p => (
           <button key={p.id} onClick={() => setFilterProj(p.id)}
-            style={{ padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${filterProj === p.id ? (p.color || COLORS.accent) : COLORS.border}`, background: filterProj === p.id ? (p.color || COLORS.accent) + '18' : 'none', color: filterProj === p.id ? (p.color || COLORS.accent) : COLORS.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
+            style={{ padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${filterProj === p.id ? (p.color || COLORS.accent) : COLORS.border}`, background: filterProj === p.id ? (p.color || COLORS.accent) + '18' : 'none', color: filterProj === p.id ? (p.color || COLORS.accent) : COLORS.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, transition: 'background 0.15s, border-color 0.15s, opacity 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
             {p.id !== 'all' && <div style={{ width: 7, height: 7, borderRadius: '50%', background: p.color }} />}
             {p.name}
           </button>

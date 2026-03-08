@@ -167,7 +167,7 @@ export default function AppShell({ toast }) {
             background:COLORS.surface, border:`1px solid ${COLORS.border}`,
             borderRadius:8, padding:'5px 7px', cursor:'pointer',
             display:'flex', alignItems:'center',
-            transition:'all 0.15s',
+            transition:'background 0.15s, border-color 0.15s, opacity 0.15s',
           }}
           onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'}
           onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>

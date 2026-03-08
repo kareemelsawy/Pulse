@@ -283,7 +283,7 @@ export default function DocsPage() {
               color: activeId === d.id ? C.text : C.textDim,
               cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
               fontSize: 13, fontWeight: activeId === d.id ? 600 : 400,
-              transition: 'all 0.12s', width: '100%',
+              transition: 'background 0.12s, border-color 0.12s', width: '100%',
             }}
             onMouseEnter={e => { if (activeId !== d.id) e.currentTarget.style.background = C.surfaceHover }}
             onMouseLeave={e => { if (activeId !== d.id) e.currentTarget.style.background = 'none' }}>

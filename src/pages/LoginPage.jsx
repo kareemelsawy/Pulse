@@ -1,100 +1,100 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase, configError } from '../lib/supabase'
-import { Icon, Spinner } from '../components/UI'
+import { Spinner } from '../components/UI'
 import { useTheme } from '../contexts/ThemeContext'
 
-function useC() { const { colors, isDark } = useTheme(); return { C: colors, isDark } }
+function useC() { const { isDark } = useTheme(); return isDark }
 
-// ── Shared input / label styles ──────────────────────────────────────────────
-function inp(isDark) {
+// ─── Shared atoms ─────────────────────────────────────────────────────────────
+function inp(d) {
   return {
-    width: '100%',
-    background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,20,80,0.04)',
-    backdropFilter: 'blur(8px)',
-    border: isDark ? '1px solid rgba(255,255,255,0.11)' : '1px solid rgba(0,60,200,0.14)',
-    borderRadius: 12, padding: '11px 15px',
-    color: isDark ? '#F0F4FF' : '#050D1A',
+    width: '100%', boxSizing: 'border-box',
+    background: d ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.90)',
+    border: d ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(15,30,80,0.14)',
+    borderRadius: 10, padding: '11px 14px',
+    color: d ? '#EEF2FF' : '#0A0F1E',
     fontSize: 14, outline: 'none',
     fontFamily: "'DM Sans', sans-serif",
-    transition: 'border-color 0.2s, box-shadow 0.2s',
-    lineHeight: 1.5,
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+    lineHeight: 1.5, display: 'block',
   }
 }
-function lbl(isDark) {
+function lbl(d) {
   return {
-    fontSize: 11, fontWeight: 700,
-    color: isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)',
+    fontSize: 11, fontWeight: 600,
+    color: d ? 'rgba(180,200,255,0.38)' : 'rgba(10,30,80,0.42)',
     letterSpacing: '0.07em', textTransform: 'uppercase',
-    display: 'block', marginBottom: 7,
+    display: 'block', marginBottom: 6,
   }
 }
-function primaryBtn(loading) {
-  return {
-    width: '100%', padding: '13px 20px',
-    background: 'linear-gradient(135deg, #0055FF 0%, #0099FF 60%, #00CCFF 100%)',
-    color: '#fff', border: '1px solid rgba(255,255,255,0.20)',
-    borderRadius: 12, fontWeight: 700, fontSize: 14,
-    cursor: loading ? 'not-allowed' : 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-    boxShadow: '0 4px 28px rgba(0,85,255,0.45), inset 0 1px 0 rgba(255,255,255,0.22)',
-    fontFamily: "'DM Sans', inherit", transition: 'all 0.2s',
-    letterSpacing: '-0.01em', opacity: loading ? 0.7 : 1,
-  }
+function onFocus(e, d) {
+  e.target.style.borderColor = d ? 'rgba(80,160,255,0.55)' : 'rgba(26,86,255,0.40)'
+  e.target.style.boxShadow   = d ? '0 0 0 3px rgba(0,120,255,0.10)' : '0 0 0 3px rgba(26,86,255,0.08)'
 }
-function googleBtn(isDark) {
-  return {
-    width: '100%', padding: '12px 20px',
-    background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.80)',
-    backdropFilter: 'blur(12px)',
-    color: isDark ? '#F0F4FF' : '#050D1A',
-    border: isDark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(0,60,200,0.12)',
-    borderRadius: 12, fontWeight: 600, fontSize: 14,
-    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-    fontFamily: "'DM Sans', inherit", transition: 'all 0.2s', marginBottom: 0,
-  }
+function onBlur(e)  { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }
+
+function PrimaryBtn({ loading, onClick, disabled, children }) {
+  return (
+    <button onClick={onClick} disabled={disabled}
+      style={{
+        width: '100%', padding: '12px 20px',
+        background: 'linear-gradient(135deg, #0050EE 0%, #0099FF 100%)',
+        color: '#fff', border: 'none',
+        borderRadius: 10, fontWeight: 600, fontSize: 14,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        boxShadow: '0 2px 20px rgba(0,80,238,0.40)',
+        fontFamily: "'DM Sans', sans-serif",
+        letterSpacing: '-0.01em', opacity: disabled ? 0.65 : 1,
+        transition: 'opacity 0.15s, box-shadow 0.15s',
+      }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.boxShadow = '0 4px 28px rgba(0,80,238,0.60)' }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 20px rgba(0,80,238,0.40)' }}>
+      {loading ? <Spinner size={16} /> : children}
+    </button>
+  )
 }
 
-// ── Shared error/success boxes ────────────────────────────────────────────────
-function ErrBox({ msg, isDark }) {
-  if (!msg) return null
+function GhostBtn({ onClick, children, isDark }) {
   return (
-    <div style={{
-      background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.25)',
-      borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13,
-      color: isDark ? '#FCA5A5' : '#B91C1C',
-      display: 'flex', alignItems: 'flex-start', gap: 8,
-    }}>
-      <span style={{ flexShrink: 0, marginTop: 1 }}>✕</span>
-      <span style={{ lineHeight: 1.5 }}>{msg}</span>
-    </div>
+    <button onClick={onClick} style={{
+      width: '100%', padding: '11px 20px',
+      background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.85)',
+      color: isDark ? '#C8D8FF' : '#1A1A2E',
+      border: isDark ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(15,30,80,0.12)',
+      borderRadius: 10, fontWeight: 500, fontSize: 14,
+      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+      fontFamily: "'DM Sans', sans-serif",
+      transition: 'background 0.15s',
+    }}
+    onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,1)'}
+    onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.85)'}>
+      {children}
+    </button>
   )
 }
-function OkBox({ msg, isDark }) {
+
+function ErrBox({ msg, d }) {
   if (!msg) return null
-  return (
-    <div style={{
-      background: 'rgba(52,209,122,0.10)', border: '1px solid rgba(52,209,122,0.25)',
-      borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13,
-      color: isDark ? '#6EE7B7' : '#15803D',
-      display: 'flex', alignItems: 'flex-start', gap: 8,
-    }}>
-      <span style={{ flexShrink: 0, marginTop: 1 }}>✓</span>
-      <span style={{ lineHeight: 1.5 }}>{msg}</span>
-    </div>
-  )
+  return <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', borderRadius: 8, padding: '9px 13px', marginBottom: 14, fontSize: 13, color: d ? '#FCA5A5' : '#B91C1C', lineHeight: 1.5 }}>✕ {msg}</div>
 }
-function OrDivider({ isDark }) {
+function OkBox({ msg, d }) {
+  if (!msg) return null
+  return <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.22)', borderRadius: 8, padding: '9px 13px', marginBottom: 14, fontSize: 13, color: d ? '#86EFAC' : '#15803D', lineHeight: 1.5 }}>✓ {msg}</div>
+}
+function OrLine({ d }) {
+  const c = d ? 'rgba(255,255,255,0.07)' : 'rgba(15,30,80,0.08)'
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' }}>
-      <div style={{ flex: 1, height: 1, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,60,200,0.08)' }} />
-      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: isDark ? 'rgba(180,200,255,0.30)' : 'rgba(0,40,120,0.30)' }}>OR</span>
-      <div style={{ flex: 1, height: 1, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,60,200,0.08)' }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
+      <div style={{ flex: 1, height: 1, background: c }} />
+      <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.10em', color: d ? 'rgba(180,200,255,0.25)' : 'rgba(10,30,80,0.28)' }}>OR</span>
+      <div style={{ flex: 1, height: 1, background: c }} />
     </div>
   )
 }
 function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24">
+    <svg width="17" height="17" viewBox="0 0 24 24">
       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
@@ -103,137 +103,95 @@ function GoogleIcon() {
   )
 }
 
-// ── Left panel — brand / visual ───────────────────────────────────────────────
-function LeftPanel({ isDark }) {
-  const white  = (o) => `rgba(255,255,255,${o})`
-  const navy   = (o) => `rgba(0,10,40,${o})`
-  const accent = isDark ? white : navy
+// ─── Left Panel — immersive brand side ───────────────────────────────────────
+function LeftPanel({ d }) {
+  const w = o => `rgba(255,255,255,${o})`
+  const n = o => `rgba(4,12,48,${o})`
+  const fg  = d ? w : n
+  const bg  = d
+    ? 'linear-gradient(160deg, #000308 0%, #000d2e 35%, #001f6e 62%, #0055bb 80%, #0088d4 93%, #00aee8 100%)'
+    : 'linear-gradient(160deg, #f8fbff 0%, #ddeeff 30%, #a8d4ff 55%, #5aa8ff 75%, #1a6dff 90%, #0044cc 100%)'
+
+  const stats = [
+    { n: '4×',   l: 'Faster delivery'  },
+    { n: '100%', l: 'Task visibility'   },
+    { n: '0',    l: 'Missed actions'    },
+  ]
 
   return (
     <div style={{
-      flex: '0 0 52%',
-      position: 'relative',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-      padding: '52px 60px',
-      overflow: 'hidden',
-      background: isDark
-        ? 'linear-gradient(145deg, #000 0%, #000820 30%, #001560 55%, #003fa0 72%, #0077cc 85%, #00b4d8 100%)'
-        : 'linear-gradient(145deg, #fff 0%, #f0f6ff 30%, #cce0ff 55%, #80b8ff 72%, #3385ff 85%, #0055cc 100%)',
+      flex: '0 0 50%', position: 'relative',
+      display: 'flex', flexDirection: 'column',
+      padding: '48px 56px', overflow: 'hidden', background: bg,
     }}>
 
-      {/* Grain */}
+      {/* Film grain */}
       <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-        opacity: 0.04,
-        mixBlendMode: 'soft-light',
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\")",
+        opacity: d ? 0.045 : 0.028, mixBlendMode: 'overlay',
       }} />
 
-      {/* Soft vignette — bottom fades to deepen depth */}
+      {/* Deep vignette bottom */}
       <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: isDark
-          ? 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)'
-          : 'linear-gradient(to top, rgba(0,20,80,0.18) 0%, transparent 50%)',
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', pointerEvents: 'none',
+        background: d ? 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)' : 'linear-gradient(to top, rgba(0,30,100,0.22), transparent)',
       }} />
 
-      {/* ── Logo — top left ── */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* ── Wordmark ── */}
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 'auto' }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 9,
+          background: d ? w(0.12) : 'rgba(255,255,255,0.65)',
+          border: d ? `1px solid ${w(0.18)}` : '1px solid rgba(255,255,255,0.80)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, flexShrink: 0,
+        }}>✦</div>
         <span style={{
-          fontFamily: 'Syne', fontWeight: 900,
-          fontSize: 15, letterSpacing: '0.18em',
-          color: isDark ? white(0.90) : navy(0.85),
+          fontFamily: 'Syne', fontWeight: 900, fontSize: 14,
+          letterSpacing: '0.20em', color: fg(0.88),
         }}>PULSE</span>
-        <span style={{
-          fontSize: 10, fontWeight: 500, letterSpacing: '0.06em',
-          color: isDark ? white(0.25) : navy(0.30),
-          paddingLeft: 10,
-          borderLeft: isDark ? `1px solid ${white(0.15)}` : `1px solid ${navy(0.15)}`,
-        }}>Homzmart</span>
+        <div style={{ width: 1, height: 14, background: fg(0.15), margin: '0 2px' }} />
+        <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: '0.04em', color: fg(0.35) }}>Homzmart</span>
       </div>
 
-      {/* ── Centre — the only words that matter ── */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      {/* ── Centred hero text ── */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingBottom: 16 }}>
 
-        {/* Eyebrow line */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28,
-        }}>
-          <div style={{
-            width: 20, height: 1,
-            background: isDark ? white(0.35) : navy(0.30),
-          }} />
-          <span style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            color: isDark ? white(0.35) : navy(0.35),
-          }}>Program Management</span>
+        {/* Micro label */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 22 }}>
+          <div style={{ width: 24, height: 1, background: fg(0.30) }} />
+          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: fg(0.38) }}>Program Management</span>
         </div>
 
-        {/* Display headline — massive, sparse */}
+        {/* Headline — only 4 words */}
         <h2 style={{
-          fontFamily: 'Syne',
-          fontWeight: 800,
-          fontSize: 'clamp(38px, 4.5vw, 64px)',
-          lineHeight: 1.05,
-          letterSpacing: '-0.04em',
-          color: isDark ? white(0.97) : navy(0.95),
-          margin: 0,
-          marginBottom: 28,
+          fontFamily: 'Syne', fontWeight: 800,
+          fontSize: 'clamp(40px, 4.8vw, 68px)',
+          lineHeight: 1.02, letterSpacing: '-0.04em',
+          color: fg(0.96), margin: 0, marginBottom: 24,
         }}>
-          Every team.<br />
-          One truth.
+          Every team.<br />One truth.
         </h2>
 
-        {/* Single sentence — nothing more */}
+        {/* Subline */}
         <p style={{
-          fontSize: 15,
-          fontWeight: 300,
-          lineHeight: 1.75,
-          letterSpacing: '-0.01em',
-          color: isDark ? white(0.40) : navy(0.45),
-          maxWidth: 300,
-          margin: 0,
+          fontSize: 14, fontWeight: 300, lineHeight: 1.8,
+          color: fg(0.38), maxWidth: 280, margin: 0,
+          letterSpacing: '0.01em',
         }}>
-          Programs, actions, and meetings — tracked and closed.
+          Programs, actions, meetings —<br />tracked and closed.
         </p>
       </div>
 
-      {/* ── Bottom — three stark numbers ── */}
+      {/* ── Stats row ── */}
       <div style={{ position: 'relative', zIndex: 1 }}>
-
-        {/* Thin divider */}
-        <div style={{
-          width: 32, height: 1,
-          background: isDark ? white(0.18) : navy(0.18),
-          marginBottom: 24,
-        }} />
-
-        <div style={{ display: 'flex', gap: 36 }}>
-          {[
-            { n: '4×',  label: 'faster delivery' },
-            { n: '100%', label: 'task visibility'  },
-            { n: '0',   label: 'missed actions'    },
-          ].map(({ n, label }) => (
-            <div key={label}>
-              <div style={{
-                fontFamily: 'Syne',
-                fontWeight: 800,
-                fontSize: 22,
-                letterSpacing: '-0.03em',
-                color: isDark ? white(0.90) : navy(0.88),
-                lineHeight: 1,
-                marginBottom: 4,
-              }}>{n}</div>
-              <div style={{
-                fontSize: 10,
-                fontWeight: 500,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: isDark ? white(0.28) : navy(0.35),
-              }}>{label}</div>
+        <div style={{ width: 28, height: 1, background: fg(0.16), marginBottom: 22 }} />
+        <div style={{ display: 'flex', gap: 32 }}>
+          {stats.map(({ n, l }) => (
+            <div key={l}>
+              <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: '-0.03em', color: fg(0.90), lineHeight: 1, marginBottom: 5 }}>{n}</div>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase', color: fg(0.28) }}>{l}</div>
             </div>
           ))}
         </div>
@@ -242,50 +200,55 @@ function LeftPanel({ isDark }) {
   )
 }
 
-// ── Right panel — glass form wrapper ──────────────────────────────────────────
-function RightPanel({ children, isDark }) {
+// ─── Right Panel — clean form side ───────────────────────────────────────────
+function RightPanel({ children, d }) {
   return (
     <div style={{
-      flex: '0 0 48%',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '48px 56px',
-      position: 'relative',
-      background: isDark ? 'rgba(0,4,20,0.70)' : 'rgba(255,255,255,0.75)',
-      backdropFilter: 'blur(40px) saturate(180%)',
-      WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-      borderLeft: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,60,200,0.08)',
-      overflow: 'auto',
+      flex: '0 0 50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '48px 56px', overflowY: 'auto',
+      background: d ? 'rgba(2,5,22,0.80)' : 'rgba(248,251,255,0.85)',
+      borderLeft: d ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,30,100,0.08)',
     }}>
-      <div style={{ width: '100%', maxWidth: 380, animation: 'slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}>
-        {children}
-      </div>
+      <div style={{ width: '100%', maxWidth: 360 }}>{children}</div>
     </div>
   )
 }
 
-// ── Split layout wrapper ──────────────────────────────────────────────────────
-function SplitLayout({ children, isDark }) {
+function SplitWrap({ children, d }) {
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex',
-      fontFamily: "'DM Sans', system-ui, sans-serif",
-    }}>
-      <LeftPanel isDark={isDark} />
-      <RightPanel isDark={isDark}>{children}</RightPanel>
+    <div style={{ minHeight: '100vh', display: 'flex', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <LeftPanel d={d} />
+      <RightPanel d={d}>{children}</RightPanel>
     </div>
   )
+}
+
+// ─── Heading block ────────────────────────────────────────────────────────────
+function FormHead({ title, sub, d }) {
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: d ? '#EEF2FF' : '#0A0F1E', marginBottom: 5, lineHeight: 1.2 }}>{title}</h1>
+      <p style={{ fontSize: 13, color: d ? 'rgba(180,200,255,0.42)' : 'rgba(10,30,80,0.45)', fontWeight: 300, lineHeight: 1.6 }}>{sub}</p>
+    </div>
+  )
+}
+
+function FootNote({ d, children }) {
+  return <p style={{ fontSize: 13, color: d ? 'rgba(180,200,255,0.38)' : 'rgba(10,30,80,0.42)', textAlign: 'center', marginTop: 22, lineHeight: 1.6 }}>{children}</p>
+}
+function Link({ onClick, children, d }) {
+  return <span onClick={onClick} style={{ color: d ? '#60A5FA' : '#1A56FF', cursor: 'pointer', fontWeight: 600 }}>{children}</span>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LOGIN PAGE
+// LOGIN
 // ─────────────────────────────────────────────────────────────────────────────
 export default function LoginPage({ onGoSignup, onGoReset }) {
-  const { C, isDark } = useC()
-  const [email,    setEmail]    = useState('')
+  const d = useC()
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState(null)
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState(null)
 
   async function handleLogin() {
     if (!email || !password) { setError('Please enter your email and password.'); return }
@@ -299,183 +262,115 @@ export default function LoginPage({ onGoSignup, onGoReset }) {
     if (e) setError(e.message)
   }
 
-  const textColor  = isDark ? '#F0F4FF'               : '#050D1A'
-  const mutedColor = isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)'
-  const accentColor = isDark ? '#60A5FA' : '#0055FF'
-
   return (
-    <SplitLayout isDark={isDark}>
-      {/* Section heading */}
-      <div style={{ marginBottom: 36 }}>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 26, letterSpacing: '-0.03em', color: textColor, marginBottom: 6, lineHeight: 1.2 }}>
-          Welcome back
-        </h1>
-        <p style={{ fontSize: 14, color: mutedColor, lineHeight: 1.6, fontWeight: 300 }}>
-          Sign in to your Pulse workspace
-        </p>
-      </div>
+    <SplitWrap d={d}>
+      <FormHead d={d} title="Welcome back" sub="Sign in to your Pulse workspace" />
+      {configError && <div style={{ background: 'rgba(251,191,36,0.09)', border: '1px solid rgba(251,191,36,0.22)', borderRadius: 8, padding: '9px 13px', marginBottom: 14, fontSize: 12, color: d ? '#FCD34D' : '#92400E' }}>{configError}</div>}
+      <ErrBox msg={error} d={d} />
 
-      {configError && (
-        <div style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 18, fontSize: 12, color: isDark ? '#FCD34D' : '#92400E', display: 'flex', gap: 8 }}>
-          <Icon name="warning" size={13} color={isDark ? '#FCD34D' : '#92400E'} />
-          <span style={{ lineHeight: 1.5 }}>{configError}</span>
-        </div>
-      )}
+      <GhostBtn isDark={d} onClick={handleGoogle}><GoogleIcon /> Continue with Google</GhostBtn>
+      <OrLine d={d} />
 
-      <ErrBox msg={error} isDark={isDark} />
-
-      {/* Google button */}
-      <button onClick={handleGoogle} style={googleBtn(isDark)}
-        onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,1)'}
-        onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.80)'}>
-        <GoogleIcon /> Continue with Google
-      </button>
-
-      <OrDivider isDark={isDark} />
-
-      {/* Email/password fields */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 6 }}>
         <div>
-          <label style={lbl(isDark)}>Email</label>
+          <label style={lbl(d)}>Email</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)}
             placeholder="you@homzmart.com" autoFocus
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={inp(isDark)}
-            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = isDark ? '0 0 0 3px rgba(0,100,255,0.12)' : '0 0 0 3px rgba(0,85,255,0.08)' }}
-            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
-          />
+            style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
         </div>
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-            <label style={{ ...lbl(isDark), marginBottom: 0 }}>Password</label>
-            <span onClick={onGoReset} style={{ fontSize: 12, color: accentColor, cursor: 'pointer', fontWeight: 500, opacity: 0.8, transition: 'opacity 0.15s' }}
-              onMouseEnter={e => e.target.style.opacity = '1'}
-              onMouseLeave={e => e.target.style.opacity = '0.8'}>
-              Forgot password?
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+            <label style={{ ...lbl(d), marginBottom: 0 }}>Password</label>
+            <span onClick={onGoReset} style={{ fontSize: 12, color: d ? '#60A5FA' : '#1A56FF', cursor: 'pointer', fontWeight: 500 }}>Forgot?</span>
           </div>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)}
             placeholder="••••••••"
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={inp(isDark)}
-            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = isDark ? '0 0 0 3px rgba(0,100,255,0.12)' : '0 0 0 3px rgba(0,85,255,0.08)' }}
-            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
-          />
+            style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
         </div>
       </div>
 
-      {/* Sign in button */}
-      <button onClick={handleLogin} disabled={loading || !!configError}
-        style={{ ...primaryBtn(loading || !!configError), marginTop: 10, marginBottom: 0 }}
-        onMouseEnter={e => { if(!loading) e.currentTarget.style.filter='brightness(1.12)' }}
-        onMouseLeave={e => { e.currentTarget.style.filter='' }}>
-        {loading ? <Spinner size={18} /> : 'Sign In →'}
-      </button>
+      <div style={{ marginTop: 16 }}>
+        <PrimaryBtn loading={loading} onClick={handleLogin} disabled={loading || !!configError}>Sign in →</PrimaryBtn>
+      </div>
 
-      <p style={{ fontSize: 13, color: mutedColor, textAlign: 'center', marginTop: 24 }}>
-        Don't have an account?{' '}
-        <span onClick={onGoSignup} style={{ color: accentColor, cursor: 'pointer', fontWeight: 600 }}>Sign up</span>
-      </p>
-    </SplitLayout>
+      <FootNote d={d}>No account? <Link d={d} onClick={onGoSignup}>Sign up</Link></FootNote>
+    </SplitWrap>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SIGNUP PAGE
+// SIGNUP
 // ─────────────────────────────────────────────────────────────────────────────
 export function SignupPage({ onGoLogin }) {
-  const { C, isDark } = useC()
-  const [name,     setName]     = useState('')
-  const [email,    setEmail]    = useState('')
+  const d = useC()
+  const [name, setName]         = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [confirm,  setConfirm]  = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState(null)
-  const [done,     setDone]     = useState(false)
-
-  const textColor   = isDark ? '#F0F4FF'               : '#050D1A'
-  const mutedColor  = isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)'
-  const accentColor = isDark ? '#60A5FA' : '#0055FF'
+  const [confirm, setConfirm]   = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState(null)
+  const [done, setDone]         = useState(false)
 
   async function handleSignup() {
-    if (!name.trim())       { setError('Please enter your name.'); return }
-    if (!email)             { setError('Please enter your email.'); return }
-    if (password.length < 6){ setError('Password must be at least 6 characters.'); return }
-    if (password !== confirm){ setError('Passwords do not match.'); return }
+    if (!name.trim())        { setError('Please enter your name.'); return }
+    if (!email)              { setError('Please enter your email.'); return }
+    if (password.length < 6) { setError('Password must be 6+ characters.'); return }
+    if (password !== confirm) { setError('Passwords do not match.'); return }
     setError(null); setLoading(true)
     const { error: e } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() } } })
     if (e) { setError(e.message); setLoading(false) } else { setDone(true); setLoading(false) }
   }
 
   if (done) return (
-    <SplitLayout isDark={isDark}>
+    <SplitWrap d={d}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 52, marginBottom: 20 }}>✉</div>
-        <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, color: textColor, marginBottom: 10, letterSpacing: '-0.03em' }}>Account created!</h2>
-        <p style={{ color: mutedColor, fontSize: 14, lineHeight: 1.7, marginBottom: 28 }}>Your account is ready. Click below to sign in.</p>
-        <button onClick={onGoLogin} style={primaryBtn(false)}>Go to Sign In</button>
+        <div style={{ fontSize: 44, marginBottom: 18 }}>✉</div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: d ? '#EEF2FF' : '#0A0F1E', marginBottom: 10, letterSpacing: '-0.02em' }}>Account created</h2>
+        <p style={{ color: d ? 'rgba(180,200,255,0.42)' : 'rgba(10,30,80,0.45)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>You're all set. Sign in to get started.</p>
+        <PrimaryBtn loading={false} onClick={onGoLogin}>Go to sign in →</PrimaryBtn>
       </div>
-    </SplitLayout>
+    </SplitWrap>
   )
 
   const fields = [
-    ['Full Name','text','Your full name',name,setName],
-    ['Email','email','you@homzmart.com',email,setEmail],
-    ['Password','password','6+ characters',password,setPassword],
-    ['Confirm Password','password','Same as above',confirm,setConfirm],
+    ['Full Name', 'text', 'Your name', name, setName],
+    ['Email', 'email', 'you@homzmart.com', email, setEmail],
+    ['Password', 'password', '6+ characters', password, setPassword],
+    ['Confirm', 'password', 'Same as above', confirm, setConfirm],
   ]
 
   return (
-    <SplitLayout isDark={isDark}>
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 26, letterSpacing: '-0.03em', color: textColor, marginBottom: 6 }}>Create account</h1>
-        <p style={{ fontSize: 14, color: mutedColor, lineHeight: 1.6, fontWeight: 300 }}>Join your team on Pulse</p>
-      </div>
-
-      <ErrBox msg={error} isDark={isDark} />
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+    <SplitWrap d={d}>
+      <FormHead d={d} title="Create account" sub="Join your team on Pulse" />
+      <ErrBox msg={error} d={d} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 18 }}>
         {fields.map(([label, type, ph, val, setter], i, arr) => (
           <div key={label}>
-            <label style={lbl(isDark)}>{label}</label>
+            <label style={lbl(d)}>{label}</label>
             <input type={type} value={val} onChange={e => setter(e.target.value)} placeholder={ph}
               autoFocus={i === 0}
               onKeyDown={e => e.key === 'Enter' && i === arr.length - 1 && handleSignup()}
-              style={inp(isDark)}
-              onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = '0 0 0 3px rgba(0,100,255,0.10)' }}
-              onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
-            />
+              style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
           </div>
         ))}
       </div>
-
-      <button onClick={handleSignup} disabled={loading} style={primaryBtn(loading)}
-        onMouseEnter={e => { if(!loading) e.currentTarget.style.filter='brightness(1.12)' }}
-        onMouseLeave={e => { e.currentTarget.style.filter='' }}>
-        {loading ? <Spinner size={18} /> : 'Create Account →'}
-      </button>
-
-      <p style={{ fontSize: 13, color: mutedColor, textAlign: 'center', marginTop: 24 }}>
-        Already have an account?{' '}
-        <span onClick={onGoLogin} style={{ color: accentColor, cursor: 'pointer', fontWeight: 600 }}>Sign in</span>
-      </p>
-    </SplitLayout>
+      <PrimaryBtn loading={loading} onClick={handleSignup} disabled={loading}>Create account →</PrimaryBtn>
+      <FootNote d={d}>Have an account? <Link d={d} onClick={onGoLogin}>Sign in</Link></FootNote>
+    </SplitWrap>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RESET PAGE
+// RESET
 // ─────────────────────────────────────────────────────────────────────────────
 export function ResetPage({ onGoLogin }) {
-  const { C, isDark } = useC()
-  const [email,   setEmail]   = useState('')
+  const d = useC()
+  const [email, setEmail]     = useState('')
   const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState(null)
+  const [error, setError]     = useState(null)
   const [success, setSuccess] = useState(null)
-
-  const textColor   = isDark ? '#F0F4FF'               : '#050D1A'
-  const mutedColor  = isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)'
-  const accentColor = isDark ? '#60A5FA' : '#0055FF'
 
   async function handleReset() {
     if (!email) { setError('Please enter your email.'); return }
@@ -485,58 +380,36 @@ export function ResetPage({ onGoLogin }) {
   }
 
   return (
-    <SplitLayout isDark={isDark}>
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 26, letterSpacing: '-0.03em', color: textColor, marginBottom: 6 }}>Reset password</h1>
-        <p style={{ fontSize: 14, color: mutedColor, lineHeight: 1.6, fontWeight: 300 }}>
-          Enter your email and we'll send a reset link.
-        </p>
-      </div>
-
-      <ErrBox msg={error} isDark={isDark} />
-      <OkBox msg={success} isDark={isDark} />
-
-      {!success && (
-        <>
-          <label style={lbl(isDark)}>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="you@homzmart.com" autoFocus
-            onKeyDown={e => e.key === 'Enter' && handleReset()}
-            style={{ ...inp(isDark), marginBottom: 20 }}
-            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = '0 0 0 3px rgba(0,100,255,0.10)' }}
-            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
-          />
-          <button onClick={handleReset} disabled={loading} style={primaryBtn(loading)}
-            onMouseEnter={e => { if(!loading) e.currentTarget.style.filter='brightness(1.12)' }}
-            onMouseLeave={e => { e.currentTarget.style.filter='' }}>
-            {loading ? <Spinner size={18} /> : 'Send Reset Link →'}
-          </button>
-        </>
-      )}
-
-      <p style={{ fontSize: 13, color: mutedColor, marginTop: 24 }}>
-        <span onClick={onGoLogin} style={{ color: accentColor, cursor: 'pointer', fontWeight: 600 }}>← Back to Sign In</span>
-      </p>
-    </SplitLayout>
+    <SplitWrap d={d}>
+      <FormHead d={d} title="Reset password" sub="We'll send a link to your email." />
+      <ErrBox msg={error} d={d} />
+      <OkBox msg={success} d={d} />
+      {!success && <>
+        <label style={lbl(d)}>Email</label>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+          placeholder="you@homzmart.com" autoFocus
+          onKeyDown={e => e.key === 'Enter' && handleReset()}
+          style={{ ...inp(d), marginBottom: 18 }} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
+        <PrimaryBtn loading={loading} onClick={handleReset} disabled={loading}>Send reset link →</PrimaryBtn>
+      </>}
+      <FootNote d={d}><Link d={d} onClick={onGoLogin}>← Back to sign in</Link></FootNote>
+    </SplitWrap>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NEW PASSWORD PAGE
+// NEW PASSWORD
 // ─────────────────────────────────────────────────────────────────────────────
 export function NewPasswordPage({ onGoLogin }) {
-  const { C, isDark } = useC()
+  const d = useC()
   const [password, setPassword] = useState('')
-  const [confirm,  setConfirm]  = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState(null)
-  const [done,     setDone]     = useState(false)
-
-  const textColor  = isDark ? '#F0F4FF'               : '#050D1A'
-  const mutedColor = isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)'
+  const [confirm, setConfirm]   = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState(null)
+  const [done, setDone]         = useState(false)
 
   async function handleUpdate() {
-    if (password.length < 6)  { setError('Password must be at least 6 characters.'); return }
+    if (password.length < 6)  { setError('Password must be 6+ characters.'); return }
     if (password !== confirm)  { setError('Passwords do not match.'); return }
     setError(null); setLoading(true)
     const { error: e } = await supabase.auth.updateUser({ password })
@@ -544,50 +417,35 @@ export function NewPasswordPage({ onGoLogin }) {
   }
 
   if (done) return (
-    <SplitLayout isDark={isDark}>
+    <SplitWrap d={d}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 52, marginBottom: 20 }}>✓</div>
-        <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, color: textColor, marginBottom: 10, letterSpacing: '-0.03em' }}>Password updated!</h2>
-        <p style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>You can now sign in with your new password.</p>
-        <button onClick={onGoLogin} style={primaryBtn(false)}>Sign In →</button>
+        <div style={{ fontSize: 44, marginBottom: 18 }}>✓</div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: d ? '#EEF2FF' : '#0A0F1E', marginBottom: 10, letterSpacing: '-0.02em' }}>Password updated</h2>
+        <p style={{ color: d ? 'rgba(180,200,255,0.42)' : 'rgba(10,30,80,0.45)', fontSize: 14, marginBottom: 24 }}>You can now sign in with your new password.</p>
+        <PrimaryBtn loading={false} onClick={onGoLogin}>Sign in →</PrimaryBtn>
       </div>
-    </SplitLayout>
+    </SplitWrap>
   )
 
   return (
-    <SplitLayout isDark={isDark}>
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 26, letterSpacing: '-0.03em', color: textColor, marginBottom: 6 }}>New password</h1>
-        <p style={{ fontSize: 14, color: mutedColor, fontWeight: 300 }}>Choose a strong new password.</p>
-      </div>
-
-      <ErrBox msg={error} isDark={isDark} />
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+    <SplitWrap d={d}>
+      <FormHead d={d} title="New password" sub="Choose something strong." />
+      <ErrBox msg={error} d={d} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 18 }}>
         <div>
-          <label style={lbl(isDark)}>New Password</label>
+          <label style={lbl(d)}>New Password</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-            placeholder="6+ characters" autoFocus style={inp(isDark)}
-            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = '0 0 0 3px rgba(0,100,255,0.10)' }}
-            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
-          />
+            placeholder="6+ characters" autoFocus style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
         </div>
         <div>
-          <label style={lbl(isDark)}>Confirm Password</label>
+          <label style={lbl(d)}>Confirm</label>
           <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
             placeholder="Same as above"
-            onKeyDown={e => e.key === 'Enter' && handleUpdate()} style={inp(isDark)}
-            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = '0 0 0 3px rgba(0,100,255,0.10)' }}
-            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
-          />
+            onKeyDown={e => e.key === 'Enter' && handleUpdate()}
+            style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
         </div>
       </div>
-
-      <button onClick={handleUpdate} disabled={loading} style={primaryBtn(loading)}
-        onMouseEnter={e => { if(!loading) e.currentTarget.style.filter='brightness(1.12)' }}
-        onMouseLeave={e => { e.currentTarget.style.filter='' }}>
-        {loading ? <Spinner size={18} /> : 'Update Password →'}
-      </button>
-    </SplitLayout>
+      <PrimaryBtn loading={loading} onClick={handleUpdate} disabled={loading}>Update password →</PrimaryBtn>
+    </SplitWrap>
   )
 }

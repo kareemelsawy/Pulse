@@ -75,9 +75,8 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
                   const ov = ptasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date()).length
                   return (
                     <div key={p.id} onClick={() => onOpenProject(p)}
-                      style={{ background: COLORS.surfaceHover, backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 18, cursor: 'pointer', transition: 'all 0.25s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.20)'; e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,100,255,0.15)' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = COLORS.surface; e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.boxShadow = '' }}>
+                      style={{ background: COLORS.surfaceHover, backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 18, cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s, box-shadow 0.15s' }}
+                      className="proj-card">
                       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{p.name}</div>
                       {p.description && <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 10, lineHeight: 1.5 }}>{p.description}</div>}
                       <ProgressBar tasks={ptasks} />
@@ -160,7 +159,7 @@ export function ProjectView({ project, toast }) {
         <button onClick={() => setEditProjOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: '2px 6px', display: 'flex', alignItems: 'center' }}><Icon name="edit" size={14} color={COLORS.textMuted} /></button>
         <div style={{ display: 'flex', gap: 2, marginLeft: 8, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: 3 }}>
           {[['tasks','Tasks'],['meetings','Meetings']].map(([id, label]) => (
-            <button key={id} onClick={() => setMainTab(id)} style={{ padding: '4px 14px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: mainTab === id ? COLORS.surface : 'none', color: mainTab === id ? COLORS.text : COLORS.textMuted, transition: 'all 0.15s', boxShadow: mainTab === id ? `0 1px 3px ${COLORS.shadow}` : 'none' }}>{label}</button>
+            <button key={id} onClick={() => setMainTab(id)} style={{ padding: '4px 14px', borderRadius: 6, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: mainTab === id ? COLORS.surface : 'none', color: mainTab === id ? COLORS.text : COLORS.textMuted, transition: 'background 0.15s, border-color 0.15s, opacity 0.15s', boxShadow: mainTab === id ? `0 1px 3px ${COLORS.shadow}` : 'none' }}>{label}</button>
           ))}
         </div>
         <div style={{ flex: 1 }} />
@@ -313,7 +312,7 @@ export function NewProjectModal({ onClose, toast }) {
         <div><label style={lStyle}>Description</label><textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What is this project about?" rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5, background: COLORS.inputBg }} /></div>
         <div>
           <label style={lStyle}>Color</label>
-          <div style={{ display: 'flex', gap: 8 }}>{PROJECT_COLORS.map(c => <button key={c} onClick={() => setColor(c)} style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: 'none', cursor: 'pointer', outline: color === c ? `3px solid ${c}` : '3px solid transparent', outlineOffset: 2, transition: 'all 0.15s' }} />)}</div>
+          <div style={{ display: 'flex', gap: 8 }}>{PROJECT_COLORS.map(c => <button key={c} onClick={() => setColor(c)} style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: 'none', cursor: 'pointer', outline: color === c ? `3px solid ${c}` : '3px solid transparent', outlineOffset: 2, transition: 'background 0.15s, border-color 0.15s, opacity 0.15s' }} />)}</div>
           <div style={{ marginTop: 10, padding: '9px 13px', background: COLORS.bg, borderLeft: `4px solid ${color}`, borderRadius: 8, fontSize: 13, fontWeight: 500, color: COLORS.textDim }}>{name || 'Preview'}</div>
         </div>
       </div>
@@ -502,7 +501,7 @@ function PipelineCard({ project: p, converting, onEdit, onConvert, onDelete }) {
       </div>
       {p.description && <p style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.6, marginBottom: 14, flex: 1 }}>{p.description}</p>}
       <button onClick={onConvert} disabled={converting}
-        style={{ width: '100%', padding: '9px 0', background: converting ? COLORS.border : COLORS.accent + '18', border: `1.5px solid ${converting ? COLORS.border : COLORS.accent + '55'}`, borderRadius: 9, color: converting ? COLORS.textMuted : COLORS.accent, fontWeight: 700, fontSize: 12, cursor: converting ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s', marginTop: 'auto' }}
+        style={{ width: '100%', padding: '9px 0', background: converting ? COLORS.border : COLORS.accent + '18', border: `1.5px solid ${converting ? COLORS.border : COLORS.accent + '55'}`, borderRadius: 9, color: converting ? COLORS.textMuted : COLORS.accent, fontWeight: 700, fontSize: 12, cursor: converting ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'background 0.15s, border-color 0.15s, opacity 0.15s', marginTop: 'auto' }}
         onMouseEnter={e => { if (!converting) { e.currentTarget.style.background = COLORS.accent; e.currentTarget.style.color = '#fff' } }}
         onMouseLeave={e => { if (!converting) { e.currentTarget.style.background = COLORS.accent + '18'; e.currentTarget.style.color = COLORS.accent } }}>
         <Icon name="arrowRight" size={13} color="currentColor" />
@@ -535,7 +534,7 @@ export function NewPipelineModal({ onClose, toast }) {
         <div><label style={lStyle}>Description / Notes</label><textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What's the idea?" rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5, background: COLORS.inputBg }} /></div>
         <div>
           <label style={lStyle}>Color</label>
-          <div style={{ display: 'flex', gap: 8 }}>{PROJECT_COLORS.map(c => <button key={c} onClick={() => setColor(c)} style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: 'none', cursor: 'pointer', outline: color === c ? `3px solid ${c}` : '3px solid transparent', outlineOffset: 2, transition: 'all 0.15s' }} />)}</div>
+          <div style={{ display: 'flex', gap: 8 }}>{PROJECT_COLORS.map(c => <button key={c} onClick={() => setColor(c)} style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: 'none', cursor: 'pointer', outline: color === c ? `3px solid ${c}` : '3px solid transparent', outlineOffset: 2, transition: 'background 0.15s, border-color 0.15s, opacity 0.15s' }} />)}</div>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 22, justifyContent: 'flex-end' }}>

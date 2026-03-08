@@ -241,3 +241,53 @@ aside, header {
 [data-theme="light"] textarea::placeholder {
   color: rgba(10,30,80,0.35);
 }
+
+/* ── Task card & list row hover (compositor thread only) ────────── */
+.task-card {
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.task-card:hover {
+  background: rgba(255,255,255,0.11) !important;
+  border-color: rgba(255,255,255,0.22) !important;
+  box-shadow: 0 4px 20px rgba(0,80,255,0.10) !important;
+}
+[data-theme="light"] .task-card:hover {
+  background: rgba(255,255,255,0.98) !important;
+  border-color: rgba(10,30,80,0.22) !important;
+  box-shadow: 0 4px 16px rgba(0,50,200,0.08) !important;
+}
+.list-row {
+  transition: background 0.12s;
+}
+.list-row:hover {
+  background: rgba(255,255,255,0.07) !important;
+}
+[data-theme="light"] .list-row:hover {
+  background: rgba(10,30,80,0.04) !important;
+}
+
+/* ── Project overview cards ─────────────────────────────────────── */
+.proj-card {
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.proj-card:hover {
+  background: rgba(255,255,255,0.11) !important;
+  border-color: rgba(255,255,255,0.20) !important;
+  box-shadow: 0 8px 32px rgba(0,80,255,0.12) !important;
+}
+[data-theme="light"] .proj-card:hover {
+  background: rgba(255,255,255,0.98) !important;
+  border-color: rgba(10,30,80,0.22) !important;
+  box-shadow: 0 4px 20px rgba(0,50,200,0.08) !important;
+}
+
+/* ── Buttons: never transition layout-affecting props ────────────── */
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Disable backdrop-filter on low-end hint (save-data) ─────────── */
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; }
+  .task-card, .list-row, .proj-card, .nav-item, .proj-item { transition: none !important; }
+}
