@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from './AuthContext'
 import {
   getMyWorkspace, subscribeProjects, subscribeTasks, subscribeMembers,
@@ -8,7 +8,7 @@ import {
   getNotifLogs, insertNotifLog,
   logGuestInvitation,
 } from '../lib/db/index'
-import { sendEmail, buildNotificationEmail, buildGuestInviteEmail, buildMeetingInviteEmail } from '../lib/gmail'
+import { sendEmail, buildNotificationEmail, buildGuestInviteEmail, buildMeetingInviteEmail, buildDueSoonEmail } from '../lib/gmail'
 
 const DataContext = createContext(null)
 
@@ -22,6 +22,7 @@ export function DataProvider({ children }) {
   const [notifLogs,    setNotifLogs]    = useState([])
   const [loading,      setLoading]      = useState(true)
   const [wsError,      setWsError]      = useState(null)
+  const cleanupRef = useRef(null)
 
   useEffect(() => {
     if (!authReady) return
@@ -50,12 +51,12 @@ export function DataProvider({ children }) {
       const unsubMembers = subscribeMembers(ws.id, data => { if (!cancelled) setMembers(data) })
       getNotifSettings(ws.id).then(d => { if (!cancelled) setNotifSettings(d) }).catch(() => {})
       getNotifLogs(ws.id).then(d => { if (!cancelled) setNotifLogs(d) }).catch(() => {})
-      window.__pulseUnsub = () => { unsubProjects(); unsubTasks(); unsubMembers() }
+      cleanupRef.current = () => { unsubProjects(); unsubTasks(); unsubMembers() }
     }).catch(() => {
       if (!cancelled) { setWsError('no_workspace'); setLoading(false) }
     })
 
-    return () => { cancelled = true; window.__pulseUnsub?.() }
+    return () => { cancelled = true; cleanupRef.current?.() }
   }, [user?.id, authReady])
 
   // ─── Low-level email sender ───────────────────────────────────────────────
@@ -219,6 +220,53 @@ export function DataProvider({ children }) {
   // ─── Derived ──────────────────────────────────────────────────────────────
   const getProjectTasks = useCallback((projectId) => tasks.filter(t => t.project_id === projectId), [tasks])
   const myTasks = tasks.filter(t => t.status !== 'done' && t.assignee_email === user?.email).sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
+
+  // ─── Due-tomorrow reminder scheduler ─────────────────────────────────────
+  // Runs on load and when tasks/notifSettings change.
+  // Sends one reminder per task due tomorrow, deduped by day via localStorage.
+  useEffect(() => {
+    if (!notifSettings?.enabled_triggers?.due_soon) return
+    if (!notifSettings?.resend_api_key && !notifSettings?.sendgrid_api_key) return
+    if (!tasks.length || !workspace) return
+
+    const todayStr    = new Date().toISOString().slice(0, 10)
+    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+    const sentKey     = `pulse_due_soon_sent_${workspace.id}_${todayStr}`
+    const alreadySent = new Set(JSON.parse(localStorage.getItem(sentKey) || '[]'))
+
+    const dueTomorrow = tasks.filter(t =>
+      t.status !== 'done' &&
+      t.due_date === tomorrowStr &&
+      t.assignee_email &&
+      !alreadySent.has(t.id)
+    )
+    if (!dueTomorrow.length) return
+
+    const key = notifSettings.resend_api_key || notifSettings.sendgrid_api_key
+    if (!key) return
+    const cfg = {
+      apiKey:         key,
+      fromEmail:      notifSettings.from_email || notifSettings.sendgrid_from_email || '',
+      fromName:       notifSettings.from_name  || notifSettings.sendgrid_from_name  || 'Pulse',
+      functionSecret: notifSettings.function_secret,
+    }
+    const appUrl = window.location.origin
+
+    dueTomorrow.forEach(task => {
+      const project = projects.find(p => p.id === task.project_id)
+      const { subject, html } = buildDueSoonEmail({ task, projectName: project?.name || '', appUrl })
+      sendEmail({ ...cfg, to: task.assignee_email, subject, html })
+        .then(() => {
+          alreadySent.add(task.id)
+          localStorage.setItem(sentKey, JSON.stringify([...alreadySent]))
+          insertNotifLog(workspace.id, { trigger_type: 'due_soon', task_id: task.id, recipient: task.assignee_email, subject, status: 'success' }).catch(() => {})
+        })
+        .catch(err => {
+          console.warn('Due-soon email failed:', err.message)
+          insertNotifLog(workspace.id, { trigger_type: 'due_soon', task_id: task.id, recipient: task.assignee_email, subject, status: 'failed' }).catch(() => {})
+        })
+    })
+  }, [tasks, notifSettings, workspace, projects])
 
   return (
     <DataContext.Provider value={{

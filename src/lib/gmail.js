@@ -3,9 +3,6 @@ import { NOTIFICATION_TRIGGERS, STATUS, PRIORITY } from './constants'
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 
 // ─── Email sender via Supabase Edge Function ──────────────────────────────────
-// Resend blocks direct browser requests (CORS), so we proxy through
-// a Supabase Edge Function. The Resend API key is passed from the
-// app's notif_settings stored in the DB.
 export async function sendEmail({ apiKey, functionSecret, fromEmail, fromName = 'Pulse', to, subject, html }) {
   const headers = { 'Content-Type': 'application/json' }
   if (functionSecret) headers['Authorization'] = `Bearer ${functionSecret}`
@@ -21,156 +18,187 @@ export async function sendEmail({ apiKey, functionSecret, fromEmail, fromName = 
   return res.json()
 }
 
-// ─── Email templates ──────────────────────────────────────────────────────────
+// ─── Shared design tokens (mirrors app dark theme) ───────────────────────────
+const T = {
+  bg:          '#0B0D16',
+  surface:     '#111420',
+  surfaceAlt:  '#0E1019',
+  border:      'rgba(255,255,255,0.09)',
+  accent:      '#6B8EF7',
+  accentDim:   'rgba(107,142,247,0.18)',
+  purple:      '#C084FC',
+  green:       '#34D17A',
+  amber:       '#FBBF24',
+  red:         '#F87171',
+  text:        '#F0F4FF',
+  textDim:     'rgba(200,210,240,0.75)',
+  textMuted:   'rgba(200,210,240,0.40)',
+}
 
-export function buildNotificationEmail({ trigger, task, projectName, actorName, extraInfo, appUrl }) {
-  const triggerLabel = NOTIFICATION_TRIGGERS[trigger]?.label || trigger
-  const statusColor = STATUS[task.status]?.color || '#888'
-  const statusLabel = STATUS[task.status]?.label || task.status
-  const priColor    = PRIORITY[task.priority]?.color || '#888'
-  const priIcon     = PRIORITY[task.priority]?.icon || ''
+// ─── Shared layout helpers ────────────────────────────────────────────────────
+function emailShell({ badge, content, appUrl }) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+</head>
+<body style="margin:0;padding:0;background:#080A12;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#080A12;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
 
-  const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:20px;background:#f1f5f9;font-family:'Segoe UI',sans-serif;">
-  <div style="max-width:540px;margin:0 auto;background:#0D0F14;border-radius:16px;overflow:hidden;border:1px solid #252A3A;">
-    <div style="background:linear-gradient(135deg,#4F8EF7,#A78BFA);padding:22px 26px;">
-      <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px;">◈ Pulse</span>
-    </div>
-    <div style="padding:26px;">
-      <p style="color:#94A3B8;font-size:13px;margin:0 0 6px;">
-        <strong style="color:#E2E8F0;">${actorName}</strong> — ${projectName}
-      </p>
-      <p style="color:#94A3B8;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin:0 0 6px;">${triggerLabel}</p>
-      <h2 style="color:#E2E8F0;font-size:19px;margin:0 0 20px;font-weight:700;">${task.title}</h2>
-      <table style="width:100%;border-collapse:collapse;background:#141720;border-radius:10px;overflow:hidden;border:1px solid #252A3A;">
-        <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;width:110px;border-bottom:1px solid #252A3A;">Status</td>
-          <td style="padding:11px 15px;border-bottom:1px solid #252A3A;">
-            <span style="background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;border-radius:4px;padding:2px 9px;font-size:12px;font-weight:600;">${statusLabel}</span>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;border-bottom:1px solid #252A3A;">Priority</td>
-          <td style="padding:11px 15px;color:${priColor};font-weight:700;font-size:13px;border-bottom:1px solid #252A3A;">${priIcon} ${task.priority}</td>
-        </tr>
-        <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;${task.due_date ? 'border-bottom:1px solid #252A3A;' : ''}">Assignee</td>
-          <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;${task.due_date ? 'border-bottom:1px solid #252A3A;' : ''}">${task.assignee_name || '—'}</td>
-        </tr>
-        ${task.due_date ? `<tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;">Due</td>
-          <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;">${task.due_date}</td>
-        </tr>` : ''}
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#6B8EF7,#C084FC);border-radius:14px 14px 0 0;padding:18px 24px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td><span style="font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.5px;">&#9672; Pulse</span></td>
+              ${badge ? `<td align="right"><span style="background:rgba(255,255,255,0.20);color:#fff;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:0.04em;">${badge}</span></td>` : '<td></td>'}
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="background:#111420;border:1px solid rgba(255,255,255,0.09);border-top:none;border-radius:0 0 14px 14px;padding:26px 24px;">
+          ${content}
+
+          <!-- Footer -->
+          <div style="margin-top:28px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.09);">
+            <a href="${appUrl || '#'}" style="display:inline-block;background:rgba(107,142,247,0.18);color:#6B8EF7;text-decoration:none;padding:8px 18px;border-radius:8px;font-weight:600;font-size:12px;border:1px solid rgba(107,142,247,0.28);">Open Pulse &#8594;</a>
+            <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:12px 0 0;">Sent by &#9672; Pulse &nbsp;&middot;&nbsp; You're receiving this because you're part of this workspace.</p>
+          </div>
+        </td></tr>
+
       </table>
-      ${extraInfo ? `<p style="margin:14px 0 0;color:#94A3B8;font-size:12px;">${extraInfo}</p>` : ''}
-      <div style="margin-top:22px;">
-        <a href="${appUrl || '#'}" style="display:inline-block;background:rgba(79,142,247,0.15);color:#4F8EF7;text-decoration:none;padding:7px 16px;border-radius:8px;font-weight:600;font-size:12px;border:1px solid rgba(79,142,247,0.30);margin-bottom:12px;">Open Pulse →</a>
-        <p style="color:#475569;font-size:11px;margin:0;">Sent by ◈ Pulse</p>
-      </div>
-    </div>
-  </div>
+    </td></tr>
+  </table>
 </body>
 </html>`
+}
 
+function metaRow(label, valueHtml, last) {
+  const border = last ? '' : `border-bottom:1px solid rgba(255,255,255,0.09);`
+  return `<tr>
+    <td style="padding:10px 14px;color:rgba(200,210,240,0.40);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;width:100px;${border}">${label}</td>
+    <td style="padding:10px 14px;${border}">${valueHtml}</td>
+  </tr>`
+}
+
+function pill(text, color) {
+  return `<span style="background:${color}33;color:${color};border:1px solid ${color}55;border-radius:5px;padding:2px 9px;font-size:11px;font-weight:700;">${text}</span>`
+}
+
+function sectionLabel(text) {
+  return `<div style="font-size:10px;font-weight:800;color:rgba(200,210,240,0.40);letter-spacing:0.09em;text-transform:uppercase;margin:0 0 10px;">${text}</div>`
+}
+
+// ─── Task notification email ──────────────────────────────────────────────────
+export function buildNotificationEmail({ trigger, task, projectName, actorName, extraInfo, appUrl }) {
+  const triggerLabel = NOTIFICATION_TRIGGERS[trigger]?.label || trigger
+  const statusColor  = STATUS[task.status]?.color  || '#888'
+  const statusLabel  = STATUS[task.status]?.label  || task.status
+  const priColor     = PRIORITY[task.priority]?.color || '#888'
+  const priLabel     = PRIORITY[task.priority]?.label || task.priority
+  const priIcon      = PRIORITY[task.priority]?.icon  || ''
+  const isDueSoon    = trigger === 'due_soon'
+
+  const content = `
+    <p style="color:rgba(200,210,240,0.75);font-size:13px;margin:0 0 4px;">
+      ${isDueSoon
+        ? `<span style="color:#FBBF24;font-weight:700;">&#9200; Reminder</span> &nbsp;&middot;&nbsp; ${projectName}`
+        : `<strong style="color:#F0F4FF;">${actorName}</strong> <span style="color:rgba(200,210,240,0.40);">&middot;</span> ${projectName}`
+      }
+    </p>
+    <p style="color:rgba(200,210,240,0.40);font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;margin:0 0 10px;">${triggerLabel}</p>
+    <h2 style="color:#F0F4FF;font-size:18px;margin:0 0 20px;font-weight:700;line-height:1.3;">${task.title}</h2>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0E1019;border:1px solid rgba(255,255,255,0.09);border-radius:10px;overflow:hidden;">
+      ${metaRow('Status',   pill(statusLabel, statusColor))}
+      ${metaRow('Priority', pill(`${priIcon} ${priLabel}`, priColor))}
+      ${metaRow('Assignee', `<span style="color:rgba(200,210,240,0.75);font-size:13px;">${task.assignee_name || '&mdash;'}</span>`, !task.due_date)}
+      ${task.due_date ? metaRow('Due date', `<span style="color:${isDueSoon ? '#FBBF24' : 'rgba(200,210,240,0.75)'};font-size:13px;font-weight:${isDueSoon ? '700' : '400'};">${isDueSoon ? '&#9889; ' : ''}${task.due_date}</span>`, true) : ''}
+    </table>
+
+    ${extraInfo ? `<p style="margin:14px 0 0;color:rgba(200,210,240,0.40);font-size:12px;background:#0E1019;border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 14px;">${extraInfo}</p>` : ''}
+  `
+
+  const html = emailShell({ content, appUrl })
   return { subject: `${triggerLabel}: ${task.title}`, html }
 }
 
+// ─── Due-tomorrow reminder (convenience wrapper) ─────────────────────────────
+export function buildDueSoonEmail({ task, projectName, appUrl }) {
+  return buildNotificationEmail({ trigger: 'due_soon', task, projectName, actorName: '', appUrl })
+}
+
+// ─── Guest task invite email ──────────────────────────────────────────────────
 export function buildGuestInviteEmail({ assigneeName, assignerName, taskTitle, projectName, appUrl }) {
-  const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:20px;background:#f1f5f9;font-family:'Segoe UI',sans-serif;">
-  <div style="max-width:540px;margin:0 auto;background:#0D0F14;border-radius:16px;overflow:hidden;border:1px solid #252A3A;">
-    <div style="background:linear-gradient(135deg,#4F8EF7,#A78BFA);padding:22px 26px;">
-      <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px;">◈ Pulse</span>
+  const content = `
+    <p style="color:rgba(200,210,240,0.75);font-size:13px;margin:0 0 4px;">You've been assigned a task</p>
+    <h2 style="color:#F0F4FF;font-size:18px;margin:0 0 20px;font-weight:700;line-height:1.3;">${taskTitle}</h2>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0E1019;border:1px solid rgba(255,255,255,0.09);border-radius:10px;overflow:hidden;">
+      ${metaRow('Project',     `<span style="color:rgba(200,210,240,0.75);font-size:13px;">${projectName}</span>`)}
+      ${metaRow('Assigned by', `<span style="color:rgba(200,210,240,0.75);font-size:13px;">${assignerName}</span>`, true)}
+    </table>
+
+    <div style="margin-top:20px;">
+      <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#6B8EF7,#C084FC);color:#fff;text-decoration:none;padding:11px 26px;border-radius:9px;font-weight:700;font-size:13px;">View Your Tasks &#8594;</a>
     </div>
-    <div style="padding:26px;">
-      <p style="color:#94A3B8;font-size:13px;margin:0 0 6px;">You've been assigned a task</p>
-      <h2 style="color:#E2E8F0;font-size:19px;margin:0 0 20px;font-weight:700;">${taskTitle}</h2>
-      <table style="width:100%;border-collapse:collapse;background:#141720;border-radius:10px;overflow:hidden;border:1px solid #252A3A;">
-        <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;border-bottom:1px solid #252A3A;">Project</td>
-          <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;border-bottom:1px solid #252A3A;">${projectName}</td>
-        </tr>
-        <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;">Assigned by</td>
-          <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;">${assignerName}</td>
-        </tr>
-      </table>
-      <div style="margin-top:22px;">
-        <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#A78BFA);color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;">View Your Tasks →</a>
-      </div>
-      <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <p style="color:#475569;font-size:11px;margin:0;">Sent by ◈ Pulse</p>
-        <p style="color:#475569;font-size:11px;margin:0;">Sign in with your Google account to view your tasks.</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`
+    <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:12px 0 0;">Sign in with your Google account to view and update your tasks.</p>
+  `
+
+  const html = emailShell({ content, appUrl })
   return { subject: `You've been assigned: ${taskTitle}`, html }
 }
 
+// ─── Meeting minutes email ────────────────────────────────────────────────────
 export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate, projectName, attendeeList, summary, actionItems, appUrl }) {
-  const priorityColor = { high: '#EF4444', medium: '#F59E0B', low: '#6366F1' }
+  const priorityColor = { high: '#F87171', medium: '#FBBF24', low: '#34D17A' }
+
   const actionsHtml = actionItems?.length ? `
     <div style="margin-top:22px;">
-      <div style="font-size:11px;font-weight:800;color:#64748B;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">Action Items</div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        ${actionItems.map(a => `
-          <div style="background:#141720;border:1px solid #252A3A;border-radius:8px;padding:10px 14px;display:flex;align-items:flex-start;gap:10px;">
-            <div style="width:6px;height:6px;border-radius:50%;background:${priorityColor[a.priority] || '#888'};flex-shrink:0;margin-top:5px;"></div>
-            <div style="flex:1;">
-              <div style="color:#E2E8F0;font-size:13px;font-weight:500;">${a.title}</div>
-              ${a.assignee ? `<div style="color:#64748B;font-size:11px;margin-top:3px;">→ ${a.assignee}${a.due_date ? ` · Due ${a.due_date}` : ''}</div>` : ''}
-            </div>
-            <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:${priorityColor[a.priority] || '#888'}22;color:${priorityColor[a.priority] || '#888'};white-space:nowrap;">${a.priority}</span>
-          </div>`).join('')}
-      </div>
+      ${sectionLabel('Action Items')}
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0 5px;">
+        ${actionItems.filter(a => a.title).map(a => `
+        <tr><td style="background:#0E1019;border:1px solid rgba(255,255,255,0.09);border-radius:9px;padding:11px 14px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="vertical-align:top;width:12px;padding-top:3px;">
+                <div style="width:7px;height:7px;border-radius:50%;background:${priorityColor[a.priority] || '#888'};"></div>
+              </td>
+              <td style="padding-left:10px;">
+                <div style="color:#F0F4FF;font-size:13px;font-weight:600;">${a.title}</div>
+                ${(a.assignee || a.due_date || a.projectName) ? `<div style="color:rgba(200,210,240,0.40);font-size:11px;margin-top:3px;">
+                  ${[a.assignee ? `&#8594; ${a.assignee}` : '', a.due_date ? `Due ${a.due_date}` : '', a.projectName ? `<span style="color:#6B8EF7;">${a.projectName}</span>` : ''].filter(Boolean).join(' &nbsp;&middot;&nbsp; ')}
+                </div>` : ''}
+              </td>
+              <td align="right" style="white-space:nowrap;padding-left:10px;vertical-align:top;">
+                ${pill(a.priority, priorityColor[a.priority] || '#888')}
+              </td>
+            </tr>
+          </table>
+        </td></tr>`).join('')}
+      </table>
     </div>` : ''
 
-  const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:20px;background:#f1f5f9;font-family:'Segoe UI',sans-serif;">
-  <div style="max-width:560px;margin:0 auto;background:#0D0F14;border-radius:16px;overflow:hidden;border:1px solid #252A3A;">
-    <div style="background:linear-gradient(135deg,#4F8EF7,#A78BFA);padding:22px 26px;display:flex;align-items:center;">
-      <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px;flex:1;">◈ Pulse</span>
-      <span style="background:rgba(255,255,255,0.2);color:#fff;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:600;">Meeting Minutes</span>
-    </div>
-    <div style="padding:26px;">
-      <p style="color:#94A3B8;font-size:13px;margin:0 0 6px;"><strong style="color:#E2E8F0;">${inviterName}</strong> shared meeting minutes</p>
-      <h2 style="color:#E2E8F0;font-size:19px;margin:0 0 20px;font-weight:700;">${meetingTitle}</h2>
-      <table style="width:100%;border-collapse:collapse;background:#141720;border-radius:10px;overflow:hidden;border:1px solid #252A3A;">
-        <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;border-bottom:1px solid #252A3A;white-space:nowrap;">Date</td>
-          <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;border-bottom:1px solid #252A3A;">${meetingDate}</td>
-        </tr>
-        <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;border-bottom:1px solid #252A3A;white-space:nowrap;">Project</td>
-          <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;border-bottom:1px solid #252A3A;">${projectName}</td>
-        </tr>
-        <tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;${summary ? 'border-bottom:1px solid #252A3A;' : ''}white-space:nowrap;">Attendees</td>
-          <td style="padding:11px 15px;color:#E2E8F0;font-size:13px;${summary ? 'border-bottom:1px solid #252A3A;' : ''}">${attendeeList}</td>
-        </tr>
-        ${summary ? `<tr>
-          <td style="padding:11px 15px;color:#64748B;font-size:12px;font-weight:600;vertical-align:top;white-space:nowrap;">Minutes</td>
-          <td style="padding:11px 15px;color:#94A3B8;font-size:13px;line-height:1.7;white-space:pre-line;">${summary}</td>
-        </tr>` : ''}
-      </table>
-      ${actionsHtml}
-      <div style="margin-top:22px;">
-        <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#A78BFA);color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px;">Open in Pulse →</a>
-      </div>
-      <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <p style="color:#475569;font-size:11px;margin:0;">Sent by ◈ Pulse</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`
+  const content = `
+    <p style="color:rgba(200,210,240,0.75);font-size:13px;margin:0 0 4px;">
+      <strong style="color:#F0F4FF;">${inviterName}</strong> shared meeting minutes
+    </p>
+    <h2 style="color:#F0F4FF;font-size:18px;margin:0 0 20px;font-weight:700;line-height:1.3;">${meetingTitle}</h2>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0E1019;border:1px solid rgba(255,255,255,0.09);border-radius:10px;overflow:hidden;">
+      ${metaRow('Date',      `<span style="color:rgba(200,210,240,0.75);font-size:13px;">${meetingDate}</span>`)}
+      ${metaRow('Project',   `<span style="color:rgba(200,210,240,0.75);font-size:13px;">${projectName}</span>`)}
+      ${metaRow('Attendees', `<span style="color:rgba(200,210,240,0.75);font-size:13px;">${attendeeList}</span>`, !summary)}
+      ${summary ? metaRow('Minutes', `<span style="color:rgba(200,210,240,0.75);font-size:13px;line-height:1.7;white-space:pre-line;">${summary}</span>`, true) : ''}
+    </table>
+
+    ${actionsHtml}
+  `
+
+  const html = emailShell({ badge: 'Meeting Minutes', content, appUrl })
   return { subject: `Meeting minutes: ${meetingTitle}`, html }
 }
