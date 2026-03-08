@@ -6,6 +6,7 @@ import { Avatar, Badge, ProgressBar, Modal, Btn, Icon, lStyle, iStyle } from '..
 import { exportTasksCsv } from '../lib/db/tasks'
 import { getMeetings, deleteMeeting } from '../lib/db/meetings'
 import { BoardView, ListView } from '../components/TaskViews'
+import GanttChart from '../components/GanttChart'
 import TaskModal from '../components/TaskModal'
 import MeetingCard from '../components/MeetingCard'
 import MeetingModal from '../components/MeetingModal'
@@ -170,7 +171,7 @@ export function ProjectView({ project, toast }) {
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ background: 'none', border: 'none', color: COLORS.text, fontSize: 13, width: '100%', outline: 'none' }} />
           </div>
           <div style={{ display: 'flex', background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden' }}>
-            {[['list','list'],['board','board']].map(([ic,v]) => (
+            {[['list','list'],['board','board'],['barChart','gantt']].map(([ic,v]) => (
               <button key={v} onClick={() => setView(v)} style={{ padding: '5px 9px', background: view===v ? COLORS.border : 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Icon name={ic} size={14} color={view===v ? COLORS.text : COLORS.textMuted} /></button>
             ))}
           </div>
@@ -192,7 +193,23 @@ export function ProjectView({ project, toast }) {
       )}
 
       <div style={{ flex: 1, overflow: 'auto', padding: mainTab === 'meetings' ? 0 : 22 }}>
-        {mainTab === 'tasks'    && (view === 'board' ? <BoardView tasks={filtered} onTaskClick={setTaskModal} /> : <ListView tasks={filtered} onTaskClick={setTaskModal} />)}
+        {mainTab === 'tasks' && view === 'board'  && <BoardView tasks={filtered} onTaskClick={setTaskModal} />}
+        {mainTab === 'tasks' && view === 'list'   && <ListView tasks={filtered} onTaskClick={setTaskModal} />}
+        {mainTab === 'tasks' && view === 'gantt'  && (
+          <div style={{ padding: 22 }}>
+            <GanttChart
+              title={`${project.name} — Task Timeline`}
+              mode="tasks"
+              rows={filtered.filter(t => t.due_date).map(t => ({
+                id:     t.id,
+                label:  t.title,
+                status: t.status,
+                start:  t.created_at?.split('T')[0] || t.due_date,
+                end:    t.due_date,
+              }))}
+            />
+          </div>
+        )}
         {mainTab === 'meetings' && <MeetingsTab project={project} toast={toast} />}
       </div>
 

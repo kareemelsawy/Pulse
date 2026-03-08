@@ -16,7 +16,8 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
   const [assigneeId,    setAssigneeId]    = useState('')
   const [guestEmail,    setGuestEmail]    = useState('')  // for external @homzmart.com
   const [useGuestEmail, setUseGuestEmail] = useState(false)
-  const [due,        setDue]        = useState(task?.due_date || '')
+  const today = new Date().toISOString().split('T')[0]
+  const [due,        setDue]        = useState(task?.due_date || today)
   const [saving,     setSaving]     = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [localMembers,    setLocalMembers]    = useState([])
@@ -59,6 +60,7 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
 
   async function handleSave() {
     if (!title.trim()) return
+    if (!due) { toast?.('Due date is required', 'error'); return }
     setSaving(true)
     try {
       const assignee_name  = useGuestEmail ? (guestEmail.split('@')[0]) : (selectedMember?.full_name || selectedMember?.email || '')
@@ -139,8 +141,8 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
             </div>
           )}
           <div style={S.field}>
-            <label style={lStyle}>Due Date</label>
-            <input type="date" value={due} onChange={e => setDue(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }} />
+            <label style={lStyle}>Due Date <span style={{color: COLORS.red}}>*</span></label>
+            <input type="date" value={due} onChange={e => setDue(e.target.value)} style={{ ...iStyle, background: COLORS.inputBg }} required />
           </div>
         </div>
 
@@ -268,7 +270,7 @@ export default function TaskModal({ task, projectId, isAdmin, onClose, toast }) 
         {task && isAdmin && confirmDel  && <Btn variant="danger" onClick={handleDelete} disabled={saving}>Confirm?</Btn>}
         <div style={{ flex: 1 }} />
         <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
-        <Btn onClick={handleSave} disabled={saving || !title.trim()}>{saving ? 'Saving…' : task ? 'Save Changes' : 'Create Task'}</Btn>
+        <Btn onClick={handleSave} disabled={saving || !title.trim() || !due}>{saving ? 'Saving…' : task ? 'Save Changes' : 'Create Task'}</Btn>
       </div>
     </Modal>
   )

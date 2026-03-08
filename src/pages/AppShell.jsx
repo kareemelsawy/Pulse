@@ -21,131 +21,125 @@ export default function AppShell({ toast }) {
   const [newPipelineOpen, setNewPipelineOpen] = useState(false)
   const [userMenu, setUserMenu]               = useState(false)
 
-  const activeProject = projects.find(p => p.id === activeProjectId) || null
-  const activeProjects  = projects.filter(p => !p.is_pipeline)
+  const activeProject    = projects.find(p => p.id === activeProjectId) || null
+  const activeProjects   = projects.filter(p => !p.is_pipeline)
   const pipelineProjects = projects.filter(p => p.is_pipeline)
-
-  const displayName = user?.user_metadata?.full_name || user?.email || 'You'
-  const avatarName  = user?.user_metadata?.full_name || user?.email || 'U'
-
-  const isOwner     = workspace?.owner_id === user?.id
+  const displayName      = user?.user_metadata?.full_name || user?.email || 'You'
+  const isOwner          = workspace?.owner_id === user?.id
 
   function openProject(p) { setActiveProjectId(p.id); setView('project') }
-  function openOverview() { setActiveProjectId(null); setView('overview') }
+  function openOverview()  { setActiveProjectId(null); setView('overview') }
 
   if (loading) return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: COLORS.bg, gap: 16 }}>
-      <div style={{ fontSize: 40, color: COLORS.accent, fontWeight: 900 }}>✦</div>
-      <Spinner size={28} />
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: COLORS.bg, gap: 14 }}>
+      <div style={{ width: 28, height: 28, borderRadius: 8, background: COLORS.surface, border: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="zap" size={14} color={COLORS.textDim} />
+      </div>
+      <Spinner size={18} />
     </div>
   )
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: COLORS.bg, color: COLORS.text, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100vh', background: COLORS.bg, color: COLORS.text, overflow: 'hidden', fontFamily: "'Geist', sans-serif" }}>
 
+      {/* ── Sidebar ── */}
       {sidebarOpen && (
-        <aside style={{ width: 240, background: COLORS.surface, borderRight: `1px solid ${COLORS.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0, height: '100vh' }}>
+        <aside style={{ width: 220, background: COLORS.surface, borderRight: `1px solid ${COLORS.border}`, display: 'flex', flexDirection: 'column', flexShrink: 0, height: '100vh' }}>
 
           {/* Workspace header */}
-          <div style={{ padding: '14px 16px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18, color: '#fff', fontWeight: 900, letterSpacing: '-2px' }}>✦</div>
+          <div style={{ padding: '12px 12px 10px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 6px', borderRadius: 7 }}>
+              <div style={{ width: 24, height: 24, borderRadius: 6, background: COLORS.surfaceHover, border: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name="zap" size={13} color={COLORS.textDim} />
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: COLORS.accent }}>Pulse</div>
+                <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: COLORS.text }}>{workspace?.name || 'Pulse'}</div>
               </div>
             </div>
           </div>
 
           {/* Nav */}
-          <nav style={{ padding: '10px 8px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <NavItem icon={<Icon name="grid" size={15} />}    label="Home"      active={view === 'overview'}  onClick={openOverview} />
-            {isOwner && <NavItem icon={<Icon name="barChart" size={15} />} label="Analytics" active={view === 'analytics'} onClick={() => { setActiveProjectId(null); setView('analytics') }} />}
-            <NavItem icon={<Icon name="messageCircle" size={15} />} label="Meetings" active={view === 'meetings'} onClick={() => { setActiveProjectId(null); setView('meetings') }} />
+          <nav style={{ padding: '8px 8px 4px', flexShrink: 0 }}>
+            <NavItem icon="grid"          label="Overview"   active={view === 'overview'}   onClick={openOverview} />
+            {isOwner && <NavItem icon="barChart" label="Analytics" active={view === 'analytics'} onClick={() => { setActiveProjectId(null); setView('analytics') }} />}
+            <NavItem icon="messageCircle" label="Meetings"   active={view === 'meetings'}   onClick={() => { setActiveProjectId(null); setView('meetings') }} />
           </nav>
 
-          {/* Scrollable middle — Projects + Pipeline */}
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          <div style={{ height: 1, background: COLORS.border, margin: '2px 8px' }} />
 
-            {/* Active projects */}
-            <div style={{ padding: '10px 8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 10px 8px' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Projects</span>
-                <button onClick={() => setNewProjectOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '2px 4px' }}>+</button>
-              </div>
-              {activeProjects.length === 0 && <div style={{ padding: '4px 10px 6px', fontSize: 12, color: COLORS.textMuted }}>No projects yet.</div>}
+          {/* Projects */}
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '6px 8px' }}>
+            <SidebarSection
+              label="Projects"
+              onAdd={() => setNewProjectOpen(true)}
+            >
+              {activeProjects.length === 0 && (
+                <div style={{ padding: '4px 8px', fontSize: 12, color: COLORS.textMuted }}>No projects yet</div>
+              )}
               {activeProjects.map(p => {
                 const ptasks   = getProjectTasks(p.id)
                 const done     = ptasks.filter(t => t.status === 'done').length
                 const isActive = activeProjectId === p.id && view === 'project'
                 return (
-                  <div key={p.id} onClick={() => openProject(p)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 1, background: isActive ? COLORS.surfaceHover : 'transparent', transition: 'background 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
-                    onMouseLeave={e => e.currentTarget.style.background = isActive ? COLORS.surfaceHover : 'transparent'}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                    <span style={{ fontSize: 11, color: COLORS.textMuted }}>{done}/{ptasks.length}</span>
-                  </div>
+                  <ProjectItem
+                    key={p.id}
+                    project={p}
+                    done={done}
+                    total={ptasks.length}
+                    active={isActive}
+                    onClick={() => openProject(p)}
+                  />
                 )
               })}
-            </div>
+            </SidebarSection>
 
-            {/* Pipeline section */}
-            <div style={{ padding: '4px 8px 10px', borderTop: `1px solid ${COLORS.border}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px 6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Pipeline</span>
-                  {pipelineProjects.length > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, background: COLORS.purple + '22', color: COLORS.purple, borderRadius: 10, padding: '1px 6px' }}>{pipelineProjects.length}</span>
-                  )}
-                </div>
-                <button onClick={() => setNewPipelineOpen(true)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: '2px 4px' }}>+</button>
-              </div>
+            <div style={{ height: 1, background: COLORS.border, margin: '6px 0' }} />
 
-              {/* Pipeline view nav item */}
-              <div onClick={() => { setActiveProjectId(null); setView('pipeline') }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 4, background: view === 'pipeline' ? COLORS.surfaceHover : 'transparent', color: view === 'pipeline' ? COLORS.text : COLORS.textDim, transition: 'background 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
-                onMouseLeave={e => e.currentTarget.style.background = view === 'pipeline' ? COLORS.surfaceHover : 'transparent'}>
-                <span style={{ fontSize: 14, lineHeight: 1, color: COLORS.purple }}>🔭</span>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>View All Pipeline</span>
-                {pipelineProjects.length > 0 && <span style={{ marginLeft: 'auto', fontSize: 11, color: COLORS.textMuted }}>{pipelineProjects.length}</span>}
-              </div>
-
-              {/* Individual pipeline items */}
+            <SidebarSection
+              label="Pipeline"
+              count={pipelineProjects.length}
+              onAdd={() => setNewPipelineOpen(true)}
+            >
+              <NavItem
+                icon="inbox"
+                label="All Pipeline"
+                active={view === 'pipeline'}
+                onClick={() => { setActiveProjectId(null); setView('pipeline') }}
+                meta={pipelineProjects.length > 0 ? String(pipelineProjects.length) : null}
+              />
               {pipelineProjects.map(p => (
-                <div key={p.id}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, cursor: 'default', marginBottom: 1, opacity: 0.75 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', border: `2px dashed ${p.color}`, flexShrink: 0 }} />
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, opacity: 0.6 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', border: `1.5px solid ${p.color}`, flexShrink: 0 }} />
                   <span style={{ flex: 1, fontSize: 12, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                 </div>
               ))}
-
-              {pipelineProjects.length === 0 && (
-                <div style={{ padding: '2px 10px 4px', fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>No pipeline items yet.</div>
-              )}
-            </div>
+            </SidebarSection>
           </div>
 
           {/* Bottom */}
-          <div style={{ padding: 8, borderTop: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-            <NavItem icon={<Icon name="settings" size={15} />} label="Settings" active={view === 'settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
-            <NavItem icon={<Icon name="fileText" size={15} />} label="Docs" active={view === 'docs'} onClick={() => { setActiveProjectId(null); setView('docs') }} />
-            <div style={{ position: 'relative' }}>
-              <div onClick={() => setUserMenu(p => !p)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer' }}
+          <div style={{ padding: '6px 8px 8px', borderTop: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
+            <NavItem icon="settings"  label="Settings" active={view === 'settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
+            <NavItem icon="fileText"  label="Docs"     active={view === 'docs'}     onClick={() => { setActiveProjectId(null); setView('docs') }} />
+
+            {/* User row */}
+            <div style={{ position: 'relative', marginTop: 2 }}>
+              <div
+                onClick={() => setUserMenu(p => !p)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 7, cursor: 'pointer', transition: 'background 0.1s' }}
                 onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
-                onMouseLeave={e => e.currentTarget.style.background = ''}>
-                <Avatar name={avatarName} size={26} />
+                onMouseLeave={e => e.currentTarget.style.background = ''}
+              >
+                <Avatar name={displayName} size={24} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-                  <div style={{ fontSize: 11, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: COLORS.textDim }}>{displayName}</div>
                 </div>
+                <Icon name={userMenu ? 'chevronDown' : 'chevronRight'} size={12} color={COLORS.textMuted} />
               </div>
               {userMenu && (
-                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 6, marginBottom: 4, zIndex: 50, boxShadow: `0 8px 32px ${COLORS.shadow}` }}>
-                  <button onClick={() => { setUserMenu(false); setView('settings') }} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: COLORS.textDim, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}>⚙ Settings</button>
-                  <button onClick={() => { setUserMenu(false); signOut() }} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: COLORS.red, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>Sign out</button>
+                <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 9, padding: 4, marginBottom: 4, zIndex: 50, boxShadow: COLORS.cardShadow }}>
+                  <MenuBtn onClick={() => { setUserMenu(false); setView('settings') }}>Settings</MenuBtn>
+                  <div style={{ height: 1, background: COLORS.border, margin: '3px 0' }} />
+                  <MenuBtn onClick={() => { setUserMenu(false); signOut() }} danger>Sign out</MenuBtn>
                 </div>
               )}
             </div>
@@ -153,24 +147,23 @@ export default function AppShell({ toast }) {
         </aside>
       )}
 
-      {/* Main */}
+      {/* ── Main ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-        <header style={{ height: 52, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 10, flexShrink: 0 }}>
-          <button onClick={() => setSidebarOpen(p => !p)} style={{ background: 'none', border: 'none', color: COLORS.textMuted, fontSize: 20, cursor: 'pointer', padding: '4px 6px', borderRadius: 6 }}>☰</button>
-          <span style={{ fontSize: 12, color: COLORS.textMuted }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        <header style={{ height: 44, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10, flexShrink: 0 }}>
+          <button
+            onClick={() => setSidebarOpen(p => !p)}
+            style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', padding: '4px 6px', borderRadius: 5, display: 'flex', alignItems: 'center' }}
+          >
+            <Icon name="list" size={15} color={COLORS.textMuted} />
+          </button>
+          <span style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'Geist Mono', monospace" }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </span>
           <div style={{ marginLeft: 'auto' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: 'hidden' }}>
-            <button onClick={toggleTheme} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              style={{ background: 'none', border: 'none', padding: '5px 10px', cursor: 'pointer', color: COLORS.textDim, display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}>
-              {isDark ? <Icon name="sun" size={15} color={COLORS.textMuted} /> : <Icon name="moon" size={15} color={COLORS.textMuted} />}
-              <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.textDim }}>{isDark ? 'Light' : 'Dark'}</span>
-            </button>
-            <button onClick={setAutoTheme} title="Auto: dark 6 PM to 6 AM, light otherwise"
-              style={{ background: 'none', border: 'none', borderLeft: `1px solid ${COLORS.border}`, padding: '5px 8px', cursor: 'pointer', fontSize: 11, color: COLORS.textMuted, fontFamily: 'inherit' }}>
-              Auto
-            </button>
+          {/* Theme toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 1, background: COLORS.surfaceHover, border: `1px solid ${COLORS.border}`, borderRadius: 7, overflow: 'hidden', padding: 2 }}>
+            <ThemeBtn active={isDark} onClick={toggleTheme} icon={isDark ? 'moon' : 'sun'} label={isDark ? 'Dark' : 'Light'} />
+            <ThemeBtn onClick={setAutoTheme} label="Auto" />
           </div>
         </header>
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -190,14 +183,76 @@ export default function AppShell({ toast }) {
   )
 }
 
-function NavItem({ icon, label, active, onClick }) {
+function NavItem({ icon, label, active, onClick, meta }) {
   return (
-    <div onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', background: active ? COLORS.surfaceHover : 'transparent', color: active ? COLORS.text : COLORS.textDim, marginBottom: 1, transition: 'all 0.15s' }}
-      onMouseEnter={e => { if (!active) e.currentTarget.style.background = COLORS.surfaceHover }}
-      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
-      <span style={{ width: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</span>
-      <span style={{ fontWeight: 500, fontSize: 13 }}>{label}</span>
+    <div
+      onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, cursor: 'pointer', background: active ? COLORS.surfaceHover : 'transparent', color: active ? COLORS.text : COLORS.textMuted, marginBottom: 1, transition: 'all 0.1s', userSelect: 'none' }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = COLORS.surfaceHover; e.currentTarget.style.color = COLORS.textDim }}
+      onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = COLORS.textMuted } }}
+    >
+      <Icon name={icon} size={14} color="currentColor" />
+      <span style={{ fontWeight: active ? 500 : 400, fontSize: 13, flex: 1, letterSpacing: '-0.01em' }}>{label}</span>
+      {meta && <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'Geist Mono', monospace" }}>{meta}</span>}
     </div>
+  )
+}
+
+function SidebarSection({ label, count, onAdd, children }) {
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px 3px' }}>
+        <span style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMuted, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          {label}{count > 0 ? ` · ${count}` : ''}
+        </span>
+        <button
+          onClick={onAdd}
+          style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', display: 'flex', padding: 2, borderRadius: 4, lineHeight: 1 }}
+          onMouseEnter={e => e.currentTarget.style.color = COLORS.textDim}
+          onMouseLeave={e => e.currentTarget.style.color = COLORS.textMuted}
+        >
+          <Icon name="plus" size={13} color="currentColor" />
+        </button>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function ProjectItem({ project: p, done, total, active, onClick }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 6, cursor: 'pointer', marginBottom: 1, background: active ? COLORS.surfaceHover : 'transparent', transition: 'background 0.1s', userSelect: 'none' }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = COLORS.surfaceHover }}
+      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+    >
+      <div style={{ width: 7, height: 7, borderRadius: 2, background: p.color, flexShrink: 0 }} />
+      <span style={{ flex: 1, fontSize: 13, fontWeight: active ? 500 : 400, color: active ? COLORS.text : COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{p.name}</span>
+      <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'Geist Mono', monospace", flexShrink: 0 }}>{done}/{total}</span>
+    </div>
+  )
+}
+
+function ThemeBtn({ active, onClick, icon, label }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{ background: active ? COLORS.surface : 'transparent', border: 'none', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: active ? COLORS.textDim : COLORS.textMuted, transition: 'all 0.15s' }}
+    >
+      {icon && <Icon name={icon} size={13} color="currentColor" />}
+      <span style={{ fontSize: 11, fontWeight: 500, lineHeight: 1 }}>{label}</span>
+    </button>
+  )
+}
+
+function MenuBtn({ children, onClick, danger }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: danger ? COLORS.red : COLORS.textDim, padding: '7px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 400, fontFamily: "'Geist', sans-serif", letterSpacing: '-0.01em' }}
+      onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
+      onMouseLeave={e => e.currentTarget.style.background = ''}
+    >{children}</button>
   )
 }
