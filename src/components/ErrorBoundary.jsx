@@ -58,11 +58,11 @@ export default class ErrorBoundary extends Component {
               fontSize: 14, color: '#fff', fontWeight: 900,
               boxShadow: '0 4px 12px rgba(107,142,247,0.40)',
             }}>✦</div>
-            <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 18, letterSpacing: '-0.03em', color: 'rgba(240,244,255,0.9)' }}>Pulse</span>
+            <span style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.02em', color: 'rgba(240,244,255,0.9)' }}>Pulse</span>
           </div>
 
           <h2 style={{
-            fontFamily: 'Syne', fontWeight: 800, fontSize: 22,
+            fontWeight: 700, fontSize: 21,
             color: 'rgba(240,244,255,0.95)',
             marginBottom: 10, letterSpacing: '-0.02em',
           }}>Something went wrong</h2>

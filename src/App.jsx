@@ -4,7 +4,7 @@ import { DataProvider, useData } from './contexts/DataContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { useToast } from './hooks/useToast'
 import { Toast, Spinner } from './components/UI'
-import { DARK_THEME, LIGHT_THEME } from './lib/constants'
+import { DARK_THEME } from './lib/constants'
 import ErrorBoundary from './components/ErrorBoundary'
 import LoginPage, { SignupPage, ResetPage, NewPasswordPage } from './pages/LoginPage'
 import WorkspaceSetup from './pages/WorkspaceSetup'
@@ -29,7 +29,7 @@ function AuthGate({ toast }) {
     }
   }, [])
 
-  const C = isDark ? DARK_THEME : LIGHT_THEME
+  const C = DARK_THEME
 
   if (authLoading) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.bg, gap: 16 }}>
@@ -56,7 +56,7 @@ function WorkspaceGate({ toast }) {
   const { workspace, loading, wsError, setWorkspace } = useData()
   const { user, signOut } = useAuth()
   const { isDark } = useTheme()
-  const C = isDark ? DARK_THEME : LIGHT_THEME
+  const C = DARK_THEME
 
   function handleJoined(ws) {
     setWorkspace(ws)
@@ -88,9 +88,7 @@ function WorkspaceGate({ toast }) {
     </div>
   )
 
-  // key={isDark} remounts AppShell instantly when theme changes,
-  // flushing all inline COLORS references without touching auth/data state.
-  return <AppShell key={isDark ? 'dark' : 'light'} toast={toast} />
+  return <AppShell toast={toast} />
 }
 
 function Inner() {

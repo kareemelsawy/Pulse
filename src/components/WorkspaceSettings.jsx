@@ -183,7 +183,7 @@ export default function WorkspaceSettings({ onClose, toast }) {
 
   return (
     <Modal onClose={onClose} width={540}>
-      <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 17, marginBottom: 20 }}>⚙ Workspace Settings</h2>
+      <h2 style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.02em', marginBottom: 20 }}>⚙ Workspace Settings</h2>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 22, background: COLORS.bg, borderRadius: 10, padding: 4 }}>

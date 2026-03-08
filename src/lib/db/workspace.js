@@ -1,16 +1,27 @@
 import { supabase } from '../supabase'
 
 export async function getMyWorkspace(userId) {
-  const { data, error } = await supabase
+  // Step 1: get workspace_id and role for this user
+  const { data: memberRows, error: memberErr } = await supabase
     .from('workspace_members')
-    .select('workspace_id, role, workspaces(*)')
+    .select('workspace_id, role')
     .eq('user_id', userId)
     .order('joined_at', { ascending: true })
     .limit(1)
-  if (error || !data?.length) return null
-  const row = data[0]
-  if (!row.workspaces) return null
-  return { ...row.workspaces, role: row.role }
+
+  if (memberErr || !memberRows?.length) return null
+
+  const { workspace_id, role } = memberRows[0]
+
+  // Step 2: fetch workspace directly (avoids nested-join RLS issues)
+  const { data: ws, error: wsErr } = await supabase
+    .from('workspaces')
+    .select('*')
+    .eq('id', workspace_id)
+    .single()
+
+  if (wsErr || !ws) return null
+  return { ...ws, role }
 }
 
 export async function getWorkspaceMembers(workspaceId) {
@@ -55,6 +66,23 @@ export async function joinWorkspaceByCode(code, userId) {
     .insert({ workspace_id: ws.id, user_id: userId, role: 'member' })
   if (joinErr) throw new Error(joinErr.message)
   return ws
+}
+
+export async function createWorkspace(userId, name) {
+  const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase()
+  // Create workspace
+  const { data: ws, error: wsErr } = await supabase
+    .from('workspaces')
+    .insert({ name: name.trim(), owner_id: userId, invite_code: inviteCode })
+    .select()
+    .single()
+  if (wsErr) throw new Error(wsErr.message)
+  // Add creator as owner member
+  const { error: memErr } = await supabase
+    .from('workspace_members')
+    .insert({ workspace_id: ws.id, user_id: userId, role: 'owner' })
+  if (memErr) throw new Error(memErr.message)
+  return { ...ws, role: 'owner' }
 }
 
 export async function regenerateInviteCode(workspaceId) {

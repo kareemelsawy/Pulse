@@ -578,7 +578,7 @@ export default function SettingsPage({ toast }) {
       {/* Content */}
       <div style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', minWidth: 0 }}>
         <div style={{ maxWidth: 640 }}>
-          <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, letterSpacing: '-0.03em', marginBottom: 4 }}>
+          <h1 style={{ fontWeight: 700, fontSize: 20, letterSpacing: '-0.02em', marginBottom: 4 }}>
             {TABS.find(t => t.id === tab)?.label}
           </h1>
           <p style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 24, lineHeight: 1.5 }}>

@@ -10,7 +10,7 @@ import { Avatar, Badge, Icon, Spinner } from '../components/UI'
 // but are NOT full workspace members. They can only see their assigned items.
 export default function GuestView({ toast }) {
   const { user, signOut } = useAuth()
-  const { isDark, toggleTheme } = useTheme()
+  const { isDark } = useTheme()
   const [myTasks,    setMyTasks]    = useState([])
   const [myMeetings, setMyMeetings] = useState([])
   const [loading,    setLoading]    = useState(true)
@@ -58,14 +58,11 @@ export default function GuestView({ toast }) {
       {/* Header */}
       <div style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 30, height: 30, borderRadius: 9, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, color: '#fff', fontWeight: 900 }}>✦</div>
-        <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 16, letterSpacing: '-0.02em', color: COLORS.accent }}>Pulse</span>
+        <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em', color: COLORS.accent }}>Pulse</span>
         <div style={{ height: 16, width: 1, background: COLORS.border }} />
         <span style={{ fontSize: 12, color: COLORS.textMuted }}>Guest Access</span>
         <div style={{ flex: 1 }} />
-        <button onClick={toggleTheme} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '5px 10px', cursor: 'pointer', color: COLORS.textMuted, fontSize: 12, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
-          {isDark ? <Icon name="sun" size={13} color={COLORS.textMuted} /> : <Icon name="moon" size={13} color={COLORS.textMuted} />}
-          {isDark ? 'Light' : 'Dark'}
-        </button>
+        
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Avatar name={name} size={28} />
           <div>
