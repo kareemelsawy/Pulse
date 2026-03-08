@@ -230,18 +230,14 @@ aside, header {
   border-color: rgba(107,142,247,0.25) !important;
 }
 
-/* ── Light mode surface overrides for readability ───────────────── */
-[data-theme="light"] {
-  /* All glass cards get near-solid white in light mode */
-}
+/* ── Light mode inputs ───────────────────────────────────────────── */
 [data-theme="light"] input,
 [data-theme="light"] select,
 [data-theme="light"] textarea {
-  background: rgba(255,255,255,0.95) !important;
-  border-color: rgba(10,30,80,0.15) !important;
-  color: #0A0F1E !important;
+  background: rgba(255,255,255,0.92);
+  color: #0A0F1E;
 }
 [data-theme="light"] input::placeholder,
 [data-theme="light"] textarea::placeholder {
-  color: rgba(10,30,80,0.35) !important;
+  color: rgba(10,30,80,0.35);
 }

@@ -12,7 +12,7 @@ import AnalyticsPage from './AnalyticsPage'
 
 // ── Glass style helpers ───────────────────────────────────────────────────────
 const glassPanel = (extra = {}) => ({
-  background: 'rgba(255,255,255,0.06)',
+  background: COLORS.surface,
   backdropFilter: 'blur(32px) saturate(180%)',
   WebkitBackdropFilter: 'blur(32px) saturate(180%)',
   border: '1px solid rgba(255,255,255,0.11)',
@@ -66,7 +66,7 @@ export default function AppShell({ toast }) {
           borderRight: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(10,30,80,0.10)',
         }}>
           {/* Logo */}
-          <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0 }}>
+          <div style={{ padding:'16px 16px 12px', borderBottom:`1px solid ${COLORS.border}`, flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <div style={{
                 width:34, height:34, borderRadius:10, flexShrink:0,
@@ -82,7 +82,7 @@ export default function AppShell({ toast }) {
           </div>
 
           {/* Primary nav */}
-          <nav style={{ padding:'8px 8px 6px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+          <nav style={{ padding:'8px 8px 6px', borderBottom:`1px solid ${COLORS.border}`, flexShrink:0 }}>
             <NavItem icon="grid"          label="Overview"   active={view==='overview'}   onClick={openOverview} />
             {isOwner && <NavItem icon="barChart" label="Analytics" active={view==='analytics'} onClick={() => { setActiveProjectId(null); setView('analytics') }} />}
             <NavItem icon="messageCircle" label="Meetings"   active={view==='meetings'}   onClick={() => { setActiveProjectId(null); setView('meetings') }} />
@@ -111,7 +111,7 @@ export default function AppShell({ toast }) {
           </div>
 
           {/* Bottom */}
-          <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', padding:'6px 8px 10px', flexShrink:0 }}>
+          <div style={{ borderTop:`1px solid ${COLORS.border}`, padding:'6px 8px 10px', flexShrink:0 }}>
             <NavItem icon="settings" label="Settings" active={view==='settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
             <NavItem icon="fileText" label="Docs"     active={view==='docs'}     onClick={() => { setActiveProjectId(null); setView('docs') }} />
 
@@ -142,7 +142,7 @@ export default function AppShell({ toast }) {
                   animation:'slideUp 0.18s cubic-bezier(0.34,1.56,0.64,1)',
                 }}>
                   <MenuBtn onClick={() => { setUserMenu(false); setView('settings') }}>Settings</MenuBtn>
-                  <div style={{ height:1, background:'rgba(255,255,255,0.08)', margin:'4px 0' }} />
+                  <div style={{ height:1, background:COLORS.border, margin:'4px 0' }} />
                   <MenuBtn danger onClick={() => { setUserMenu(false); signOut() }}>Sign out</MenuBtn>
                 </div>
               )}
@@ -164,7 +164,7 @@ export default function AppShell({ toast }) {
           borderBottom: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(10,30,80,0.09)',
         }}>
           <button onClick={() => setSidebarOpen(p => !p)} style={{
-            background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)',
+            background:COLORS.surface, border:`1px solid ${COLORS.border}`,
             borderRadius:8, padding:'5px 7px', cursor:'pointer',
             display:'flex', alignItems:'center',
             transition:'all 0.15s',
@@ -226,7 +226,7 @@ function NavItem({ icon, label, active, onClick, meta }) {
       }}>
       <Icon name={icon} size={15} color={active ? COLORS.accent : COLORS.textMuted} />
       <span style={{ fontWeight: active ? 600 : 400, fontSize:13, flex:1, letterSpacing:'-0.01em' }}>{label}</span>
-      {meta && <span style={{ fontSize:11, color: COLORS.textMuted, background:'rgba(255,255,255,0.08)', borderRadius:6, padding:'1px 6px', fontFamily:"'DM Mono',monospace" }}>{meta}</span>}
+      {meta && <span style={{ fontSize:11, color: COLORS.textMuted, background:COLORS.border, borderRadius:6, padding:'1px 6px', fontFamily:"'DM Mono',monospace" }}>{meta}</span>}
     </div>
   )
 }

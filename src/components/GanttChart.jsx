@@ -48,8 +48,8 @@ export default function GanttChart({ rows, mode = 'tasks', title = 'Timeline' })
   const LABEL_W = 180
 
   return (
-    <div style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, overflow: 'hidden', marginBottom: 24 }}>
-      <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ background: COLORS.surface, backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: `1px solid ${COLORS.borderStrong}`, borderRadius: 14, overflow: 'hidden', marginBottom: 24 }}>
+      <div style={{ padding: '12px 16px 10px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
         <Icon name="barChart" size={14} color={COLORS.textMuted} />
         <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.textDim, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{title}</span>
         <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: 'monospace', marginLeft: 4 }}>
@@ -59,8 +59,8 @@ export default function GanttChart({ rows, mode = 'tasks', title = 'Timeline' })
       <div style={{ overflowX: 'auto' }}>
         <div style={{ minWidth: 600 }}>
           {/* Column headers */}
-          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}>
-            <div style={{ width: LABEL_W, flexShrink: 0, padding: '5px 14px', fontSize: 10, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', borderBottom: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
+            <div style={{ width: LABEL_W, flexShrink: 0, padding: '5px 14px', fontSize: 10, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', borderRight: `1px solid ${COLORS.border}` }}>
               {mode === 'projects' ? 'Project' : 'Task'}
             </div>
             <div style={{ flex: 1, position: 'relative', height: 26 }}>
@@ -77,8 +77,8 @@ export default function GanttChart({ rows, mode = 'tasks', title = 'Timeline' })
           {items.length === 0 ? (
             <div style={{ padding: '24px 16px', textAlign: 'center', color: COLORS.textMuted, fontSize: 13 }}>No items with due dates to display</div>
           ) : items.map((item, i) => (
-            <div key={item.id || i} style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)', height: 36, alignItems: 'center' }}>
-              <div style={{ width: LABEL_W, flexShrink: 0, padding: '0 14px', borderRight: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 7 }}>
+            <div key={item.id || i} style={{ display: 'flex', borderBottom: `1px solid ${COLORS.border}`, height: 36, alignItems: 'center' }}>
+              <div style={{ width: LABEL_W, flexShrink: 0, padding: '0 14px', borderRight: `1px solid ${COLORS.border}`, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 7 }}>
                 {item.color && <div style={{ width: 8, height: 8, borderRadius: 2, background: item.color, flexShrink: 0 }} />}
                 {!item.color && item.status && <div style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLOR[item.status] || COLORS.textMuted, flexShrink: 0 }} />}
                 <span style={{ fontSize: 12, fontWeight: 500, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.label}</span>
@@ -109,7 +109,7 @@ export default function GanttChart({ rows, mode = 'tasks', title = 'Timeline' })
         </div>
       </div>
       {/* Legend */}
-      <div style={{ padding: '6px 14px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ padding: '6px 14px', borderTop: `1px solid ${COLORS.border}`, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <div style={{ width: 14, height: 2, background: COLORS.red + '80', borderRadius: 1 }} />
           <span style={{ fontSize: 10, color: COLORS.textMuted }}>Today</span>

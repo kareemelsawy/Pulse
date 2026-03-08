@@ -30,10 +30,10 @@ export const DARK_THEME = {
 export const LIGHT_THEME = {
   bg:           'transparent',
   // Strong white surfaces so glass is readable against blue gradient
-  surface:      'rgba(255,255,255,0.82)',
+  surface:      'rgba(255,255,255,0.88)',
   surfaceHover: 'rgba(255,255,255,0.95)',
   surfaceModal: 'rgba(255,255,255,0.96)',
-  border:       'rgba(10,30,80,0.12)',
+  border:       'rgba(10,30,80,0.16)',
   borderStrong: 'rgba(10,30,80,0.28)',
   accent:    '#1A56FF',
   accentDim: 'rgba(26,86,255,0.10)',

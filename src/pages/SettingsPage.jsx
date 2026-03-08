@@ -10,25 +10,25 @@ import { getWorkspaceMembers, regenerateInviteCode, updateWorkspaceName, removeM
 // ── Glass primitives ──────────────────────────────────────────────────────────
 const G = {
   panel: {
-    background: 'rgba(255,255,255,0.06)',
+    background: COLORS.surface,
     backdropFilter: 'blur(24px) saturate(160%)',
     WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-    border: '1px solid rgba(255,255,255,0.11)',
+    border: `1px solid ${COLORS.border}`,
     borderRadius: 16,
   },
   row: {
-    background: 'rgba(255,255,255,0.05)',
+    background: COLORS.surface,
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
-    border: '1px solid rgba(255,255,255,0.09)',
+    border: `1px solid ${COLORS.border}`,
     borderRadius: 12,
   },
   input: {
     width: '100%',
-    background: 'rgba(255,255,255,0.07)',
+    background: COLORS.surfaceHover,
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
-    border: '1px solid rgba(255,255,255,0.12)',
+    border: `1px solid ${COLORS.borderStrong}`,
     borderRadius: 10, padding: '9px 13px',
     color: COLORS.text, fontSize: 13, outline: 'none',
     fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5,
@@ -40,7 +40,7 @@ const G = {
     letterSpacing: '0.06em', textTransform: 'uppercase',
     display: 'block', marginBottom: 7, lineHeight: 1.4,
   },
-  divider: { height: 1, background: 'rgba(255,255,255,0.07)', margin: '18px 0' },
+  divider: { height: 1, background: COLORS.surfaceHover, margin: '18px 0' },
 }
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
@@ -60,7 +60,7 @@ function PanelHeader({ title, desc, icon }) {
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
         {icon && (
-          <div style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 30, height: 30, borderRadius: 9, background: COLORS.surfaceHover, border: `1px solid ${COLORS.borderStrong}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icon name={icon} size={14} color={COLORS.textMuted} />
           </div>
         )}
@@ -296,7 +296,7 @@ function WorkspaceTab({ toast }) {
         </div>
         {/* Invite URL */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ ...G.input, flex: 1, fontSize: 11, color: COLORS.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 12px', background: 'rgba(255,255,255,0.04)' }}>
+          <div style={{ ...G.input, flex: 1, fontSize: 11, color: COLORS.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 12px', background: COLORS.surface }}>
             {inviteUrl}
           </div>
           <Btn size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(inviteUrl); toast('Link copied!', 'success') }}>Copy Link</Btn>
@@ -552,7 +552,7 @@ export default function SettingsPage({ toast }) {
         borderRight: '1px solid rgba(255,255,255,0.08)',
         display: 'flex', flexDirection: 'column',
         position: 'sticky', top: 0, height: '100vh',
-        background: 'rgba(255,255,255,0.03)',
+        background: COLORS.surface,
       }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 14, paddingLeft: 12 }}>Settings</div>
         {TABS.map(t => (
