@@ -1,84 +1,94 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase, configError } from '../lib/supabase'
 import { Icon, Spinner } from '../components/UI'
 import { useTheme } from '../contexts/ThemeContext'
 
-function useC() { const { colors } = useTheme(); return colors }
-function mkS(C) {
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light'
+function useC() { const { colors, isDark } = useTheme(); return { C: colors, isDark } }
+
+// ── Shared input / label styles ──────────────────────────────────────────────
+function inp(isDark) {
   return {
-    wrap: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
-    card: {
-      background: isLight ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.07)',
-      backdropFilter: 'blur(40px) saturate(200%)',
-      WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-      border: `1px solid ${isLight ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.15)'}`,
-      borderRadius: 24, padding: '44px 40px', width: 420, maxWidth: '100%',
-      boxShadow: isLight
-        ? '0 24px 80px rgba(60,50,120,0.16), inset 0 1px 0 rgba(255,255,255,1)'
-        : '0 24px 80px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.10)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      animation: 'slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)',
-    },
-    inp:  {
-      width: '100%',
-      background: isLight ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.07)',
-      backdropFilter: 'blur(8px)',
-      border: `1px solid ${isLight ? 'rgba(120,100,200,0.22)' : 'rgba(255,255,255,0.13)'}`,
-      borderRadius: 10, padding: '10px 14px',
-      color: C.text, fontSize: 14, marginBottom: 12,
-      outline: 'none', fontFamily: 'inherit',
-      transition: 'border-color 0.15s, box-shadow 0.15s',
-    },
-    lbl:  { fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 },
-    btn:  {
-      width: '100%', padding: '12px 20px',
-      background: 'linear-gradient(135deg, #6B8EF7, #C084FC)',
-      color: '#fff', border: '1px solid rgba(255,255,255,0.20)',
-      borderRadius: 12, fontWeight: 700, fontSize: 14,
-      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-      boxShadow: '0 4px 20px rgba(107,142,247,0.45), inset 0 1px 0 rgba(255,255,255,0.20)',
-      fontFamily: 'inherit', transition: 'all 0.18s',
-    },
-    gBtn: {
-      width: '100%', padding: '11px 20px',
-      background: isLight ? 'rgba(255,255,255,0.60)' : 'rgba(255,255,255,0.08)',
-      backdropFilter: 'blur(12px)',
-      color: C.text,
-      border: `1px solid ${isLight ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.15)'}`,
-      borderRadius: 12, fontWeight: 600, fontSize: 14,
-      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-      fontFamily: 'inherit', marginBottom: 12, transition: 'all 0.18s',
-    },
+    width: '100%',
+    background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,20,80,0.04)',
+    backdropFilter: 'blur(8px)',
+    border: isDark ? '1px solid rgba(255,255,255,0.11)' : '1px solid rgba(0,60,200,0.14)',
+    borderRadius: 12, padding: '11px 15px',
+    color: isDark ? '#F0F4FF' : '#050D1A',
+    fontSize: 14, outline: 'none',
+    fontFamily: "'DM Sans', sans-serif",
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+    lineHeight: 1.5,
+  }
+}
+function lbl(isDark) {
+  return {
+    fontSize: 11, fontWeight: 700,
+    color: isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)',
+    letterSpacing: '0.07em', textTransform: 'uppercase',
+    display: 'block', marginBottom: 7,
+  }
+}
+function primaryBtn(loading) {
+  return {
+    width: '100%', padding: '13px 20px',
+    background: 'linear-gradient(135deg, #0055FF 0%, #0099FF 60%, #00CCFF 100%)',
+    color: '#fff', border: '1px solid rgba(255,255,255,0.20)',
+    borderRadius: 12, fontWeight: 700, fontSize: 14,
+    cursor: loading ? 'not-allowed' : 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    boxShadow: '0 4px 28px rgba(0,85,255,0.45), inset 0 1px 0 rgba(255,255,255,0.22)',
+    fontFamily: "'DM Sans', inherit", transition: 'all 0.2s',
+    letterSpacing: '-0.01em', opacity: loading ? 0.7 : 1,
+  }
+}
+function googleBtn(isDark) {
+  return {
+    width: '100%', padding: '12px 20px',
+    background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.80)',
+    backdropFilter: 'blur(12px)',
+    color: isDark ? '#F0F4FF' : '#050D1A',
+    border: isDark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(0,60,200,0.12)',
+    borderRadius: 12, fontWeight: 600, fontSize: 14,
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    fontFamily: "'DM Sans', inherit", transition: 'all 0.2s', marginBottom: 0,
   }
 }
 
-function Glows() { return null }
-
-function Logo({ C }) {
+// ── Shared error/success boxes ────────────────────────────────────────────────
+function ErrBox({ msg, isDark }) {
+  if (!msg) return null
   return (
-    <>
-      <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#6B8EF7,#C084FC)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18, boxShadow: '0 8px 32px rgba(107,142,247,0.50), inset 0 1px 0 rgba(255,255,255,0.25)', fontSize: 28, color: '#fff' }}>✦</div>
-      <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 30, letterSpacing: '-0.04em', marginBottom: 4, color: C.accent }}>Pulse</h1>
-      <p style={{ color: C.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 4, lineHeight: 1.6 }}>Project management, built for Homzmart.</p>
-      <p style={{ color: C.textMuted, fontSize: 11, textAlign: 'center', marginBottom: 28, fontStyle: 'italic', opacity: 0.7 }}>Internal tool — authorised access only</p>
-    </>
+    <div style={{
+      background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.25)',
+      borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13,
+      color: isDark ? '#FCA5A5' : '#B91C1C',
+      display: 'flex', alignItems: 'flex-start', gap: 8,
+    }}>
+      <span style={{ flexShrink: 0, marginTop: 1 }}>✕</span>
+      <span style={{ lineHeight: 1.5 }}>{msg}</span>
+    </div>
   )
 }
-function ErrBox({ msg, C }) {
+function OkBox({ msg, isDark }) {
   if (!msg) return null
-  return <div style={{ background: C.red + '18', border: `1px solid ${C.red}44`, borderRadius: 10, padding: 14, width: '100%', marginBottom: 16, fontSize: 13, color: C.red }}>✕ {msg}</div>
-}
-function OkBox({ msg, C }) {
-  if (!msg) return null
-  return <div style={{ background: C.green + '18', border: `1px solid ${C.green}44`, borderRadius: 10, padding: 14, width: '100%', marginBottom: 16, fontSize: 13, color: C.green }}>✓ {msg}</div>
-}
-function Divider({ C }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '4px 0 16px', width: '100%' }}>
-      <div style={{ flex: 1, height: 1, background: C.border }} />
-      <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 600 }}>OR</span>
-      <div style={{ flex: 1, height: 1, background: C.border }} />
+    <div style={{
+      background: 'rgba(52,209,122,0.10)', border: '1px solid rgba(52,209,122,0.25)',
+      borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13,
+      color: isDark ? '#6EE7B7' : '#15803D',
+      display: 'flex', alignItems: 'flex-start', gap: 8,
+    }}>
+      <span style={{ flexShrink: 0, marginTop: 1 }}>✓</span>
+      <span style={{ lineHeight: 1.5 }}>{msg}</span>
+    </div>
+  )
+}
+function OrDivider({ isDark }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' }}>
+      <div style={{ flex: 1, height: 1, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,60,200,0.08)' }} />
+      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', color: isDark ? 'rgba(180,200,255,0.30)' : 'rgba(0,40,120,0.30)' }}>OR</span>
+      <div style={{ flex: 1, height: 1, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,60,200,0.08)' }} />
     </div>
   )
 }
@@ -93,12 +103,177 @@ function GoogleIcon() {
   )
 }
 
+// ── Left panel — brand / visual ───────────────────────────────────────────────
+function LeftPanel({ isDark }) {
+  const features = [
+    { icon: 'tasks',         text: 'Task & project tracking' },
+    { icon: 'barChart',      text: 'Analytics & Gantt timelines' },
+    { icon: 'bell',          text: 'Smart email notifications' },
+    { icon: 'messageCircle', text: 'Meeting minutes & action items' },
+  ]
+
+  return (
+    <div style={{
+      flex: '0 0 52%',
+      position: 'relative',
+      display: 'flex', flexDirection: 'column',
+      justifyContent: 'space-between',
+      padding: '52px 56px',
+      overflow: 'hidden',
+      // The gradient background is the same "Deep Layers" beam from the app
+      background: isDark
+        ? 'linear-gradient(145deg, #000 0%, #000820 30%, #001560 55%, #003fa0 72%, #0077cc 85%, #00b4d8 100%)'
+        : 'linear-gradient(145deg, #fff 0%, #f0f6ff 30%, #cce0ff 55%, #80b8ff 72%, #3385ff 85%, #0055cc 100%)',
+    }}>
+
+      {/* Noise grain for texture */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        opacity: isDark ? 0.035 : 0.025,
+        mixBlendMode: 'overlay',
+      }} />
+
+      {/* Radial beam overlay */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+        background: isDark
+          ? 'radial-gradient(ellipse 80% 70% at 80% 50%, rgba(0,160,255,0.18) 0%, transparent 65%)'
+          : 'radial-gradient(ellipse 80% 70% at 80% 50%, rgba(255,255,255,0.55) 0%, transparent 65%)',
+      }} />
+
+      {/* Logo */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 0 }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 11,
+            background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.70)',
+            backdropFilter: 'blur(12px)',
+            border: isDark ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.90)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20, color: isDark ? '#fff' : '#0055FF',
+            boxShadow: isDark ? '0 4px 16px rgba(0,0,0,0.40)' : '0 4px 16px rgba(0,85,255,0.20)',
+          }}>✦</div>
+          <span style={{
+            fontFamily: 'Syne', fontWeight: 800, fontSize: 22,
+            letterSpacing: '-0.03em',
+            color: isDark ? '#fff' : '#001A55',
+          }}>Pulse</span>
+        </div>
+      </div>
+
+      {/* Main headline */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <p style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+          color: isDark ? 'rgba(120,190,255,0.60)' : 'rgba(0,60,200,0.50)',
+          marginBottom: 14,
+        }}>Program Management · Homzmart</p>
+
+        <h2 style={{
+          fontFamily: 'Syne', fontWeight: 800,
+          fontSize: 'clamp(30px, 3.5vw, 46px)',
+          lineHeight: 1.12, letterSpacing: '-0.04em',
+          color: isDark ? '#fff' : '#001040',
+          marginBottom: 20,
+        }}>
+          Every project.<br />
+          Every deadline.<br />
+          <span style={{
+            color: isDark ? 'rgba(80,180,255,0.85)' : '#0055FF',
+          }}>Always on track.</span>
+        </h2>
+
+        <p style={{
+          fontSize: 15, lineHeight: 1.7,
+          color: isDark ? 'rgba(200,220,255,0.55)' : 'rgba(0,30,100,0.50)',
+          maxWidth: 340, marginBottom: 44,
+          fontWeight: 300,
+        }}>
+          The internal tool built for Homzmart's program management team — from task assignment to delivery.
+        </p>
+
+        {/* Feature list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {features.map(({ icon, text }) => (
+            <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                background: isDark ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.55)',
+                backdropFilter: 'blur(8px)',
+                border: isDark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(255,255,255,0.80)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,85,255,0.10)',
+              }}>
+                <Icon name={icon} size={15} color={isDark ? 'rgba(120,190,255,0.80)' : '#0055FF'} />
+              </div>
+              <span style={{
+                fontSize: 14, fontWeight: 400,
+                color: isDark ? 'rgba(200,220,255,0.65)' : 'rgba(0,30,100,0.65)',
+                letterSpacing: '-0.01em',
+              }}>{text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom footnote */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <p style={{
+          fontSize: 11, color: isDark ? 'rgba(180,210,255,0.25)' : 'rgba(0,30,100,0.25)',
+          letterSpacing: '0.02em',
+        }}>
+          Internal use only · Authorised access required
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ── Right panel — glass form wrapper ──────────────────────────────────────────
+function RightPanel({ children, isDark }) {
+  return (
+    <div style={{
+      flex: '0 0 48%',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '48px 56px',
+      position: 'relative',
+      background: isDark ? 'rgba(0,4,20,0.70)' : 'rgba(255,255,255,0.75)',
+      backdropFilter: 'blur(40px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+      borderLeft: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,60,200,0.08)',
+      overflow: 'auto',
+    }}>
+      <div style={{ width: '100%', maxWidth: 380, animation: 'slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ── Split layout wrapper ──────────────────────────────────────────────────────
+function SplitLayout({ children, isDark }) {
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex',
+      fontFamily: "'DM Sans', system-ui, sans-serif",
+    }}>
+      <LeftPanel isDark={isDark} />
+      <RightPanel isDark={isDark}>{children}</RightPanel>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOGIN PAGE
+// ─────────────────────────────────────────────────────────────────────────────
 export default function LoginPage({ onGoSignup, onGoReset }) {
-  const C = useC(); const S = mkS(C)
-  const [email, setEmail] = useState('')
+  const { C, isDark } = useC()
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
 
   async function handleLogin() {
     if (!email || !password) { setError('Please enter your email and password.'); return }
@@ -112,91 +287,183 @@ export default function LoginPage({ onGoSignup, onGoReset }) {
     if (e) setError(e.message)
   }
 
+  const textColor  = isDark ? '#F0F4FF'               : '#050D1A'
+  const mutedColor = isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)'
+  const accentColor = isDark ? '#60A5FA' : '#0055FF'
+
   return (
-    <div style={S.wrap}><Glows />
-      <div style={S.card}>
-        <Logo C={C} />
-        {configError && <div style={{ background: C.amber + '18', border: `1px solid ${C.amber}44`, borderRadius: 10, padding: 14, width: '100%', marginBottom: 20, fontSize: 12, color: C.amber }}><Icon name="warning" size={13} color={C.amber} /> {configError}</div>}
-        <ErrBox msg={error} C={C} />
-        <div style={{ width: '100%' }}>
-          <button onClick={handleGoogle} style={S.gBtn}><GoogleIcon />Continue with Google</button>
-          <Divider C={C} />
-          <label style={S.lbl}>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@homzmart.com" autoFocus onKeyDown={e => e.key === 'Enter' && handleLogin()} style={S.inp} />
-          <label style={S.lbl}>Password</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && handleLogin()} style={{ ...S.inp, marginBottom: 6 }} />
-          <div style={{ textAlign: 'right', marginBottom: 20 }}>
-            <span onClick={onGoReset} style={{ fontSize: 12, color: C.accent, cursor: 'pointer', fontWeight: 600 }}>Forgot password?</span>
-          </div>
-          <button onClick={handleLogin} disabled={loading || !!configError} style={{ ...S.btn, opacity: loading || configError ? 0.7 : 1, cursor: loading || configError ? 'not-allowed' : 'pointer' }}>
-            {loading ? <Spinner size={18} /> : 'Sign In'}
-          </button>
-        </div>
-        <p style={{ color: C.textMuted, fontSize: 13, marginTop: 20 }}>Don't have an account?{' '}<span onClick={onGoSignup} style={{ color: C.accent, cursor: 'pointer', fontWeight: 600 }}>Sign up</span></p>
+    <SplitLayout isDark={isDark}>
+      {/* Section heading */}
+      <div style={{ marginBottom: 36 }}>
+        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 26, letterSpacing: '-0.03em', color: textColor, marginBottom: 6, lineHeight: 1.2 }}>
+          Welcome back
+        </h1>
+        <p style={{ fontSize: 14, color: mutedColor, lineHeight: 1.6, fontWeight: 300 }}>
+          Sign in to your Pulse workspace
+        </p>
       </div>
-    </div>
+
+      {configError && (
+        <div style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 18, fontSize: 12, color: isDark ? '#FCD34D' : '#92400E', display: 'flex', gap: 8 }}>
+          <Icon name="warning" size={13} color={isDark ? '#FCD34D' : '#92400E'} />
+          <span style={{ lineHeight: 1.5 }}>{configError}</span>
+        </div>
+      )}
+
+      <ErrBox msg={error} isDark={isDark} />
+
+      {/* Google button */}
+      <button onClick={handleGoogle} style={googleBtn(isDark)}
+        onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,1)'}
+        onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.80)'}>
+        <GoogleIcon /> Continue with Google
+      </button>
+
+      <OrDivider isDark={isDark} />
+
+      {/* Email/password fields */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 10 }}>
+        <div>
+          <label style={lbl(isDark)}>Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="you@homzmart.com" autoFocus
+            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            style={inp(isDark)}
+            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = isDark ? '0 0 0 3px rgba(0,100,255,0.12)' : '0 0 0 3px rgba(0,85,255,0.08)' }}
+            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
+          />
+        </div>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+            <label style={{ ...lbl(isDark), marginBottom: 0 }}>Password</label>
+            <span onClick={onGoReset} style={{ fontSize: 12, color: accentColor, cursor: 'pointer', fontWeight: 500, opacity: 0.8, transition: 'opacity 0.15s' }}
+              onMouseEnter={e => e.target.style.opacity = '1'}
+              onMouseLeave={e => e.target.style.opacity = '0.8'}>
+              Forgot password?
+            </span>
+          </div>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="••••••••"
+            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            style={inp(isDark)}
+            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = isDark ? '0 0 0 3px rgba(0,100,255,0.12)' : '0 0 0 3px rgba(0,85,255,0.08)' }}
+            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
+          />
+        </div>
+      </div>
+
+      {/* Sign in button */}
+      <button onClick={handleLogin} disabled={loading || !!configError}
+        style={{ ...primaryBtn(loading || !!configError), marginTop: 10, marginBottom: 0 }}
+        onMouseEnter={e => { if(!loading) e.currentTarget.style.filter='brightness(1.12)' }}
+        onMouseLeave={e => { e.currentTarget.style.filter='' }}>
+        {loading ? <Spinner size={18} /> : 'Sign In →'}
+      </button>
+
+      <p style={{ fontSize: 13, color: mutedColor, textAlign: 'center', marginTop: 24 }}>
+        Don't have an account?{' '}
+        <span onClick={onGoSignup} style={{ color: accentColor, cursor: 'pointer', fontWeight: 600 }}>Sign up</span>
+      </p>
+    </SplitLayout>
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SIGNUP PAGE
+// ─────────────────────────────────────────────────────────────────────────────
 export function SignupPage({ onGoLogin }) {
-  const C = useC(); const S = mkS(C)
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const { C, isDark } = useC()
+  const [name,     setName]     = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [done, setDone] = useState(false)
+  const [confirm,  setConfirm]  = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
+  const [done,     setDone]     = useState(false)
+
+  const textColor   = isDark ? '#F0F4FF'               : '#050D1A'
+  const mutedColor  = isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)'
+  const accentColor = isDark ? '#60A5FA' : '#0055FF'
 
   async function handleSignup() {
-    if (!name.trim()) { setError('Please enter your name.'); return }
-    if (!email) { setError('Please enter your email.'); return }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
-    if (password !== confirm) { setError('Passwords do not match.'); return }
+    if (!name.trim())       { setError('Please enter your name.'); return }
+    if (!email)             { setError('Please enter your email.'); return }
+    if (password.length < 6){ setError('Password must be at least 6 characters.'); return }
+    if (password !== confirm){ setError('Passwords do not match.'); return }
     setError(null); setLoading(true)
     const { error: e } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() } } })
     if (e) { setError(e.message); setLoading(false) } else { setDone(true); setLoading(false) }
   }
 
   if (done) return (
-    <div style={S.wrap}><Glows />
-      <div style={{ ...S.card, textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>✉</div>
-        <h2 style={{ fontWeight: 700, fontSize: 22, color: C.text, marginBottom: 10 }}>Account created!</h2>
-        <p style={{ color: C.textMuted, fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>Your account is ready. Click below to sign in.</p>
-        <button onClick={onGoLogin} style={{ ...S.btn, width: 'auto', padding: '10px 28px' }}>Go to Sign In</button>
+    <SplitLayout isDark={isDark}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 52, marginBottom: 20 }}>✉</div>
+        <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, color: textColor, marginBottom: 10, letterSpacing: '-0.03em' }}>Account created!</h2>
+        <p style={{ color: mutedColor, fontSize: 14, lineHeight: 1.7, marginBottom: 28 }}>Your account is ready. Click below to sign in.</p>
+        <button onClick={onGoLogin} style={primaryBtn(false)}>Go to Sign In</button>
       </div>
-    </div>
+    </SplitLayout>
   )
 
+  const fields = [
+    ['Full Name','text','Your full name',name,setName],
+    ['Email','email','you@homzmart.com',email,setEmail],
+    ['Password','password','6+ characters',password,setPassword],
+    ['Confirm Password','password','Same as above',confirm,setConfirm],
+  ]
+
   return (
-    <div style={S.wrap}><Glows />
-      <div style={S.card}>
-        <Logo C={C} />
-        <ErrBox msg={error} C={C} />
-        <div style={{ width: '100%' }}>
-          {[['Full Name','text','Alex Johnson',name,setName],['Email','email','you@homzmart.com',email,setEmail],['Password','password','6+ characters',password,setPassword],['Confirm Password','password','Same as above',confirm,setConfirm]].map(([label,type,ph,val,setter],i,arr) => (
-            <div key={label}>
-              <label style={S.lbl}>{label}</label>
-              <input type={type} value={val} onChange={e => setter(e.target.value)} placeholder={ph} autoFocus={i===0}
-                onKeyDown={e => e.key==='Enter' && i===arr.length-1 && handleSignup()}
-                style={{ ...S.inp, marginBottom: i===arr.length-1 ? 20 : 12 }} />
-            </div>
-          ))}
-          <button onClick={handleSignup} disabled={loading} style={{ ...S.btn, opacity: loading ? 0.7 : 1 }}>{loading ? <Spinner size={18} /> : 'Create Account'}</button>
-        </div>
-        <p style={{ color: C.textMuted, fontSize: 13, marginTop: 20 }}>Already have an account?{' '}<span onClick={onGoLogin} style={{ color: C.accent, cursor: 'pointer', fontWeight: 600 }}>Sign in</span></p>
+    <SplitLayout isDark={isDark}>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 26, letterSpacing: '-0.03em', color: textColor, marginBottom: 6 }}>Create account</h1>
+        <p style={{ fontSize: 14, color: mutedColor, lineHeight: 1.6, fontWeight: 300 }}>Join your team on Pulse</p>
       </div>
-    </div>
+
+      <ErrBox msg={error} isDark={isDark} />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+        {fields.map(([label, type, ph, val, setter], i, arr) => (
+          <div key={label}>
+            <label style={lbl(isDark)}>{label}</label>
+            <input type={type} value={val} onChange={e => setter(e.target.value)} placeholder={ph}
+              autoFocus={i === 0}
+              onKeyDown={e => e.key === 'Enter' && i === arr.length - 1 && handleSignup()}
+              style={inp(isDark)}
+              onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = '0 0 0 3px rgba(0,100,255,0.10)' }}
+              onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <button onClick={handleSignup} disabled={loading} style={primaryBtn(loading)}
+        onMouseEnter={e => { if(!loading) e.currentTarget.style.filter='brightness(1.12)' }}
+        onMouseLeave={e => { e.currentTarget.style.filter='' }}>
+        {loading ? <Spinner size={18} /> : 'Create Account →'}
+      </button>
+
+      <p style={{ fontSize: 13, color: mutedColor, textAlign: 'center', marginTop: 24 }}>
+        Already have an account?{' '}
+        <span onClick={onGoLogin} style={{ color: accentColor, cursor: 'pointer', fontWeight: 600 }}>Sign in</span>
+      </p>
+    </SplitLayout>
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RESET PAGE
+// ─────────────────────────────────────────────────────────────────────────────
 export function ResetPage({ onGoLogin }) {
-  const C = useC(); const S = mkS(C)
-  const [email, setEmail] = useState('')
+  const { C, isDark } = useC()
+  const [email,   setEmail]   = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [error,   setError]   = useState(null)
   const [success, setSuccess] = useState(null)
+
+  const textColor   = isDark ? '#F0F4FF'               : '#050D1A'
+  const mutedColor  = isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)'
+  const accentColor = isDark ? '#60A5FA' : '#0055FF'
 
   async function handleReset() {
     if (!email) { setError('Please enter your email.'); return }
@@ -206,67 +473,109 @@ export function ResetPage({ onGoLogin }) {
   }
 
   return (
-    <div style={S.wrap}><Glows />
-      <div style={S.card}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 16, boxShadow: '0 8px 24px rgba(79,142,247,0.3)' }}>🔑</div>
-        <h1 style={{ fontWeight: 700, fontSize: 24, marginBottom: 6, color: C.text }}>Reset Password</h1>
-        <p style={{ color: C.textMuted, fontSize: 14, textAlign: 'center', marginBottom: 28, lineHeight: 1.6 }}>Enter your email and we'll send a reset link.</p>
-        <ErrBox msg={error} C={C} /><OkBox msg={success} C={C} />
-        {!success && (
-          <div style={{ width: '100%' }}>
-            <label style={S.lbl}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@homzmart.com" autoFocus onKeyDown={e => e.key==='Enter' && handleReset()} style={{ ...S.inp, marginBottom: 20 }} />
-            <button onClick={handleReset} disabled={loading} style={{ ...S.btn, opacity: loading ? 0.7 : 1 }}>{loading ? <Spinner size={18} /> : 'Send Reset Link'}</button>
-          </div>
-        )}
-        <p style={{ color: C.textMuted, fontSize: 13, marginTop: 20 }}><span onClick={onGoLogin} style={{ color: C.accent, cursor: 'pointer', fontWeight: 600 }}>← Back to Sign In</span></p>
+    <SplitLayout isDark={isDark}>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 26, letterSpacing: '-0.03em', color: textColor, marginBottom: 6 }}>Reset password</h1>
+        <p style={{ fontSize: 14, color: mutedColor, lineHeight: 1.6, fontWeight: 300 }}>
+          Enter your email and we'll send a reset link.
+        </p>
       </div>
-    </div>
+
+      <ErrBox msg={error} isDark={isDark} />
+      <OkBox msg={success} isDark={isDark} />
+
+      {!success && (
+        <>
+          <label style={lbl(isDark)}>Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="you@homzmart.com" autoFocus
+            onKeyDown={e => e.key === 'Enter' && handleReset()}
+            style={{ ...inp(isDark), marginBottom: 20 }}
+            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = '0 0 0 3px rgba(0,100,255,0.10)' }}
+            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
+          />
+          <button onClick={handleReset} disabled={loading} style={primaryBtn(loading)}
+            onMouseEnter={e => { if(!loading) e.currentTarget.style.filter='brightness(1.12)' }}
+            onMouseLeave={e => { e.currentTarget.style.filter='' }}>
+            {loading ? <Spinner size={18} /> : 'Send Reset Link →'}
+          </button>
+        </>
+      )}
+
+      <p style={{ fontSize: 13, color: mutedColor, marginTop: 24 }}>
+        <span onClick={onGoLogin} style={{ color: accentColor, cursor: 'pointer', fontWeight: 600 }}>← Back to Sign In</span>
+      </p>
+    </SplitLayout>
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW PASSWORD PAGE
+// ─────────────────────────────────────────────────────────────────────────────
 export function NewPasswordPage({ onGoLogin }) {
-  const C = useC(); const S = mkS(C)
+  const { C, isDark } = useC()
   const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [done, setDone] = useState(false)
+  const [confirm,  setConfirm]  = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
+  const [done,     setDone]     = useState(false)
+
+  const textColor  = isDark ? '#F0F4FF'               : '#050D1A'
+  const mutedColor = isDark ? 'rgba(180,200,255,0.40)' : 'rgba(0,40,120,0.45)'
 
   async function handleUpdate() {
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
-    if (password !== confirm) { setError('Passwords do not match.'); return }
+    if (password.length < 6)  { setError('Password must be at least 6 characters.'); return }
+    if (password !== confirm)  { setError('Passwords do not match.'); return }
     setError(null); setLoading(true)
     const { error: e } = await supabase.auth.updateUser({ password })
     if (e) { setError(e.message); setLoading(false) } else { setDone(true); setLoading(false) }
   }
 
   if (done) return (
-    <div style={S.wrap}><Glows />
-      <div style={{ ...S.card, textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>✓</div>
-        <h2 style={{ fontWeight: 700, fontSize: 22, color: C.text, marginBottom: 10 }}>Password updated!</h2>
-        <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 24 }}>You can now sign in with your new password.</p>
-        <button onClick={onGoLogin} style={{ ...S.btn, width: 'auto', padding: '10px 28px' }}>Sign In</button>
+    <SplitLayout isDark={isDark}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 52, marginBottom: 20 }}>✓</div>
+        <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, color: textColor, marginBottom: 10, letterSpacing: '-0.03em' }}>Password updated!</h2>
+        <p style={{ color: mutedColor, fontSize: 14, marginBottom: 28 }}>You can now sign in with your new password.</p>
+        <button onClick={onGoLogin} style={primaryBtn(false)}>Sign In →</button>
       </div>
-    </div>
+    </SplitLayout>
   )
 
   return (
-    <div style={S.wrap}><Glows />
-      <div style={S.card}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#4F8EF7,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 16 }}>🔑</div>
-        <h1 style={{ fontWeight: 700, fontSize: 24, marginBottom: 6, color: C.text }}>New Password</h1>
-        <p style={{ color: C.textMuted, fontSize: 14, textAlign: 'center', marginBottom: 28 }}>Choose a strong new password.</p>
-        <ErrBox msg={error} C={C} />
-        <div style={{ width: '100%' }}>
-          <label style={S.lbl}>New Password</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="6+ characters" autoFocus style={{ ...S.inp, marginBottom: 12 }} />
-          <label style={S.lbl}>Confirm Password</label>
-          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Same as above" onKeyDown={e => e.key==='Enter' && handleUpdate()} style={{ ...S.inp, marginBottom: 20 }} />
-          <button onClick={handleUpdate} disabled={loading} style={{ ...S.btn, opacity: loading ? 0.7 : 1 }}>{loading ? <Spinner size={18} /> : 'Update Password'}</button>
+    <SplitLayout isDark={isDark}>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 26, letterSpacing: '-0.03em', color: textColor, marginBottom: 6 }}>New password</h1>
+        <p style={{ fontSize: 14, color: mutedColor, fontWeight: 300 }}>Choose a strong new password.</p>
+      </div>
+
+      <ErrBox msg={error} isDark={isDark} />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+        <div>
+          <label style={lbl(isDark)}>New Password</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            placeholder="6+ characters" autoFocus style={inp(isDark)}
+            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = '0 0 0 3px rgba(0,100,255,0.10)' }}
+            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
+          />
+        </div>
+        <div>
+          <label style={lbl(isDark)}>Confirm Password</label>
+          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
+            placeholder="Same as above"
+            onKeyDown={e => e.key === 'Enter' && handleUpdate()} style={inp(isDark)}
+            onFocus={e => { e.target.style.borderColor = isDark ? 'rgba(0,150,255,0.50)' : 'rgba(0,85,255,0.35)'; e.target.style.boxShadow = '0 0 0 3px rgba(0,100,255,0.10)' }}
+            onBlur={e  => { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }}
+          />
         </div>
       </div>
-    </div>
+
+      <button onClick={handleUpdate} disabled={loading} style={primaryBtn(loading)}
+        onMouseEnter={e => { if(!loading) e.currentTarget.style.filter='brightness(1.12)' }}
+        onMouseLeave={e => { e.currentTarget.style.filter='' }}>
+        {loading ? <Spinner size={18} /> : 'Update Password →'}
+      </button>
+    </SplitLayout>
   )
 }
