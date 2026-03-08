@@ -291,3 +291,127 @@ button {
   * { transition-duration: 0.01ms !important; }
   .task-card, .list-row, .proj-card, .nav-item, .proj-item { transition: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — added in v9
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Safe area insets (notch/home bar) ──────────────────────────── */
+#root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Sidebar: collapses to bottom nav on mobile ─────────────────── */
+@media (max-width: 768px) {
+  /* Hide desktop sidebar */
+  aside.desktop-sidebar { display: none !important; }
+
+  /* Main content: full width */
+  main, .main-content { margin-left: 0 !important; width: 100% !important; }
+
+  /* Mobile bottom navigation */
+  .mobile-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(6,10,20,0.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    justify-content: space-around;
+  }
+
+  /* Add bottom padding so content isn't hidden behind mobile nav */
+  .page-content { padding-bottom: 80px !important; }
+
+  /* Modals: full screen on mobile */
+  .modal-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 60vh;
+    border-radius: 20px 20px 0 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    transform: none !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Tables: horizontal scroll */
+  .responsive-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Cards: full width */
+  .task-card, .proj-card { width: 100% !important; }
+
+  /* Header: compact */
+  header { padding: 12px 16px !important; }
+  header h1 { font-size: 16px !important; }
+
+  /* Kanban board: horizontal scroll */
+  .board-columns {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 16px;
+    gap: 12px !important;
+  }
+  .board-column { min-width: 280px !important; flex-shrink: 0 !important; }
+
+  /* Gantt: horizontal scroll */
+  .gantt-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Typography adjustments */
+  h1 { font-size: 20px !important; }
+  h2 { font-size: 17px !important; }
+}
+
+@media (max-width: 480px) {
+  /* Login card: tighter padding */
+  .auth-card { padding: 28px 20px !important; }
+
+  /* Settings: stack horizontally placed items */
+  .settings-row { flex-direction: column !important; align-items: flex-start !important; }
+}
+
+/* Mobile nav items (hidden on desktop) */
+.mobile-nav { display: none; }
+@media (min-width: 769px) {
+  .mobile-nav { display: none !important; }
+}
+
+/* ── Touch targets ──────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  button, [role="button"], a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .nav-item { padding: 14px 12px !important; }
+}
+
+/* ── PWA standalone mode adjustments ───────────────────────────── */
+@media (display-mode: standalone) {
+  body { padding-top: env(safe-area-inset-top); }
+  header { padding-top: calc(12px + env(safe-area-inset-top)) !important; }
+}
+
+/* ── Dark mode only — remove all light theme overrides ─────────── */
+[data-theme="light"] .glass,
+[data-theme="light"] aside,
+[data-theme="light"] header {
+  background: rgba(10,15,30,0.85) !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* ── Input autofill dark styling ────────────────────────────────── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px rgba(10,15,40,0.95) inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+}

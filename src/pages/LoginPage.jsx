@@ -1,451 +1,439 @@
-import { useState } from 'react'
-import { supabase, configError } from '../lib/supabase'
-import { Spinner } from '../components/UI'
-import { useTheme } from '../contexts/ThemeContext'
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../lib/supabase'
 
-function useC() { const { isDark } = useTheme(); return isDark }
+// ─── Particle System ──────────────────────────────────────────────────────────
+function ParticleCanvas() {
+  const canvasRef = useRef(null)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    let raf, w, h
+    const particles = []
+    const PARTICLE_COUNT = 60
 
-// ─── Shared atoms ─────────────────────────────────────────────────────────────
-function inp(d) {
-  return {
-    width: '100%', boxSizing: 'border-box',
-    background: d ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.90)',
-    border: d ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(15,30,80,0.14)',
-    borderRadius: 10, padding: '11px 14px',
-    color: d ? '#EEF2FF' : '#0A0F1E',
-    fontSize: 14, outline: 'none',
-    fontFamily: "'DM Sans', sans-serif",
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-    lineHeight: 1.5, display: 'block',
-  }
-}
-function lbl(d) {
-  return {
-    fontSize: 11, fontWeight: 600,
-    color: d ? 'rgba(180,200,255,0.38)' : 'rgba(10,30,80,0.42)',
-    letterSpacing: '0.07em', textTransform: 'uppercase',
-    display: 'block', marginBottom: 6,
-  }
-}
-function onFocus(e, d) {
-  e.target.style.borderColor = d ? 'rgba(80,160,255,0.55)' : 'rgba(26,86,255,0.40)'
-  e.target.style.boxShadow   = d ? '0 0 0 3px rgba(0,120,255,0.10)' : '0 0 0 3px rgba(26,86,255,0.08)'
-}
-function onBlur(e)  { e.target.style.borderColor = ''; e.target.style.boxShadow = '' }
+    function resize() {
+      w = canvas.width  = canvas.offsetWidth
+      h = canvas.height = canvas.offsetHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
 
-function PrimaryBtn({ loading, onClick, disabled, children }) {
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: Math.random() * 1.4 + 0.3,
+        dx: (Math.random() - 0.5) * 0.25,
+        dy: (Math.random() - 0.5) * 0.25,
+        o: Math.random() * 0.4 + 0.05,
+      })
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, w, h)
+      particles.forEach(p => {
+        p.x += p.dx; p.y += p.dy
+        if (p.x < 0) p.x = w; if (p.x > w) p.x = 0
+        if (p.y < 0) p.y = h; if (p.y > h) p.y = 0
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(100,160,255,${p.o})`
+        ctx.fill()
+      })
+      // Draw connections
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x
+          const dy = particles[i].y - particles[j].y
+          const dist = Math.sqrt(dx*dx + dy*dy)
+          if (dist < 100) {
+            ctx.beginPath()
+            ctx.moveTo(particles[i].x, particles[i].y)
+            ctx.lineTo(particles[j].x, particles[j].y)
+            ctx.strokeStyle = `rgba(80,140,255,${0.06 * (1 - dist/100)})`
+            ctx.lineWidth = 0.5
+            ctx.stroke()
+          }
+        }
+      }
+      raf = requestAnimationFrame(draw)
+    }
+    draw()
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize) }
+  }, [])
+
+  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+}
+
+// ─── Shared field style ───────────────────────────────────────────────────────
+const fieldStyle = {
+  width: '100%',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 10,
+  padding: '13px 16px',
+  color: '#fff',
+  fontSize: 14,
+  letterSpacing: 0.2,
+  transition: 'border-color 0.2s, background 0.2s',
+  outline: 'none',
+}
+const fieldFocusStyle = { borderColor: 'rgba(79,142,247,0.6)', background: 'rgba(79,142,247,0.07)' }
+
+function Field({ label, type = 'text', value, onChange, placeholder, autoFocus }) {
+  const [focused, setFocused] = useState(false)
   return (
-    <button onClick={onClick} disabled={disabled}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase' }}>{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{ ...fieldStyle, ...(focused ? fieldFocusStyle : {}) }}
+      />
+    </div>
+  )
+}
+
+// ─── Primary button ───────────────────────────────────────────────────────────
+function PrimaryBtn({ children, onClick, loading, disabled }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading || disabled}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
-        width: '100%', padding: '12px 20px',
-        background: 'linear-gradient(135deg, #0050EE 0%, #0099FF 100%)',
-        color: '#fff', border: 'none',
-        borderRadius: 10, fontWeight: 600, fontSize: 14,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        boxShadow: '0 2px 20px rgba(0,80,238,0.40)',
-        fontFamily: "'DM Sans', sans-serif",
-        letterSpacing: '-0.01em', opacity: disabled ? 0.65 : 1,
-        transition: 'opacity 0.15s, box-shadow 0.15s',
+        width: '100%',
+        padding: '13px 0',
+        borderRadius: 10,
+        border: 'none',
+        background: hover && !loading ? 'linear-gradient(135deg,#3a6ef5 0%,#1e4fff 100%)' : 'linear-gradient(135deg,#4F8EF7 0%,#2563eb 100%)',
+        color: '#fff',
+        fontWeight: 700,
+        fontSize: 14,
+        letterSpacing: 0.5,
+        cursor: loading || disabled ? 'not-allowed' : 'pointer',
+        opacity: loading || disabled ? 0.7 : 1,
+        transition: 'background 0.2s, opacity 0.2s, transform 0.1s',
+        transform: hover && !loading ? 'translateY(-1px)' : 'none',
+        boxShadow: hover && !loading ? '0 8px 32px rgba(79,142,247,0.45)' : '0 4px 16px rgba(79,142,247,0.25)',
       }}
-      onMouseEnter={e => { if (!disabled) e.currentTarget.style.boxShadow = '0 4px 28px rgba(0,80,238,0.60)' }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 20px rgba(0,80,238,0.40)' }}>
-      {loading ? <Spinner size={16} /> : children}
+    >
+      {loading ? <span style={{ opacity: 0.8 }}>●●●</span> : children}
     </button>
   )
 }
 
-function GhostBtn({ onClick, children, isDark }) {
+// ─── Ghost link button ────────────────────────────────────────────────────────
+function GhostBtn({ children, onClick }) {
+  const [hover, setHover] = useState(false)
   return (
-    <button onClick={onClick} style={{
-      width: '100%', padding: '11px 20px',
-      background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.85)',
-      color: isDark ? '#C8D8FF' : '#1A1A2E',
-      border: isDark ? '1px solid rgba(255,255,255,0.10)' : '1px solid rgba(15,30,80,0.12)',
-      borderRadius: 10, fontWeight: 500, fontSize: 14,
-      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-      fontFamily: "'DM Sans', sans-serif",
-      transition: 'background 0.15s',
-    }}
-    onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,1)'}
-    onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.85)'}>
+    <button onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{ background: 'none', border: 'none', color: hover ? '#7eaaff' : 'rgba(255,255,255,0.40)', cursor: 'pointer', fontSize: 13, padding: 0, transition: 'color 0.15s' }}>
       {children}
     </button>
   )
 }
 
-function ErrBox({ msg, d }) {
-  if (!msg) return null
-  return <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)', borderRadius: 8, padding: '9px 13px', marginBottom: 14, fontSize: 13, color: d ? '#FCA5A5' : '#B91C1C', lineHeight: 1.5 }}>✕ {msg}</div>
-}
-function OkBox({ msg, d }) {
-  if (!msg) return null
-  return <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.22)', borderRadius: 8, padding: '9px 13px', marginBottom: 14, fontSize: 13, color: d ? '#86EFAC' : '#15803D', lineHeight: 1.5 }}>✓ {msg}</div>
-}
-function OrLine({ d }) {
-  const c = d ? 'rgba(255,255,255,0.07)' : 'rgba(15,30,80,0.08)'
+// ─── Shared card wrapper ──────────────────────────────────────────────────────
+function Card({ children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
-      <div style={{ flex: 1, height: 1, background: c }} />
-      <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.10em', color: d ? 'rgba(180,200,255,0.25)' : 'rgba(10,30,80,0.28)' }}>OR</span>
-      <div style={{ flex: 1, height: 1, background: c }} />
+    <div style={{
+      position: 'relative', zIndex: 2,
+      width: '100%', maxWidth: 400,
+      background: 'rgba(10,15,30,0.75)',
+      backdropFilter: 'blur(40px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+      border: '1px solid rgba(255,255,255,0.09)',
+      borderRadius: 20,
+      padding: '40px 36px',
+      boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset',
+      animation: 'cardIn 0.5s cubic-bezier(0.22,1,0.36,1) both',
+    }}>
+      {children}
     </div>
   )
 }
-function GoogleIcon() {
+
+// ─── Logo ─────────────────────────────────────────────────────────────────────
+function Logo() {
   return (
-    <svg width="17" height="17" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: 'linear-gradient(135deg, #4F8EF7 0%, #1e4fff 100%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 4px 20px rgba(79,142,247,0.5)',
+        fontSize: 18, fontWeight: 900, color: '#fff',
+        fontFamily: "'Syne', sans-serif",
+      }}>✦</div>
+      <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: '#fff', letterSpacing: -0.5 }}>
+        Pulse
+      </span>
+    </div>
   )
 }
 
-// ─── Left Panel — immersive brand side ───────────────────────────────────────
-function LeftPanel({ d }) {
-  const w = o => `rgba(255,255,255,${o})`
-  const n = o => `rgba(4,12,48,${o})`
-  const fg  = d ? w : n
-  const bg  = d
-    ? 'linear-gradient(160deg, #000308 0%, #000d2e 35%, #001f6e 62%, #0055bb 80%, #0088d4 93%, #00aee8 100%)'
-    : 'linear-gradient(160deg, #f8fbff 0%, #ddeeff 30%, #a8d4ff 55%, #5aa8ff 75%, #1a6dff 90%, #0044cc 100%)'
-
-  const stats = [
-    { n: '4×',   l: 'Faster delivery'  },
-    { n: '100%', l: 'Task visibility'   },
-    { n: '0',    l: 'Missed actions'    },
-  ]
-
+// ─── Error message ────────────────────────────────────────────────────────────
+function Err({ msg }) {
+  if (!msg) return null
   return (
     <div style={{
-      flex: '0 0 50%', position: 'relative',
+      padding: '10px 14px', borderRadius: 8,
+      background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
+      color: '#fca5a5', fontSize: 13,
+    }}>{msg}</div>
+  )
+}
+
+function Success({ msg }) {
+  if (!msg) return null
+  return (
+    <div style={{
+      padding: '10px 14px', borderRadius: 8,
+      background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)',
+      color: '#86efac', fontSize: 13,
+    }}>{msg}</div>
+  )
+}
+
+// ─── Layout wrapper ───────────────────────────────────────────────────────────
+function AuthLayout({ children }) {
+  return (
+    <div style={{
+      minHeight: '100vh', width: '100%',
       display: 'flex', flexDirection: 'column',
-      padding: '48px 56px', overflow: 'hidden', background: bg,
+      alignItems: 'center', justifyContent: 'center',
+      position: 'relative', overflow: 'hidden',
+      padding: '24px 16px',
     }}>
-
-      {/* Film grain */}
+      {/* Background orbs */}
       <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\")",
-        opacity: d ? 0.045 : 0.028, mixBlendMode: 'overlay',
+        position: 'absolute', inset: 0, zIndex: 0,
+        background: `
+          radial-gradient(ellipse 80% 60% at 70% 30%, rgba(37,99,235,0.35) 0%, transparent 60%),
+          radial-gradient(ellipse 50% 50% at 20% 70%, rgba(0,0,0,0.8) 0%, transparent 70%),
+          #060a14
+        `,
       }} />
-
-      {/* Deep vignette bottom */}
+      <ParticleCanvas />
+      {/* Horizontal light streak */}
       <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', pointerEvents: 'none',
-        background: d ? 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)' : 'linear-gradient(to top, rgba(0,30,100,0.22), transparent)',
+        position: 'absolute', top: '38%', left: 0, right: 0, height: 1, zIndex: 1,
+        background: 'linear-gradient(90deg, transparent 0%, rgba(79,142,247,0.12) 30%, rgba(79,142,247,0.18) 50%, rgba(79,142,247,0.12) 70%, transparent 100%)',
       }} />
-
-      {/* ── Wordmark ── */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 'auto' }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: 9,
-          background: d ? w(0.12) : 'rgba(255,255,255,0.65)',
-          border: d ? `1px solid ${w(0.18)}` : '1px solid rgba(255,255,255,0.80)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 16, flexShrink: 0,
-        }}>✦</div>
-        <span style={{
-          fontFamily: 'Syne', fontWeight: 900, fontSize: 14,
-          letterSpacing: '0.20em', color: fg(0.88),
-        }}>PULSE</span>
-        <div style={{ width: 1, height: 14, background: fg(0.15), margin: '0 2px' }} />
-        <span style={{ fontSize: 11, fontWeight: 400, letterSpacing: '0.04em', color: fg(0.35) }}>Homzmart</span>
-      </div>
-
-      {/* ── Centred hero text ── */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingBottom: 16 }}>
-
-        {/* Micro label */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 22 }}>
-          <div style={{ width: 24, height: 1, background: fg(0.30) }} />
-          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: fg(0.38) }}>Program Management</span>
-        </div>
-
-        {/* Headline — only 4 words */}
-        <h2 style={{
-          fontFamily: 'Syne', fontWeight: 800,
-          fontSize: 'clamp(40px, 4.8vw, 68px)',
-          lineHeight: 1.02, letterSpacing: '-0.04em',
-          color: fg(0.96), margin: 0, marginBottom: 24,
-        }}>
-          Every team.<br />One truth.
-        </h2>
-
-        {/* Subline */}
-        <p style={{
-          fontSize: 14, fontWeight: 300, lineHeight: 1.8,
-          color: fg(0.38), maxWidth: 280, margin: 0,
-          letterSpacing: '0.01em',
-        }}>
-          Programs, actions, meetings —<br />tracked and closed.
-        </p>
-      </div>
-
-      {/* ── Stats row ── */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{ width: 28, height: 1, background: fg(0.16), marginBottom: 22 }} />
-        <div style={{ display: 'flex', gap: 32 }}>
-          {stats.map(({ n, l }) => (
-            <div key={l}>
-              <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 20, letterSpacing: '-0.03em', color: fg(0.90), lineHeight: 1, marginBottom: 5 }}>{n}</div>
-              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.09em', textTransform: 'uppercase', color: fg(0.28) }}>{l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {children}
     </div>
   )
 }
 
-// ─── Right Panel — clean form side ───────────────────────────────────────────
-function RightPanel({ children, d }) {
-  return (
-    <div style={{
-      flex: '0 0 50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '48px 56px', overflowY: 'auto',
-      background: d ? 'rgba(2,5,22,0.80)' : 'rgba(248,251,255,0.85)',
-      borderLeft: d ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(15,30,100,0.08)',
-    }}>
-      <div style={{ width: '100%', maxWidth: 360 }}>{children}</div>
-    </div>
-  )
-}
-
-function SplitWrap({ children, d }) {
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <LeftPanel d={d} />
-      <RightPanel d={d}>{children}</RightPanel>
-    </div>
-  )
-}
-
-// ─── Heading block ────────────────────────────────────────────────────────────
-function FormHead({ title, sub, d }) {
-  return (
-    <div style={{ marginBottom: 28 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.025em', color: d ? '#EEF2FF' : '#0A0F1E', marginBottom: 5, lineHeight: 1.2 }}>{title}</h1>
-      <p style={{ fontSize: 13, color: d ? 'rgba(180,200,255,0.42)' : 'rgba(10,30,80,0.45)', fontWeight: 300, lineHeight: 1.6 }}>{sub}</p>
-    </div>
-  )
-}
-
-function FootNote({ d, children }) {
-  return <p style={{ fontSize: 13, color: d ? 'rgba(180,200,255,0.38)' : 'rgba(10,30,80,0.42)', textAlign: 'center', marginTop: 22, lineHeight: 1.6 }}>{children}</p>
-}
-function Link({ onClick, children, d }) {
-  return <span onClick={onClick} style={{ color: d ? '#60A5FA' : '#1A56FF', cursor: 'pointer', fontWeight: 600 }}>{children}</span>
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LOGIN
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── LOGIN PAGE ───────────────────────────────────────────────────────────────
 export default function LoginPage({ onGoSignup, onGoReset }) {
-  const d = useC()
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState(null)
+  const [email, setEmail] = useState('')
+  const [pass,  setPass]  = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   async function handleLogin() {
-    if (!email || !password) { setError('Please enter your email and password.'); return }
-    setError(null); setLoading(true)
-    const { error: e } = await supabase.auth.signInWithPassword({ email, password })
-    if (e) { setError(e.message); setLoading(false) }
-  }
-  async function handleGoogle() {
-    setError(null)
-    const { error: e } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
+    setError(''); setLoading(true)
+    const { error: e } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pass })
+    setLoading(false)
     if (e) setError(e.message)
   }
 
   return (
-    <SplitWrap d={d}>
-      <FormHead d={d} title="Welcome back" sub="Sign in to your Pulse workspace" />
-      {configError && <div style={{ background: 'rgba(251,191,36,0.09)', border: '1px solid rgba(251,191,36,0.22)', borderRadius: 8, padding: '9px 13px', marginBottom: 14, fontSize: 12, color: d ? '#FCD34D' : '#92400E' }}>{configError}</div>}
-      <ErrBox msg={error} d={d} />
+    <AuthLayout>
+      <style>{`
+        @keyframes cardIn {
+          from { opacity: 0; transform: translateY(24px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+      <Card>
+        <Logo />
+        <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 22, color: '#fff', marginBottom: 4, letterSpacing: -0.5 }}>
+          Welcome back
+        </h1>
+        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, marginBottom: 28 }}>
+          Sign in to your workspace
+        </p>
 
-      <GhostBtn isDark={d} onClick={handleGoogle}><GoogleIcon /> Continue with Google</GhostBtn>
-      <OrLine d={d} />
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 6 }}>
-        <div>
-          <label style={lbl(d)}>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="you@homzmart.com" autoFocus
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
-        </div>
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-            <label style={{ ...lbl(d), marginBottom: 0 }}>Password</label>
-            <span onClick={onGoReset} style={{ fontSize: 12, color: d ? '#60A5FA' : '#1A56FF', cursor: 'pointer', fontWeight: 500 }}>Forgot?</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="you@company.com" autoFocus />
+          <Field label="Password" type="password" value={pass} onChange={setPass} placeholder="••••••••" />
+          <Err msg={error} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -4 }}>
+            <GhostBtn onClick={onGoReset}>Forgot password?</GhostBtn>
           </div>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••"
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
+          <PrimaryBtn onClick={handleLogin} loading={loading}>Sign In</PrimaryBtn>
         </div>
-      </div>
 
-      <div style={{ marginTop: 16 }}>
-        <PrimaryBtn loading={loading} onClick={handleLogin} disabled={loading || !!configError}>Sign in →</PrimaryBtn>
-      </div>
+        <div style={{ marginTop: 24, textAlign: 'center', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12 }}>or</span>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
+        </div>
 
-      <FootNote d={d}>No account? <Link d={d} onClick={onGoSignup}>Sign up</Link></FootNote>
-    </SplitWrap>
+        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>
+          No account?{' '}
+          <GhostBtn onClick={onGoSignup}>
+            <span style={{ color: '#4F8EF7', fontWeight: 600 }}>Create workspace</span>
+          </GhostBtn>
+        </p>
+      </Card>
+
+      {/* Bottom badge */}
+      <p style={{ position: 'relative', zIndex: 2, marginTop: 24, fontSize: 11, color: 'rgba(255,255,255,0.18)', letterSpacing: 0.5 }}>
+        SECURED · END-TO-END ENCRYPTED
+      </p>
+    </AuthLayout>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SIGNUP
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── SIGNUP PAGE ──────────────────────────────────────────────────────────────
 export function SignupPage({ onGoLogin }) {
-  const d = useC()
-  const [name, setName]         = useState('')
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm]   = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState(null)
-  const [done, setDone]         = useState(false)
+  const [name,   setName]   = useState('')
+  const [email,  setEmail]  = useState('')
+  const [pass,   setPass]   = useState('')
+  const [pass2,  setPass2]  = useState('')
+  const [error,  setError]  = useState('')
+  const [loading, setLoading] = useState(false)
 
   async function handleSignup() {
-    if (!name.trim())        { setError('Please enter your name.'); return }
-    if (!email)              { setError('Please enter your email.'); return }
-    if (password.length < 6) { setError('Password must be 6+ characters.'); return }
-    if (password !== confirm) { setError('Passwords do not match.'); return }
-    setError(null); setLoading(true)
-    const { error: e } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() } } })
-    if (e) { setError(e.message); setLoading(false) } else { setDone(true); setLoading(false) }
+    setError('')
+    if (!name.trim()) return setError('Name is required')
+    if (pass.length < 8) return setError('Password must be at least 8 characters')
+    if (pass !== pass2) return setError('Passwords do not match')
+    setLoading(true)
+    const { error: e } = await supabase.auth.signUp({
+      email: email.trim(), password: pass,
+      options: { data: { full_name: name.trim() } },
+    })
+    setLoading(false)
+    if (e) setError(e.message)
   }
 
-  if (done) return (
-    <SplitWrap d={d}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 44, marginBottom: 18 }}>✉</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: d ? '#EEF2FF' : '#0A0F1E', marginBottom: 10, letterSpacing: '-0.02em' }}>Account created</h2>
-        <p style={{ color: d ? 'rgba(180,200,255,0.42)' : 'rgba(10,30,80,0.45)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>You're all set. Sign in to get started.</p>
-        <PrimaryBtn loading={false} onClick={onGoLogin}>Go to sign in →</PrimaryBtn>
-      </div>
-    </SplitWrap>
-  )
-
-  const fields = [
-    ['Full Name', 'text', 'Your name', name, setName],
-    ['Email', 'email', 'you@homzmart.com', email, setEmail],
-    ['Password', 'password', '6+ characters', password, setPassword],
-    ['Confirm', 'password', 'Same as above', confirm, setConfirm],
-  ]
-
   return (
-    <SplitWrap d={d}>
-      <FormHead d={d} title="Create account" sub="Join your team on Pulse" />
-      <ErrBox msg={error} d={d} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 18 }}>
-        {fields.map(([label, type, ph, val, setter], i, arr) => (
-          <div key={label}>
-            <label style={lbl(d)}>{label}</label>
-            <input type={type} value={val} onChange={e => setter(e.target.value)} placeholder={ph}
-              autoFocus={i === 0}
-              onKeyDown={e => e.key === 'Enter' && i === arr.length - 1 && handleSignup()}
-              style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
-          </div>
-        ))}
-      </div>
-      <PrimaryBtn loading={loading} onClick={handleSignup} disabled={loading}>Create account →</PrimaryBtn>
-      <FootNote d={d}>Have an account? <Link d={d} onClick={onGoLogin}>Sign in</Link></FootNote>
-    </SplitWrap>
+    <AuthLayout>
+      <style>{`@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(0.97)}to{opacity:1;transform:none}}`}</style>
+      <Card>
+        <Logo />
+        <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 22, color: '#fff', marginBottom: 4, letterSpacing: -0.5 }}>
+          Create account
+        </h1>
+        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, marginBottom: 28 }}>
+          Set up your Pulse workspace
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label="Full name" value={name} onChange={setName} placeholder="John Smith" autoFocus />
+          <Field label="Work email" type="email" value={email} onChange={setEmail} placeholder="you@company.com" />
+          <Field label="Password" type="password" value={pass} onChange={setPass} placeholder="Min. 8 characters" />
+          <Field label="Confirm password" type="password" value={pass2} onChange={setPass2} placeholder="••••••••" />
+          <Err msg={error} />
+          <PrimaryBtn onClick={handleSignup} loading={loading}>Create Account</PrimaryBtn>
+        </div>
+
+        <p style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>
+          Already have an account?{' '}
+          <button onClick={onGoLogin} style={{ background: 'none', border: 'none', color: '#4F8EF7', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+            Sign in
+          </button>
+        </p>
+      </Card>
+    </AuthLayout>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RESET
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── RESET PAGE ───────────────────────────────────────────────────────────────
 export function ResetPage({ onGoLogin }) {
-  const d = useC()
-  const [email, setEmail]     = useState('')
+  const [email,   setEmail]   = useState('')
+  const [error,   setError]   = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState(null)
-  const [success, setSuccess] = useState(null)
 
   async function handleReset() {
-    if (!email) { setError('Please enter your email.'); return }
-    setError(null); setLoading(true)
-    const { error: e } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` })
-    if (e) { setError(e.message); setLoading(false) } else { setSuccess(`Reset link sent to ${email}.`); setLoading(false) }
+    setError(''); setSuccess(''); setLoading(true)
+    const { error: e } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: window.location.origin + '/?type=recovery',
+    })
+    setLoading(false)
+    if (e) setError(e.message)
+    else setSuccess('Check your email for a reset link.')
   }
 
   return (
-    <SplitWrap d={d}>
-      <FormHead d={d} title="Reset password" sub="We'll send a link to your email." />
-      <ErrBox msg={error} d={d} />
-      <OkBox msg={success} d={d} />
-      {!success && <>
-        <label style={lbl(d)}>Email</label>
-        <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-          placeholder="you@homzmart.com" autoFocus
-          onKeyDown={e => e.key === 'Enter' && handleReset()}
-          style={{ ...inp(d), marginBottom: 18 }} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
-        <PrimaryBtn loading={loading} onClick={handleReset} disabled={loading}>Send reset link →</PrimaryBtn>
-      </>}
-      <FootNote d={d}><Link d={d} onClick={onGoLogin}>← Back to sign in</Link></FootNote>
-    </SplitWrap>
+    <AuthLayout>
+      <style>{`@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(0.97)}to{opacity:1;transform:none}}`}</style>
+      <Card>
+        <Logo />
+        <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 22, color: '#fff', marginBottom: 4, letterSpacing: -0.5 }}>
+          Reset password
+        </h1>
+        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, marginBottom: 28 }}>
+          We'll send you a recovery link
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="you@company.com" autoFocus />
+          <Err msg={error} />
+          <Success msg={success} />
+          <PrimaryBtn onClick={handleReset} loading={loading}>Send Reset Link</PrimaryBtn>
+          <div style={{ textAlign: 'center' }}>
+            <GhostBtn onClick={onGoLogin}>← Back to sign in</GhostBtn>
+          </div>
+        </div>
+      </Card>
+    </AuthLayout>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// NEW PASSWORD
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── NEW PASSWORD PAGE ────────────────────────────────────────────────────────
 export function NewPasswordPage({ onGoLogin }) {
-  const d = useC()
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm]   = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState(null)
-  const [done, setDone]         = useState(false)
+  const [pass,    setPass]    = useState('')
+  const [pass2,   setPass2]   = useState('')
+  const [error,   setError]   = useState('')
+  const [success, setSuccess] = useState('')
+  const [loading, setLoading] = useState(false)
 
   async function handleUpdate() {
-    if (password.length < 6)  { setError('Password must be 6+ characters.'); return }
-    if (password !== confirm)  { setError('Passwords do not match.'); return }
-    setError(null); setLoading(true)
-    const { error: e } = await supabase.auth.updateUser({ password })
-    if (e) { setError(e.message); setLoading(false) } else { setDone(true); setLoading(false) }
+    setError(''); setSuccess('')
+    if (pass.length < 8) return setError('Password must be at least 8 characters')
+    if (pass !== pass2)  return setError('Passwords do not match')
+    setLoading(true)
+    const { error: e } = await supabase.auth.updateUser({ password: pass })
+    setLoading(false)
+    if (e) setError(e.message)
+    else { setSuccess('Password updated successfully.'); setTimeout(onGoLogin, 2000) }
   }
 
-  if (done) return (
-    <SplitWrap d={d}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 44, marginBottom: 18 }}>✓</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: d ? '#EEF2FF' : '#0A0F1E', marginBottom: 10, letterSpacing: '-0.02em' }}>Password updated</h2>
-        <p style={{ color: d ? 'rgba(180,200,255,0.42)' : 'rgba(10,30,80,0.45)', fontSize: 14, marginBottom: 24 }}>You can now sign in with your new password.</p>
-        <PrimaryBtn loading={false} onClick={onGoLogin}>Sign in →</PrimaryBtn>
-      </div>
-    </SplitWrap>
-  )
-
   return (
-    <SplitWrap d={d}>
-      <FormHead d={d} title="New password" sub="Choose something strong." />
-      <ErrBox msg={error} d={d} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 18 }}>
-        <div>
-          <label style={lbl(d)}>New Password</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-            placeholder="6+ characters" autoFocus style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
+    <AuthLayout>
+      <style>{`@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(0.97)}to{opacity:1;transform:none}}`}</style>
+      <Card>
+        <Logo />
+        <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 22, color: '#fff', marginBottom: 4, letterSpacing: -0.5 }}>
+          New password
+        </h1>
+        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, marginBottom: 28 }}>
+          Choose a strong password
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label="New password" type="password" value={pass} onChange={setPass} placeholder="Min. 8 characters" autoFocus />
+          <Field label="Confirm password" type="password" value={pass2} onChange={setPass2} placeholder="••••••••" />
+          <Err msg={error} />
+          <Success msg={success} />
+          <PrimaryBtn onClick={handleUpdate} loading={loading}>Update Password</PrimaryBtn>
         </div>
-        <div>
-          <label style={lbl(d)}>Confirm</label>
-          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
-            placeholder="Same as above"
-            onKeyDown={e => e.key === 'Enter' && handleUpdate()}
-            style={inp(d)} onFocus={e => onFocus(e, d)} onBlur={onBlur} />
-        </div>
-      </div>
-      <PrimaryBtn loading={loading} onClick={handleUpdate} disabled={loading}>Update password →</PrimaryBtn>
-    </SplitWrap>
+      </Card>
+    </AuthLayout>
   )
 }
