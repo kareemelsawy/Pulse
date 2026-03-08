@@ -192,19 +192,16 @@ function LeftPanel() {
       justifyContent: 'space-between',
       padding: '52px 64px', position: 'relative', zIndex: 1,
     }}>
-      {/* Top: logo — Syne used ONLY here, once */}
+      {/* Top: logo — matches sidebar exactly */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{
-          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+          width: 34, height: 34, borderRadius: 10, flexShrink: 0,
           background: 'linear-gradient(135deg,#6B8EF7,#C084FC)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 16, color: '#fff',
-          boxShadow: '0 4px 14px rgba(107,142,247,0.40)',
+          fontSize: 18, color: '#fff', fontWeight: 900,
+          boxShadow: '0 4px 16px rgba(107,142,247,0.40)',
         }}>✦</div>
-        <span style={{
-          fontFamily: 'Syne', fontWeight: 800, fontSize: 14,
-          letterSpacing: '0.01em', color: 'rgba(255,255,255,0.88)',
-        }}>Homzmart's Pulse</span>
+        <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.90)' }}>PULSE</div>
       </div>
 
       {/* Middle: headline + sub */}
