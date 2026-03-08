@@ -86,4 +86,5 @@ export const NOTIFICATION_TRIGGERS = {
   new_task:      { label: 'New Task Created',  desc: 'When a new task is added' },
   comment_added: { label: 'Comment Added',     desc: 'When a comment is posted on a task' },
   file_added:    { label: 'File Attached',     desc: 'When a file is attached to a task' },
+  due_soon:      { label: 'Due Tomorrow',      desc: 'Sent 1 day before a task is due' },
 }
