@@ -296,8 +296,8 @@ function NotificationsTab({ toast }) {
     <div>
       {/* ── SendGrid Config ── */}
       <Section>
-        <SectionTitle>SendGrid Integration</SectionTitle>
-        <SectionDesc>Connect SendGrid to send automated emails to your team. API keys never expire.</SectionDesc>
+        <SectionTitle>Resend Integration</SectionTitle>
+        <SectionDesc>Connect Resend to send automated emails to your team. Find your API key at resend.com/api-keys.</SectionDesc>
 
         <div style={fieldBox}>
           <label style={{ ...lStyle, marginBottom: 6 }}>API Key</label>
@@ -305,7 +305,7 @@ function NotificationsTab({ toast }) {
             <input
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
-              placeholder="SG.xxxxxxxxxxxxxxxxxxxx"
+              placeholder="re_xxxxxxxxxxxxxxxxxxxx"
               type={showKey ? 'text' : 'password'}
               style={{ ...iStyle, flex: 1, fontFamily: 'monospace', fontSize: 12, marginBottom: 0 }}
             />
@@ -313,7 +313,7 @@ function NotificationsTab({ toast }) {
               {showKey ? 'Hide' : 'Show'}
             </button>
           </div>
-          {isConnected && <div style={{ marginTop: 8, fontSize: 11, color: colors.green }}>✓ API key set</div>}
+          {isConnected && <div style={{ marginTop: 8, fontSize: 11, color: colors.green }}>✓ Resend API key set</div>}
         </div>
 
         <div style={fieldBox}>
@@ -333,7 +333,7 @@ function NotificationsTab({ toast }) {
             style={{ ...iStyle, marginBottom: 0 }}
           />
           <div style={{ marginTop: 8, fontSize: 11, color: colors.textMuted, lineHeight: 1.5 }}>
-            Must be a verified sender in your SendGrid account. Emails will show as <em>"{fromName || 'Pulse'} &lt;{fromEmail || 'you@domain.com'}&gt;"</em>
+            Must be a verified sender domain in your Resend account (resend.com/domains). Emails will show as <em>"{fromName || 'Pulse'} &lt;{fromEmail || 'you@domain.com'}&gt;"</em>
           </div>
         </div>
 

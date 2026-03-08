@@ -3,13 +3,15 @@ import { NOTIFICATION_TRIGGERS, STATUS, PRIORITY } from './constants'
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 
 // ─── Email sender via Supabase Edge Function ──────────────────────────────────
-// SendGrid blocks direct browser requests (CORS), so we proxy through
-// a Supabase Edge Function which holds no secrets — the API key is passed
-// from the app's notif_settings stored in the DB.
-export async function sendEmail({ apiKey, fromEmail, fromName = 'Pulse', to, subject, html }) {
+// Resend blocks direct browser requests (CORS), so we proxy through
+// a Supabase Edge Function. The Resend API key is passed from the
+// app's notif_settings stored in the DB.
+export async function sendEmail({ apiKey, functionSecret, fromEmail, fromName = 'Pulse', to, subject, html }) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (functionSecret) headers['Authorization'] = `Bearer ${functionSecret}`
   const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ apiKey, fromEmail, fromName, to, subject, html }),
   })
   if (!res.ok) {
