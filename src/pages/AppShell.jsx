@@ -60,10 +60,10 @@ export default function AppShell({ toast }) {
         <aside style={{
           width: 240, flexShrink: 0, height:'100vh',
           display:'flex', flexDirection:'column',
-          ...glassPanel({
-            borderTop:'none', borderBottom:'none', borderLeft:'none',
-            borderRight:'1px solid rgba(255,255,255,0.10)',
-          }),
+          background: isDark ? 'rgba(5,8,30,0.75)' : 'rgba(255,255,255,0.90)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderRight: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(10,30,80,0.10)',
         }}>
           {/* Logo */}
           <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0 }}>
@@ -76,7 +76,7 @@ export default function AppShell({ toast }) {
                 boxShadow:'0 4px 16px rgba(107,142,247,0.40)',
               }}>✦</div>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16, letterSpacing:'-0.03em', color: COLORS.text }}>Pulse</div>
+                <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16, letterSpacing:'-0.03em', color: COLORS.text }}>PULSE</div>
               </div>
             </div>
           </div>
@@ -158,10 +158,10 @@ export default function AppShell({ toast }) {
         <header style={{
           height:50, flexShrink:0,
           display:'flex', alignItems:'center', padding:'0 18px', gap:10,
-          ...glassPanel({
-            borderTop:'none', borderLeft:'none', borderRight:'none',
-            borderBottom:'1px solid rgba(255,255,255,0.08)',
-          }),
+          background: isDark ? 'rgba(5,8,30,0.70)' : 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderBottom: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(10,30,80,0.09)',
         }}>
           <button onClick={() => setSidebarOpen(p => !p)} style={{
             background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.10)',
@@ -174,7 +174,7 @@ export default function AppShell({ toast }) {
             <Icon name="list" size={15} color={COLORS.textMuted} />
           </button>
 
-          <span style={{ fontSize:12, color: isDark ? 'rgba(180,200,255,0.30)' : 'rgba(0,40,120,0.30)', fontFamily:"'DM Sans',sans-serif", fontWeight:300, letterSpacing:'0.04em' }}>
+          <span style={{ fontSize:12, color: COLORS.textDim, fontFamily:"'DM Sans',sans-serif", fontWeight:400, letterSpacing:'0.01em' }}>
             {new Date().toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
           </span>
 
@@ -213,24 +213,17 @@ export default function AppShell({ toast }) {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 function NavItem({ icon, label, active, onClick, meta }) {
-  const activeStyle = {
-    background: 'rgba(107,142,247,0.18)',
-    border: '1px solid rgba(107,142,247,0.25)',
-    backdropFilter: 'blur(8px)',
-  }
   return (
-    <div onClick={onClick} style={{
-      display:'flex', alignItems:'center', gap:9,
-      padding:'7px 10px', borderRadius:10,
-      cursor:'pointer', marginBottom:2,
-      border: '1px solid transparent',
-      background: active ? 'rgba(107,142,247,0.16)' : 'transparent',
-      ...(active ? { borderColor: 'rgba(107,142,247,0.22)' } : {}),
-      color: active ? COLORS.accent : COLORS.textDim,
-      transition: 'all 0.15s', userSelect:'none',
-    }}
-    onMouseEnter={e => { if(!active){ e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.10)' }}}
-    onMouseLeave={e => { if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='transparent' }}}>
+    <div onClick={onClick}
+      className={`nav-item${active ? ' nav-active' : ''}`}
+      style={{
+        display:'flex', alignItems:'center', gap:9,
+        padding:'7px 10px', borderRadius:10,
+        cursor:'pointer', marginBottom:2,
+        border: '1px solid transparent',
+        color: active ? COLORS.accent : COLORS.textDim,
+        userSelect:'none',
+      }}>
       <Icon name={icon} size={15} color={active ? COLORS.accent : COLORS.textMuted} />
       <span style={{ fontWeight: active ? 600 : 400, fontSize:13, flex:1, letterSpacing:'-0.01em' }}>{label}</span>
       {meta && <span style={{ fontSize:11, color: COLORS.textMuted, background:'rgba(255,255,255,0.08)', borderRadius:6, padding:'1px 6px', fontFamily:"'DM Mono',monospace" }}>{meta}</span>}
@@ -256,15 +249,14 @@ function SidebarSection({ label, onAdd, children }) {
 
 function ProjectItem({ project: p, done, total, active, onClick }) {
   return (
-    <div onClick={onClick} style={{
-      display:'flex', alignItems:'center', gap:9,
-      padding:'7px 10px', borderRadius:10, cursor:'pointer', marginBottom:2,
-      background: active ? 'rgba(107,142,247,0.16)' : 'transparent',
-      border: `1px solid ${active ? 'rgba(107,142,247,0.22)' : 'transparent'}`,
-      transition:'all 0.15s', userSelect:'none',
-    }}
-    onMouseEnter={e => { if(!active){ e.currentTarget.style.background='rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.10)' }}}
-    onMouseLeave={e => { if(!active){ e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor='transparent' }}}>
+    <div onClick={onClick}
+      className={`proj-item${active ? ' nav-active' : ''}`}
+      style={{
+        display:'flex', alignItems:'center', gap:9,
+        padding:'7px 10px', borderRadius:10, cursor:'pointer', marginBottom:2,
+        border: '1px solid transparent',
+        userSelect:'none',
+      }}>
       <div style={{ width:9, height:9, borderRadius:3, background:p.color, flexShrink:0, boxShadow:`0 0 6px ${p.color}80` }} />
       <span style={{ flex:1, fontSize:13, fontWeight: active ? 600 : 400, color: active ? COLORS.text : COLORS.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>{p.name}</span>
       <span style={{ fontSize:11, color: COLORS.textMuted, fontFamily:"'DM Mono',monospace", flexShrink:0 }}>{done}/{total}</span>

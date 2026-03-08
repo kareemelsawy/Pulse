@@ -65,9 +65,9 @@ export function buildNotificationEmail({ trigger, task, projectName, actorName, 
         </tr>` : ''}
       </table>
       ${extraInfo ? `<p style="margin:14px 0 0;color:#94A3B8;font-size:12px;">${extraInfo}</p>` : ''}
-      <div style="margin-top:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div style="margin-top:22px;">
+        <a href="${appUrl || '#'}" style="display:inline-block;background:rgba(79,142,247,0.15);color:#4F8EF7;text-decoration:none;padding:7px 16px;border-radius:8px;font-weight:600;font-size:12px;border:1px solid rgba(79,142,247,0.30);margin-bottom:12px;">Open Pulse →</a>
         <p style="color:#475569;font-size:11px;margin:0;">Sent by ◈ Pulse</p>
-        <a href="${appUrl || '#'}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#A78BFA);color:#fff;text-decoration:none;padding:10px 22px;border-radius:10px;font-weight:700;font-size:13px;">View Task →</a>
       </div>
     </div>
   </div>

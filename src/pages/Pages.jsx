@@ -34,7 +34,6 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
             </h1>
             <Icon name={hourIcon()} size={20} color={COLORS.textMuted} />
           </div>
-          {workspaceName && <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted, marginBottom: 4 }}>{workspaceName}</div>}
           <p style={{ color: COLORS.textMuted, fontSize: 13 }}>{projects.length} projects · {tasks.length} tasks total</p>
         </div>
 

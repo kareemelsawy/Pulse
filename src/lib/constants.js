@@ -29,25 +29,28 @@ export const DARK_THEME = {
 
 export const LIGHT_THEME = {
   bg:           'transparent',
-  surface:      'rgba(255,255,255,0.60)',
-  surfaceHover: 'rgba(255,255,255,0.80)',
-  surfaceModal: 'rgba(255,255,255,0.88)',
-  border:       'rgba(0,80,200,0.10)',
-  borderStrong: 'rgba(0,80,200,0.22)',
-  accent:    '#0055FF',
-  accentDim: 'rgba(0,85,255,0.10)',
-  green:     '#16A34A',
-  amber:     '#D97706',
-  red:       '#DC2626',
-  purple:    '#7C3AED',
-  blue:      '#0055FF',
-  text:      '#050D1A',
-  textMuted: 'rgba(0,30,80,0.45)',
-  textDim:   'rgba(0,30,80,0.75)',
-  inputBg:   'rgba(255,255,255,0.70)',
-  shadow:      'rgba(0,40,120,0.10)',
-  cardShadow:  '0 4px 24px rgba(0,40,120,0.08), inset 0 1px 0 rgba(255,255,255,0.95)',
-  modalShadow: '0 24px 80px rgba(0,40,120,0.14), inset 0 1px 0 rgba(255,255,255,1)',
+  // Strong white surfaces so glass is readable against blue gradient
+  surface:      'rgba(255,255,255,0.82)',
+  surfaceHover: 'rgba(255,255,255,0.95)',
+  surfaceModal: 'rgba(255,255,255,0.96)',
+  border:       'rgba(10,30,80,0.12)',
+  borderStrong: 'rgba(10,30,80,0.28)',
+  accent:    '#1A56FF',
+  accentDim: 'rgba(26,86,255,0.10)',
+  green:     '#15803D',
+  amber:     '#B45309',
+  red:       '#B91C1C',
+  purple:    '#6D28D9',
+  blue:      '#1A56FF',
+  // High-contrast text — near-black for WCAG AA compliance
+  text:      '#0A0F1E',
+  textMuted: '#5A6478',
+  textDim:   '#2D3550',
+  // Inputs: solid white so text is clearly readable
+  inputBg:   'rgba(255,255,255,0.92)',
+  shadow:      'rgba(10,20,60,0.12)',
+  cardShadow:  '0 2px 16px rgba(10,20,60,0.10), inset 0 1px 0 rgba(255,255,255,1)',
+  modalShadow: '0 20px 60px rgba(10,20,60,0.16), inset 0 1px 0 rgba(255,255,255,1)',
 }
 
 export let COLORS = { ...DARK_THEME }

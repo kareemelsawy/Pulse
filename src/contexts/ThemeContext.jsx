@@ -38,8 +38,8 @@ export function ThemeProvider({ children }) {
 
   const toggleTheme = useCallback(() => {
     const next = isDark ? 'light' : 'dark'
-    setOverride(next)
     localStorage.setItem('pulse_theme_override', next)
+    window.location.reload()
   }, [isDark])
 
   const setAutoTheme = useCallback(() => {

@@ -105,126 +105,138 @@ function GoogleIcon() {
 
 // ── Left panel — brand / visual ───────────────────────────────────────────────
 function LeftPanel({ isDark }) {
-  const features = [
-    { icon: 'tasks',         text: 'Task & project tracking' },
-    { icon: 'barChart',      text: 'Analytics & Gantt timelines' },
-    { icon: 'bell',          text: 'Smart email notifications' },
-    { icon: 'messageCircle', text: 'Meeting minutes & action items' },
-  ]
+  const white  = (o) => `rgba(255,255,255,${o})`
+  const navy   = (o) => `rgba(0,10,40,${o})`
+  const accent = isDark ? white : navy
 
   return (
     <div style={{
       flex: '0 0 52%',
       position: 'relative',
-      display: 'flex', flexDirection: 'column',
+      display: 'flex',
+      flexDirection: 'column',
       justifyContent: 'space-between',
-      padding: '52px 56px',
+      padding: '52px 60px',
       overflow: 'hidden',
-      // The gradient background is the same "Deep Layers" beam from the app
       background: isDark
         ? 'linear-gradient(145deg, #000 0%, #000820 30%, #001560 55%, #003fa0 72%, #0077cc 85%, #00b4d8 100%)'
         : 'linear-gradient(145deg, #fff 0%, #f0f6ff 30%, #cce0ff 55%, #80b8ff 72%, #3385ff 85%, #0055cc 100%)',
     }}>
 
-      {/* Noise grain for texture */}
+      {/* Grain */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-        opacity: isDark ? 0.035 : 0.025,
-        mixBlendMode: 'overlay',
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        opacity: 0.04,
+        mixBlendMode: 'soft-light',
       }} />
 
-      {/* Radial beam overlay */}
+      {/* Soft vignette — bottom fades to deepen depth */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: isDark
-          ? 'radial-gradient(ellipse 80% 70% at 80% 50%, rgba(0,160,255,0.18) 0%, transparent 65%)'
-          : 'radial-gradient(ellipse 80% 70% at 80% 50%, rgba(255,255,255,0.55) 0%, transparent 65%)',
+          ? 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)'
+          : 'linear-gradient(to top, rgba(0,20,80,0.18) 0%, transparent 50%)',
       }} />
 
-      {/* Logo */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 0 }}>
-          <div style={{
-            width: 38, height: 38, borderRadius: 11,
-            background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.70)',
-            backdropFilter: 'blur(12px)',
-            border: isDark ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.90)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 20, color: isDark ? '#fff' : '#0055FF',
-            boxShadow: isDark ? '0 4px 16px rgba(0,0,0,0.40)' : '0 4px 16px rgba(0,85,255,0.20)',
-          }}>✦</div>
-          <span style={{
-            fontFamily: 'Syne', fontWeight: 800, fontSize: 22,
-            letterSpacing: '-0.03em',
-            color: isDark ? '#fff' : '#001A55',
-          }}>Pulse</span>
-        </div>
+      {/* ── Logo — top left ── */}
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{
+          fontFamily: 'Syne', fontWeight: 900,
+          fontSize: 15, letterSpacing: '0.18em',
+          color: isDark ? white(0.90) : navy(0.85),
+        }}>PULSE</span>
+        <span style={{
+          fontSize: 10, fontWeight: 500, letterSpacing: '0.06em',
+          color: isDark ? white(0.25) : navy(0.30),
+          paddingLeft: 10,
+          borderLeft: isDark ? `1px solid ${white(0.15)}` : `1px solid ${navy(0.15)}`,
+        }}>Homzmart</span>
       </div>
 
-      {/* Main headline */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <p style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-          color: isDark ? 'rgba(120,190,255,0.60)' : 'rgba(0,60,200,0.50)',
-          marginBottom: 14,
-        }}>Program Management · Homzmart</p>
+      {/* ── Centre — the only words that matter ── */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
 
-        <h2 style={{
-          fontFamily: 'Syne', fontWeight: 800,
-          fontSize: 'clamp(30px, 3.5vw, 46px)',
-          lineHeight: 1.12, letterSpacing: '-0.04em',
-          color: isDark ? '#fff' : '#001040',
-          marginBottom: 20,
+        {/* Eyebrow line */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28,
         }}>
-          Every project.<br />
-          Every deadline.<br />
+          <div style={{
+            width: 20, height: 1,
+            background: isDark ? white(0.35) : navy(0.30),
+          }} />
           <span style={{
-            color: isDark ? 'rgba(80,180,255,0.85)' : '#0055FF',
-          }}>Always on track.</span>
+            fontSize: 10, fontWeight: 600, letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+            color: isDark ? white(0.35) : navy(0.35),
+          }}>Program Management</span>
+        </div>
+
+        {/* Display headline — massive, sparse */}
+        <h2 style={{
+          fontFamily: 'Syne',
+          fontWeight: 800,
+          fontSize: 'clamp(38px, 4.5vw, 64px)',
+          lineHeight: 1.05,
+          letterSpacing: '-0.04em',
+          color: isDark ? white(0.97) : navy(0.95),
+          margin: 0,
+          marginBottom: 28,
+        }}>
+          Every team.<br />
+          One truth.
         </h2>
 
+        {/* Single sentence — nothing more */}
         <p style={{
-          fontSize: 15, lineHeight: 1.7,
-          color: isDark ? 'rgba(200,220,255,0.55)' : 'rgba(0,30,100,0.50)',
-          maxWidth: 340, marginBottom: 44,
+          fontSize: 15,
           fontWeight: 300,
+          lineHeight: 1.75,
+          letterSpacing: '-0.01em',
+          color: isDark ? white(0.40) : navy(0.45),
+          maxWidth: 300,
+          margin: 0,
         }}>
-          The internal tool built for Homzmart's program management team — from task assignment to delivery.
+          Programs, actions, and meetings — tracked and closed.
         </p>
+      </div>
 
-        {/* Feature list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {features.map(({ icon, text }) => (
-            <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      {/* ── Bottom — three stark numbers ── */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+
+        {/* Thin divider */}
+        <div style={{
+          width: 32, height: 1,
+          background: isDark ? white(0.18) : navy(0.18),
+          marginBottom: 24,
+        }} />
+
+        <div style={{ display: 'flex', gap: 36 }}>
+          {[
+            { n: '4×',  label: 'faster delivery' },
+            { n: '100%', label: 'task visibility'  },
+            { n: '0',   label: 'missed actions'    },
+          ].map(({ n, label }) => (
+            <div key={label}>
               <div style={{
-                width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                background: isDark ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.55)',
-                backdropFilter: 'blur(8px)',
-                border: isDark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(255,255,255,0.80)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,85,255,0.10)',
-              }}>
-                <Icon name={icon} size={15} color={isDark ? 'rgba(120,190,255,0.80)' : '#0055FF'} />
-              </div>
-              <span style={{
-                fontSize: 14, fontWeight: 400,
-                color: isDark ? 'rgba(200,220,255,0.65)' : 'rgba(0,30,100,0.65)',
-                letterSpacing: '-0.01em',
-              }}>{text}</span>
+                fontFamily: 'Syne',
+                fontWeight: 800,
+                fontSize: 22,
+                letterSpacing: '-0.03em',
+                color: isDark ? white(0.90) : navy(0.88),
+                lineHeight: 1,
+                marginBottom: 4,
+              }}>{n}</div>
+              <div style={{
+                fontSize: 10,
+                fontWeight: 500,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: isDark ? white(0.28) : navy(0.35),
+              }}>{label}</div>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Bottom footnote */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <p style={{
-          fontSize: 11, color: isDark ? 'rgba(180,210,255,0.25)' : 'rgba(0,30,100,0.25)',
-          letterSpacing: '0.02em',
-        }}>
-          Internal use only · Authorised access required
-        </p>
       </div>
     </div>
   )
