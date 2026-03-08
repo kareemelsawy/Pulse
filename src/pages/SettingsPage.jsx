@@ -17,11 +17,11 @@ function useS() {
 
 function Section({ children }) {
   const { colors } = useTheme()
-  return <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 14, padding: 24, marginBottom: 20 }}>{children}</div>
+  return <div style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 16, padding: 22, marginBottom: 16 }}>{children}</div>
 }
 function SectionTitle({ children, danger }) {
   const { colors } = useTheme()
-  return <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, color: danger ? colors.red : colors.text, lineHeight: 1.3 }}>{children}</div>
+  return <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4, letterSpacing: '-0.02em', color: danger ? colors.red : colors.text, lineHeight: 1.3 }}>{children}</div>
 }
 function SectionDesc({ children }) {
   const { colors } = useTheme()

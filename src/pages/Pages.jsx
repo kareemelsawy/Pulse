@@ -76,7 +76,7 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
                   const ov = ptasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date()).length
                   return (
                     <div key={p.id} onClick={() => onOpenProject(p)}
-                      style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, cursor: 'pointer', borderLeft: `4px solid ${p.color}`, transition: 'all 0.2s' }}
+                      style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 18, cursor: 'pointer', borderLeft: `4px solid ${p.color}`, transition: 'all 0.2s' }}
                       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = COLORS.cardShadow }}
                       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}>
                       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{p.name}</div>
@@ -94,7 +94,7 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
           <div>
             <h2 style={{ fontWeight: 600, fontSize: 13, color: COLORS.textDim, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 14, margin: '0 0 14px' }}>My Tasks</h2>
             {myTasks.length === 0 ? (
-              <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: '28px 20px', textAlign: 'center' }}>
+              <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: '28px 20px', textAlign: 'center' }}>
                 <Icon name="check" size={28} color={COLORS.green} />
                 <div style={{ fontWeight: 600, fontSize: 14, marginTop: 10 }}>All caught up!</div>
                 <div style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>No open tasks assigned to you</div>
@@ -489,7 +489,7 @@ export function PipelineView({ onConvertToProject, toast }) {
 function PipelineCard({ project: p, converting, onEdit, onConvert, onDelete }) {
   const [confirmDel, setConfirmDel] = useState(false)
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', borderLeft: `4px solid ${p.color}` }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', borderLeft: `4px solid ${p.color}` }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />

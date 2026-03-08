@@ -3,10 +3,10 @@ import { COLORS, STATUS, PRIORITY } from '../lib/constants'
 import { Icon } from './UI'
 
 const STATUS_COLOR = {
-  new:        COLORS.textMuted || '#52525B',
-  inprogress: '#60A5FA',
-  review:     '#A78BFA',
-  done:       '#3DD68C',
+  new:        '#8E8E93',
+  inprogress: '#007AFF',
+  review:     '#AF52DE',
+  done:       '#34C759',
 }
 
 const PRIORITY_COLOR = {
@@ -89,12 +89,12 @@ export default function GanttChart({ rows, mode = 'tasks', title = 'Timeline' })
   const LABEL_W = 180
 
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden' }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '12px 16px 10px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
         <Icon name="barChart" size={14} color={COLORS.textMuted} />
         <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.textDim, letterSpacing: '-0.01em' }}>{title}</span>
-        <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'Geist Mono', monospace", marginLeft: 4 }}>
+        <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'DM Mono', monospace", marginLeft: 4 }}>
           {fmt(rangeStart.toISOString().split('T')[0])} — {fmt(rangeEnd.toISOString().split('T')[0])}
         </span>
       </div>
@@ -112,7 +112,7 @@ export default function GanttChart({ rows, mode = 'tasks', title = 'Timeline' })
                 const pct = (daysBetween(rangeStart, d) / totalDays) * 100
                 return (
                   <div key={i} style={{ position: 'absolute', left: `${pct}%`, top: 0, bottom: 0, display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontSize: 10, color: COLORS.textMuted, fontFamily: "'Geist Mono', monospace", whiteSpace: 'nowrap', paddingLeft: 4 }}>
+                    <span style={{ fontSize: 10, color: COLORS.textMuted, fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap', paddingLeft: 4 }}>
                       {d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
