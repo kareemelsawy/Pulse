@@ -77,7 +77,6 @@ export default function AppShell({ toast }) {
               }}>✦</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16, letterSpacing:'-0.03em', color: COLORS.text }}>Pulse</div>
-                {workspace?.name && <div style={{ fontSize:10, color: COLORS.textMuted, marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{workspace.name}</div>}
               </div>
             </div>
           </div>
@@ -175,25 +174,23 @@ export default function AppShell({ toast }) {
             <Icon name="list" size={15} color={COLORS.textMuted} />
           </button>
 
-          <span style={{ fontSize:12, color: COLORS.textMuted, fontFamily:"'DM Mono',monospace", fontWeight:500 }}>
-            {new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}
+          <span style={{ fontSize:12, color: isDark ? 'rgba(180,200,255,0.30)' : 'rgba(0,40,120,0.30)', fontFamily:"'DM Sans',sans-serif", fontWeight:300, letterSpacing:'0.04em' }}>
+            {new Date().toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
           </span>
 
           <div style={{ flex:1 }} />
 
           <button onClick={toggleTheme} title={isDark ? 'Light mode' : 'Dark mode'} style={{
-            background:'rgba(255,255,255,0.07)',
-            border:'1px solid rgba(255,255,255,0.12)',
-            borderRadius:8, width:32, height:32,
+            background:'none', border:'none',
+            width:32, height:32,
             cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-            transition:'all 0.15s',
-            backdropFilter:'blur(8px)',
+            transition:'opacity 0.15s', opacity:0.45, padding:0,
           }}
-          onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.14)'}
-          onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}>
+          onMouseEnter={e => e.currentTarget.style.opacity='1'}
+          onMouseLeave={e => e.currentTarget.style.opacity='0.45'}>
             {isDark
-              ? <Icon name="sun"  size={15} color={COLORS.textMuted} />
-              : <Icon name="moon" size={15} color={COLORS.textMuted} />}
+              ? <Icon name="sun"  size={16} color='rgba(180,210,255,0.9)' />
+              : <Icon name="moon" size={16} color='rgba(60,100,200,0.9)' />}
           </button>
         </header>
 

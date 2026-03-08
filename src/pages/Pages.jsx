@@ -41,7 +41,7 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
         {/* Workspace status cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
           {byStatus.map(({ s, count }) => (
-            <div key={s} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: '16px 18px', borderTop: `3px solid ${STATUS[s].color}` }}>
+            <div key={s} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: '16px 18px',  }}>
               <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 6, lineHeight: 1.2 }}>{count}</div>
               <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, letterSpacing: '0.04em' }}>{STATUS[s].label}</div>
             </div>
@@ -76,9 +76,9 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
                   const ov = ptasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date()).length
                   return (
                     <div key={p.id} onClick={() => onOpenProject(p)}
-                      style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 18, cursor: 'pointer', borderLeft: `4px solid ${p.color}`, transition: 'all 0.2s' }}
-                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = COLORS.cardShadow }}
-                      onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}>
+                      style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 16, padding: 18, cursor: 'pointer', transition: 'all 0.25s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.20)'; e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,100,255,0.15)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; e.currentTarget.style.boxShadow = '' }}>
                       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{p.name}</div>
                       {p.description && <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 10, lineHeight: 1.5 }}>{p.description}</div>}
                       <ProgressBar tasks={ptasks} />
@@ -487,7 +487,7 @@ export function PipelineView({ onConvertToProject, toast }) {
 function PipelineCard({ project: p, converting, onEdit, onConvert, onDelete }) {
   const [confirmDel, setConfirmDel] = useState(false)
   return (
-    <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', borderLeft: `4px solid ${p.color}` }}>
+    <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px) saturate(160%)', WebkitBackdropFilter: 'blur(20px) saturate(160%)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />

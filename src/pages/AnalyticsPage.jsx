@@ -256,19 +256,19 @@ export default function AnalyticsPage() {
 
         {/* Insights row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 24 }}>
-          <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px', borderTop: `3px solid ${COLORS.purple}` }}>
+          <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Avg Task Age</div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{stats.avgAge}d</div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>average days open tasks have been open</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px', borderTop: `3px solid ${COLORS.amber}` }}>
+          <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Unassigned Tasks</div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>
               {tasks.filter(t => !t.assignee_name && t.status !== 'done').length}
             </div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>open tasks with no assignee</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px', borderTop: `3px solid ${COLORS.green}` }}>
+          <div style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: '20px 22px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Team Members</div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>{members.length}</div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>{Math.round(tasks.length / Math.max(members.length, 1))} tasks per member avg</div>
