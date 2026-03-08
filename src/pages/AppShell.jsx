@@ -2,9 +2,10 @@ import { useState, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
 import { useTheme } from '../contexts/ThemeContext'
-import { COLORS } from '../lib/constants'
-import { Avatar, Spinner, Icon } from '../components/UI'
+import { COLORS, STATUS } from '../lib/constants'
+import { Avatar, Spinner, Icon, Badge, Modal } from '../components/UI'
 import { OverviewPage, ProjectView, NewProjectModal, PipelineView, NewPipelineModal } from './Pages'
+import TaskModal from '../components/TaskModal'
 import DocsPage from './DocsPage'
 import GlobalMeetingsPage from './GlobalMeetingsPage'
 import SettingsPage from './SettingsPage'
@@ -60,6 +61,7 @@ export default function AppShell({ toast }) {
   const [newProjectOpen, setNewProjectOpen] = useState(false)
   const [newPipelineOpen, setNewPipelineOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [overdueModalOpen, setOverdueModalOpen] = useState(false)
 
   const activeProject    = projects.find(p => p.id === activeProjectId) || null
   const activeProjects   = projects.filter(p => !p.is_pipeline)
@@ -239,29 +241,33 @@ export default function AppShell({ toast }) {
             <Icon name="menu" size={15} color={COLORS.textMuted} />
           </button>
 
+          <div style={{ flex:1 }} />
+
+          <span style={{ fontSize:12, color: COLORS.textDim, fontWeight:400, letterSpacing:'0.01em' }}>
+            {new Date().toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
+          </span>
+
           {/* Overdue task count */}
           {overdueCount > 0 && (
             <div style={{
               display:'flex', alignItems:'center', gap:6,
               background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)',
               borderRadius:8, padding:'4px 10px', cursor:'pointer',
-            }} onClick={openOverview}>
+              transition:'background 0.15s, border-color 0.15s',
+            }}
+            onClick={() => setOverdueModalOpen(true)}
+            onMouseEnter={e => { e.currentTarget.style.background='rgba(239,68,68,0.22)'; e.currentTarget.style.borderColor='rgba(239,68,68,0.45)' }}
+            onMouseLeave={e => { e.currentTarget.style.background='rgba(239,68,68,0.12)'; e.currentTarget.style.borderColor='rgba(239,68,68,0.25)' }}>
               <div style={{ width:6, height:6, borderRadius:'50%', background:'#EF4444', flexShrink:0 }} />
               <span style={{ fontSize:12, fontWeight:600, color:'#FCA5A5' }}>
                 {overdueCount} overdue task{overdueCount !== 1 ? 's' : ''}
               </span>
             </div>
           )}
-
-          <div style={{ flex:1 }} />
-
-          <span style={{ fontSize:12, color: COLORS.textDim, fontWeight:400, letterSpacing:'0.01em' }}>
-            {new Date().toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
-          </span>
         </header>
 
         <main style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', minHeight:0 }}>
-          {view === 'overview'  && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} workspaceName={workspace?.name} />}
+          {view === 'overview'  && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} workspaceName={workspace?.name} toast={toast} />}
           {view === 'analytics' && isOwner && <AnalyticsPage />}
           {view === 'project'   && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
           {view === 'settings'  && <SettingsPage toast={toast} />}
@@ -273,6 +279,7 @@ export default function AppShell({ toast }) {
 
       {newProjectOpen  && <NewProjectModal  onClose={() => setNewProjectOpen(false)}  toast={toast} />}
       {newPipelineOpen && <NewPipelineModal onClose={() => setNewPipelineOpen(false)} toast={toast} />}
+      {overdueModalOpen && <OverdueTasksModal tasks={tasks} projects={projects} workspace={workspace} user={user} onClose={() => setOverdueModalOpen(false)} toast={toast} />}
 
       <style>{`
         @media (max-width: 768px) {
@@ -334,5 +341,94 @@ function ProjectItem({ project: p, done, total, active, onClick }) {
       <span style={{ flex:1, fontSize:13, fontWeight: active ? 600 : 400, color: active ? COLORS.text : COLORS.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>{p.name}</span>
       <span style={{ fontSize:11, color: COLORS.textMuted, fontFamily:"'DM Mono',monospace", flexShrink:0 }}>{done}/{total}</span>
     </div>
+  )
+}
+
+// ── Overdue Tasks Modal ───────────────────────────────────────────────────────
+function OverdueTasksModal({ tasks, projects, workspace, user, onClose, toast }) {
+  const isAdmin = workspace?.role === 'owner' || workspace?.owner_id === user?.id
+  const today = new Date().toISOString().split('T')[0]
+  const overdueTasks = tasks.filter(t => t.status !== 'done' && t.due_date && t.due_date < today)
+  const [selectedTask, setSelectedTask] = useState(null)
+
+  const grouped = overdueTasks.reduce((acc, t) => {
+    const proj = projects.find(p => p.id === t.project_id)
+    const key = proj?.id || 'unknown'
+    if (!acc[key]) acc[key] = { project: proj, tasks: [] }
+    acc[key].tasks.push(t)
+    return acc
+  }, {})
+
+  const daysOverdue = (dueDate) => {
+    const diff = Math.floor((new Date(today) - new Date(dueDate)) / 86400000)
+    return diff
+  }
+
+  return (
+    <>
+      <Modal onClose={onClose} width={560}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+          <div>
+            <h2 style={{ fontWeight:700, fontSize:17, letterSpacing:'-0.01em', margin:0 }}>Overdue Tasks</h2>
+            <p style={{ fontSize:12, color:COLORS.textMuted, margin:'4px 0 0' }}>{overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} past due date</p>
+          </div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:COLORS.textMuted, cursor:'pointer', padding:4, display:'flex', alignItems:'center' }}>
+            <Icon name="x" size={18} color={COLORS.textMuted} />
+          </button>
+        </div>
+
+        <div style={{ maxHeight:480, overflowY:'auto', paddingRight:4 }}>
+          {Object.values(grouped).map(({ project: proj, tasks: ptasks }) => (
+            <div key={proj?.id || 'unknown'} style={{ marginBottom:20 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, paddingBottom:6, borderBottom:`1px solid ${COLORS.border}` }}>
+                {proj && <div style={{ width:8, height:8, borderRadius:'50%', background:proj.color, boxShadow:`0 0 6px ${proj.color}80` }} />}
+                <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase', color:COLORS.textDim }}>{proj?.name || 'Unknown Project'}</span>
+                <span style={{ fontSize:11, color:COLORS.textMuted }}>· {ptasks.length} task{ptasks.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {ptasks.map(t => {
+                  const days = daysOverdue(t.due_date)
+                  return (
+                    <div key={t.id}
+                      onClick={() => setSelectedTask(t)}
+                      style={{
+                        background:COLORS.surface, border:`1px solid ${COLORS.border}`,
+                        borderRadius:10, padding:'11px 14px',
+                        display:'flex', alignItems:'center', gap:12,
+                        cursor:'pointer', transition:'background 0.15s, border-color 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = COLORS.surfaceHover; e.currentTarget.style.borderColor = COLORS.borderStrong }}
+                      onMouseLeave={e => { e.currentTarget.style.background = COLORS.surface; e.currentTarget.style.borderColor = COLORS.border }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:600, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginBottom:3 }}>{t.title}</div>
+                        <div style={{ fontSize:11, color:COLORS.textMuted, display:'flex', alignItems:'center', gap:6 }}>
+                          <span>Due {t.due_date}</span>
+                          <span style={{ color:COLORS.red, fontWeight:600 }}>· {days}d overdue</span>
+                          {t.assignee_name && <span>· {t.assignee_name}</span>}
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                        <Badge color={STATUS[t.status]?.color || '#888'}>{STATUS[t.status]?.label}</Badge>
+                        <Icon name="chevronRight" size={13} color={COLORS.textMuted} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Modal>
+
+      {selectedTask && (
+        <TaskModal
+          task={selectedTask}
+          projectId={selectedTask.project_id}
+          isAdmin={isAdmin}
+          onClose={() => setSelectedTask(null)}
+          toast={toast}
+        />
+      )}
+    </>
   )
 }

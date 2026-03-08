@@ -12,7 +12,7 @@ import MeetingCard from '../components/MeetingCard'
 import MeetingModal from '../components/MeetingModal'
 
 // ─── HomePage (merged Overview + My Tasks) ────────────────────────────────────
-export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
+export function HomePage({ onOpenProject, onNewProject, workspaceName, toast }) {
   const { projects, tasks, myTasks, getProjectTasks } = useData()
   const { user } = useAuth()
   const firstName  = (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there').split(' ')[0]
@@ -21,6 +21,7 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
   const overdue    = tasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date())
   const myOverdue  = myTasks.filter(t => t.due_date && new Date(t.due_date) < new Date())
   const myUpcoming = myTasks.filter(t => !t.due_date || new Date(t.due_date) >= new Date())
+  const [selectedTask, setSelectedTask] = useState(null)
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 28 }}>
@@ -106,7 +107,11 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
                       {list.map(t => {
                         const proj = projects.find(p => p.id === t.project_id)
                         return (
-                          <div key={t.id} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 13px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div key={t.id}
+                            onClick={() => setSelectedTask(t)}
+                            style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '10px 13px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = COLORS.surfaceHover; e.currentTarget.style.borderColor = COLORS.borderStrong }}
+                            onMouseLeave={e => { e.currentTarget.style.background = COLORS.surface; e.currentTarget.style.borderColor = COLORS.border }}>
                             {proj && <div style={{ width: 7, height: 7, borderRadius: '50%', background: proj.color, flexShrink: 0 }} />}
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
@@ -124,6 +129,16 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName }) {
           </div>
         </div>
       </div>
+
+      {selectedTask && (
+        <TaskModal
+          task={selectedTask}
+          projectId={selectedTask.project_id}
+          isAdmin={false}
+          onClose={() => setSelectedTask(null)}
+          toast={toast}
+        />
+      )}
     </div>
   )
 }
