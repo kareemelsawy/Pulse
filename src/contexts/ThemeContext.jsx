@@ -32,7 +32,7 @@ function msUntilNextBoundary() {
 
 export function ThemeProvider({ children }) {
   // manual override: null = follow auto, 'dark'/'light' = user chose
-  const [override, setOverride] = useState(() => localStorage.getItem('pulse_theme_override') || 'light')
+  const [override, setOverride] = useState(() => localStorage.getItem('pulse_theme_override') || null)
   const [tick,     setTick]     = useState(0)   // increment to force re-render on boundary
 
   const isDark = override === 'dark' ? true
