@@ -3,245 +3,279 @@ import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { COLORS } from '../lib/constants'
-import { Spinner, Icon } from '../components/UI'
+import { Avatar, Spinner, Icon } from '../components/UI'
 import { OverviewPage, ProjectView, NewProjectModal, PipelineView, NewPipelineModal } from './Pages'
 import DocsPage from './DocsPage'
 import GlobalMeetingsPage from './GlobalMeetingsPage'
 import SettingsPage from './SettingsPage'
 import AnalyticsPage from './AnalyticsPage'
 
+// ── Glass style helpers ───────────────────────────────────────────────────────
+const glassPanel = (extra = {}) => ({
+  background: COLORS.surface,
+  backdropFilter: 'blur(32px) saturate(180%)',
+  WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+  border: '1px solid rgba(255,255,255,0.11)',
+  ...extra,
+})
+
 export default function AppShell({ toast }) {
   const { user, signOut } = useAuth()
   const { workspace, projects, getProjectTasks, loading } = useData()
-  const { isDark } = useTheme()
-  const [view, setView]                     = useState('overview')
+  const { isDark, toggleTheme } = useTheme()
+  const [view, setView]                       = useState('overview')
   const [activeProjectId, setActiveProjectId] = useState(null)
-  const [newProjectOpen, setNewProjectOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen]         = useState(true)
+  const [newProjectOpen, setNewProjectOpen]   = useState(false)
   const [newPipelineOpen, setNewPipelineOpen] = useState(false)
-  const [userMenu, setUserMenu]             = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userMenu, setUserMenu]               = useState(false)
 
   const activeProject    = projects.find(p => p.id === activeProjectId) || null
   const activeProjects   = projects.filter(p => !p.is_pipeline)
   const pipelineProjects = projects.filter(p => p.is_pipeline)
   const displayName      = user?.user_metadata?.full_name || user?.email || 'You'
-  const initials         = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const isOwner          = workspace?.owner_id === user?.id
 
-  function go(v)           { setActiveProjectId(null); setView(v); setMobileMenuOpen(false) }
-  function openProject(p)  { setActiveProjectId(p.id); setView('project'); setMobileMenuOpen(false) }
-  function openOverview()  { setActiveProjectId(null); setView('overview'); setMobileMenuOpen(false) }
+  function openProject(p) { setActiveProjectId(p.id); setView('project') }
+  function openOverview()  { setActiveProjectId(null); setView('overview') }
 
   if (loading) return (
-    <div style={{ height:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background: COLORS.bg }}>
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14 }}>
-        <div style={{ width:36, height:36, borderRadius:10, background: COLORS.accent, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:18 }}>✦</div>
-        <Spinner size={18} />
-      </div>
+    <div style={{ height:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20 }}>
+      <div style={{
+        width:56, height:56, borderRadius:16,
+        background:'linear-gradient(135deg,#6B8EF7,#C084FC)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        fontSize:28, color:'#fff', fontWeight:900,
+        boxShadow:'0 8px 32px rgba(107,142,247,0.45)',
+      }}>✦</div>
+      <Spinner size={24} />
     </div>
   )
 
-  const railNav = [
-    { icon:'grid',          v:'overview',  tip:'Overview'  },
-    { icon:'barChart',      v:'analytics', tip:'Analytics', ownerOnly: true },
-    { icon:'messageCircle', v:'meetings',  tip:'Meetings'  },
-    { icon:'inbox',         v:'pipeline',  tip:'Pipeline'  },
-    { icon:'fileText',      v:'docs',      tip:'Docs'      },
-  ]
-
-  const viewLabel = view==='project' && activeProject ? activeProject.name
-    : view==='overview'?'Overview' : view==='analytics'?'Analytics'
-    : view==='meetings'?'Meetings' : view==='pipeline'?'Pipeline'
-    : view==='settings'?'Settings' : view==='docs'?'Docs' : ''
-
-  const sidebarContent = (
-    <>
-      {/* Workspace header */}
-      <div style={{ padding:'16px 14px 13px', borderBottom:`1px solid ${COLORS.border}`, flexShrink:0 }}>
-        <div style={{ fontSize:13, fontWeight:600, color: COLORS.text, letterSpacing:'-0.01em', marginBottom:2 }}>{workspace?.name || 'Workspace'}</div>
-        <div style={{ fontSize:11, color: COLORS.textMuted }}>
-          {new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}
-        </div>
-      </div>
-
-      {/* Nav scroll area */}
-      <div style={{ flex:1, overflowY:'auto', padding:'8px 6px', minHeight:0 }}>
-        <div style={{ marginBottom:6 }}>
-          <NavItem icon="grid"          label="Overview"   active={view==='overview'}   onClick={openOverview} />
-          {isOwner && <NavItem icon="barChart" label="Analytics" active={view==='analytics'} onClick={() => go('analytics')} />}
-          <NavItem icon="messageCircle" label="Meetings"   active={view==='meetings'}   onClick={() => go('meetings')} />
-          <NavItem icon="inbox"         label="Pipeline"   active={view==='pipeline'}   onClick={() => go('pipeline')}
-            badge={pipelineProjects.length > 0 ? String(pipelineProjects.length) : null} />
-        </div>
-
-        <div className="divider" style={{ margin:'4px 4px 10px' }} />
-
-        <SectionLabel label="Projects" onAdd={() => { setNewProjectOpen(true); setMobileMenuOpen(false) }} />
-        {activeProjects.length === 0
-          ? <div style={{ padding:'5px 10px 8px', fontSize:12, color: COLORS.textMuted, fontStyle:'italic' }}>No projects yet</div>
-          : activeProjects.map(p => {
-              const ptasks = getProjectTasks(p.id)
-              const done = ptasks.filter(t => t.status==='done').length
-              return <ProjectItem key={p.id} project={p} done={done} total={ptasks.length} active={activeProjectId===p.id && view==='project'} onClick={() => openProject(p)} />
-            })
-        }
-      </div>
-
-      {/* Bottom nav */}
-      <div style={{ padding:'6px', borderTop:`1px solid ${COLORS.border}`, flexShrink:0 }}>
-        <NavItem icon="settings" label="Settings" active={view==='settings'} onClick={() => go('settings')} />
-        <NavItem icon="fileText" label="Docs"     active={view==='docs'}     onClick={() => go('docs')} />
-      </div>
-    </>
-  )
-
   return (
-    <div className="app-root" style={{ color: COLORS.text, fontFamily:"'DM Sans',system-ui,sans-serif" }}>
+    <div style={{ display:'flex', height:'100vh', color: COLORS.text, overflow:'hidden' }}>
 
-      {/* ── Icon rail ─────────────────────────────────────────────── */}
-      <div className="rail app-rail-desktop" style={{ width:52, flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', padding:'12px 0', zIndex:10 }}>
+      {/* ── Sidebar ───────────────────────────────────────────────────── */}
+      {sidebarOpen && (
+        <aside style={{
+          width: 240, flexShrink: 0, height:'100vh',
+          display:'flex', flexDirection:'column',
+          background: isDark ? 'rgba(5,8,30,0.75)' : 'rgba(255,255,255,0.90)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderRight: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(10,30,80,0.10)',
+        }}>
+          {/* Logo */}
+          <div style={{ padding:'16px 16px 12px', borderBottom:`1px solid ${COLORS.border}`, flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{
+                width:34, height:34, borderRadius:10, flexShrink:0,
+                background:'linear-gradient(135deg,#6B8EF7,#C084FC)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:18, color:'#fff', fontWeight:900, letterSpacing:'-2px',
+                boxShadow:'0 4px 16px rgba(107,142,247,0.40)',
+              }}>✦</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16, letterSpacing:'-0.03em', color: COLORS.text }}>PULSE</div>
+              </div>
+            </div>
+          </div>
 
-        {/* Logo */}
-        <div style={{ width:32, height:32, borderRadius:9, background: COLORS.accent, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:17, marginBottom:16, flexShrink:0 }}>✦</div>
+          {/* Primary nav */}
+          <nav style={{ padding:'8px 8px 6px', borderBottom:`1px solid ${COLORS.border}`, flexShrink:0 }}>
+            <NavItem icon="grid"          label="Overview"   active={view==='overview'}   onClick={openOverview} />
+            {isOwner && <NavItem icon="barChart" label="Analytics" active={view==='analytics'} onClick={() => { setActiveProjectId(null); setView('analytics') }} />}
+            <NavItem icon="messageCircle" label="Meetings"   active={view==='meetings'}   onClick={() => { setActiveProjectId(null); setView('meetings') }} />
+          </nav>
 
-        {/* Main nav */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', width:'100%', padding:'0 7px', gap:2 }}>
-          {railNav.filter(r => !r.ownerOnly || isOwner).map(({ icon, v, tip }) => (
-            <button key={v} className={`rail-btn${view===v?' active':''}`} title={tip} onClick={() => v==='overview' ? openOverview() : go(v)}>
-              <Icon name={icon} size={17} color={view===v ? '#F0F0F2' : COLORS.railText} />
-            </button>
-          ))}
-        </div>
+          {/* Projects */}
+          <div style={{ flex:1, overflowY:'auto', minHeight:0, padding:'8px 8px' }}>
+            <SidebarSection label="Projects" onAdd={() => setNewProjectOpen(true)}>
+              {activeProjects.length === 0 && (
+                <div style={{ padding:'6px 10px', fontSize:12, color: COLORS.textMuted, fontStyle:'italic' }}>No projects yet</div>
+              )}
+              {activeProjects.map(p => {
+                const ptasks = getProjectTasks(p.id)
+                const done = ptasks.filter(t => t.status === 'done').length
+                return <ProjectItem key={p.id} project={p} done={done} total={ptasks.length} active={activeProjectId===p.id && view==='project'} onClick={() => openProject(p)} />
+              })}
+            </SidebarSection>
 
-        {/* Bottom rail */}
-        <div style={{ display:'flex', flexDirection:'column', width:'100%', padding:'0 7px', gap:2 }}>
-          <button className={`rail-btn${view==='settings'?' active':''}`} title="Settings" onClick={() => go('settings')}>
-            <Icon name="settings" size={17} color={view==='settings' ? '#F0F0F2' : COLORS.railText} />
-          </button>
+            <div style={{ height:8 }} />
 
-          {/* User avatar */}
-          <div style={{ position:'relative' }}>
-            <button className="rail-btn" onClick={() => setUserMenu(p=>!p)} style={{ background: userMenu?'rgba(255,255,255,0.10)':'transparent' }}>
-              <div style={{ width:26, height:26, borderRadius:7, background: COLORS.accent, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff', letterSpacing:'0.03em' }}>{initials}</div>
-            </button>
-            {userMenu && (
-              <>
-                <div onClick={() => setUserMenu(false)} style={{ position:'fixed', inset:0, zIndex:90 }} />
-                <div style={{ position:'absolute', bottom:0, left:'calc(100% + 10px)', background: COLORS.surface, border:`1px solid ${COLORS.border}`, borderRadius:10, padding:6, zIndex:100, minWidth:196, boxShadow: COLORS.modalShadow, animation:'slideIn 0.12s ease' }}>
-                  <div style={{ padding:'8px 12px 10px', borderBottom:`1px solid ${COLORS.border}`, marginBottom:4 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color: COLORS.text }}>{displayName}</div>
-                    <div style={{ fontSize:11, color: COLORS.textMuted, marginTop:2 }}>{user?.email}</div>
-                  </div>
-                  <MenuBtn onClick={() => { setUserMenu(false); go('settings') }}>Settings</MenuBtn>
+            <SidebarSection label="Pipeline" onAdd={() => setNewPipelineOpen(true)}>
+              <NavItem icon="inbox" label="All Pipeline" active={view==='pipeline'}
+                onClick={() => { setActiveProjectId(null); setView('pipeline') }}
+                meta={pipelineProjects.length > 0 ? String(pipelineProjects.length) : null} />
+            </SidebarSection>
+          </div>
+
+          {/* Bottom */}
+          <div style={{ borderTop:`1px solid ${COLORS.border}`, padding:'6px 8px 10px', flexShrink:0 }}>
+            <NavItem icon="settings" label="Settings" active={view==='settings'} onClick={() => { setActiveProjectId(null); setView('settings') }} />
+            <NavItem icon="fileText" label="Docs"     active={view==='docs'}     onClick={() => { setActiveProjectId(null); setView('docs') }} />
+
+            {/* User row */}
+            <div style={{ position:'relative', marginTop:4 }}>
+              <div onClick={() => setUserMenu(p => !p)} style={{
+                display:'flex', alignItems:'center', gap:9,
+                padding:'7px 10px', borderRadius:10, cursor:'pointer',
+                transition:'background 0.15s',
+                background: userMenu ? 'rgba(255,255,255,0.08)' : 'transparent',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}
+              onMouseLeave={e => { if(!userMenu) e.currentTarget.style.background='transparent' }}>
+                <Avatar name={displayName} size={26} />
+                <span style={{ flex:1, fontSize:13, fontWeight:500, color: COLORS.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</span>
+                <Icon name="chevronDown" size={13} color={COLORS.textMuted} />
+              </div>
+
+              {userMenu && (
+                <div style={{
+                  position:'absolute', bottom:'100%', left:0, right:0,
+                  background: isDark ? 'rgba(15,12,45,0.90)' : 'rgba(255,255,255,0.90)',
+                  backdropFilter:'blur(32px)',
+                  WebkitBackdropFilter:'blur(32px)',
+                  border:'1px solid rgba(255,255,255,0.14)',
+                  borderRadius:14, padding:6, marginBottom:6, zIndex:50,
+                  boxShadow:'0 12px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.10)',
+                  animation:'slideUp 0.18s cubic-bezier(0.34,1.56,0.64,1)',
+                }}>
+                  <MenuBtn onClick={() => { setUserMenu(false); setView('settings') }}>Settings</MenuBtn>
+                  <div style={{ height:1, background:COLORS.border, margin:'4px 0' }} />
                   <MenuBtn danger onClick={() => { setUserMenu(false); signOut() }}>Sign out</MenuBtn>
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* ── Side panel (desktop) ───────────────────────────────────── */}
-      <aside className="app-sidebar-desktop" style={{ width:224, flexShrink:0, height:'100vh', display:'flex', flexDirection:'column', background: COLORS.bgSecondary, borderRight:`1px solid ${COLORS.border}`, overflow:'hidden' }}>
-        {sidebarContent}
-      </aside>
-
-      {/* ── Mobile sidebar overlay ─────────────────────────────────── */}
-      {mobileMenuOpen && (
-        <>
-          <div onClick={() => setMobileMenuOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:200, display:'none' }} className="mobile-overlay" />
-          <aside style={{ position:'fixed', left:0, top:0, bottom:0, width:280, background: COLORS.bgSecondary, borderRight:`1px solid ${COLORS.border}`, zIndex:201, display:'flex', flexDirection:'column', overflow:'hidden', animation:'slideInLeft 0.2s ease' }} className="mobile-sidebar">
-            {sidebarContent}
-          </aside>
-        </>
+        </aside>
       )}
 
-      {/* ── Main ──────────────────────────────────────────────────── */}
-      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0, background: COLORS.bg }}>
+      {/* ── Main ─────────────────────────────────────────────────────── */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
 
-        {/* Top bar */}
-        <header style={{ height:48, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', gap:12, background: COLORS.bgSecondary, borderBottom:`1px solid ${COLORS.border}` }}>
-          {/* Mobile menu button */}
-          <button
-            className="mobile-menu-btn"
-            onClick={() => setMobileMenuOpen(p => !p)}
-            style={{ background:'none', border:`1px solid ${COLORS.border}`, borderRadius:7, padding:'5px 8px', color: COLORS.textMuted, display:'none', alignItems:'center', justifyContent:'center' }}>
-            <Icon name="menu" size={16} color={COLORS.textMuted} />
+        {/* Header */}
+        <header style={{
+          height:50, flexShrink:0,
+          display:'flex', alignItems:'center', padding:'0 18px', gap:10,
+          background: isDark ? 'rgba(5,8,30,0.70)' : 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderBottom: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(10,30,80,0.09)',
+        }}>
+          <button onClick={() => setSidebarOpen(p => !p)} style={{
+            background:COLORS.surface, border:`1px solid ${COLORS.border}`,
+            borderRadius:8, padding:'5px 7px', cursor:'pointer',
+            display:'flex', alignItems:'center',
+            transition:'background 0.15s, border-color 0.15s, opacity 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'}
+          onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}>
+            <Icon name="list" size={15} color={COLORS.textMuted} />
           </button>
-          <span style={{ fontSize:14, fontWeight:600, color: COLORS.text, letterSpacing:'-0.015em', flex:1 }}>{viewLabel}</span>
-          {/* User menu in header for mobile */}
-          <div style={{ position:'relative' }} className="mobile-user-menu">
-            <button className="rail-btn" onClick={() => setUserMenu(p=>!p)} style={{ background: userMenu?'rgba(255,255,255,0.10)':'transparent', display:'none' }}>
-              <div style={{ width:26, height:26, borderRadius:7, background: COLORS.accent, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fff' }}>{initials}</div>
-            </button>
-          </div>
+
+          <span style={{ fontSize:12, color: COLORS.textDim, fontFamily:"'DM Sans',sans-serif", fontWeight:400, letterSpacing:'0.01em' }}>
+            {new Date().toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
+          </span>
+
+          <div style={{ flex:1 }} />
+
+          <button onClick={toggleTheme} title={isDark ? 'Light mode' : 'Dark mode'} style={{
+            background:'none', border:'none',
+            width:32, height:32,
+            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+            transition:'opacity 0.15s', opacity:0.45, padding:0,
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity='1'}
+          onMouseLeave={e => e.currentTarget.style.opacity='0.45'}>
+            {isDark
+              ? <Icon name="sun"  size={16} color='rgba(180,210,255,0.9)' />
+              : <Icon name="moon" size={16} color='rgba(60,100,200,0.9)' />}
+          </button>
         </header>
 
         <main style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', minHeight:0 }}>
-          {view==='overview'  && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} workspaceName={workspace?.name} />}
-          {view==='analytics' && isOwner && <AnalyticsPage />}
-          {view==='project'   && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
-          {view==='settings'  && <SettingsPage toast={toast} />}
-          {view==='pipeline'  && <PipelineView onConvertToProject={() => setView('overview')} toast={toast} />}
-          {view==='meetings'  && <GlobalMeetingsPage toast={toast} />}
-          {view==='docs'      && <DocsPage />}
+          {view === 'overview'  && <OverviewPage onOpenProject={openProject} onNewProject={() => setNewProjectOpen(true)} workspaceName={workspace?.name} />}
+          {view === 'analytics' && isOwner && <AnalyticsPage />}
+          {view === 'project'   && activeProject && <ProjectView key={activeProject.id} project={activeProject} toast={toast} />}
+          {view === 'settings'  && <SettingsPage toast={toast} />}
+          {view === 'pipeline'  && <PipelineView onConvertToProject={() => setView('overview')} toast={toast} />}
+          {view === 'meetings'  && <GlobalMeetingsPage toast={toast} />}
+          {view === 'docs'      && <DocsPage />}
         </main>
       </div>
 
       {newProjectOpen  && <NewProjectModal  onClose={() => setNewProjectOpen(false)}  toast={toast} />}
       {newPipelineOpen && <NewPipelineModal onClose={() => setNewPipelineOpen(false)} toast={toast} />}
-
-      <style>{`
-        @keyframes slideInLeft { from { transform: translateX(-100%) } to { transform: translateX(0) } }
-        @media (max-width: 768px) {
-          .app-rail-desktop { display: none !important; }
-          .app-sidebar-desktop { display: none !important; }
-          .mobile-menu-btn { display: flex !important; }
-          .mobile-overlay { display: block !important; }
-          .mobile-sidebar { display: flex !important; }
-        }
-      `}</style>
     </div>
   )
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-function NavItem({ icon, label, active, onClick, badge }) {
+// ── Sub-components ───────────────────────────────────────────────────────────
+function NavItem({ icon, label, active, onClick, meta }) {
   return (
-    <div onClick={onClick} className={`nav-item${active?' active':''}`}>
-      <Icon name={icon} size={14} color={active ? COLORS.accent : COLORS.textMuted} />
-      <span style={{ flex:1, fontSize:13 }}>{label}</span>
-      {badge && <span style={{ fontSize:10, fontWeight:600, color: COLORS.textMuted, background: COLORS.surfaceHover, borderRadius:5, padding:'1px 6px', fontFamily:"'DM Mono',monospace" }}>{badge}</span>}
+    <div onClick={onClick}
+      className={`nav-item${active ? ' nav-active' : ''}`}
+      style={{
+        display:'flex', alignItems:'center', gap:9,
+        padding:'7px 10px', borderRadius:10,
+        cursor:'pointer', marginBottom:2,
+        border: '1px solid transparent',
+        color: active ? COLORS.accent : COLORS.textDim,
+        userSelect:'none',
+      }}>
+      <Icon name={icon} size={15} color={active ? COLORS.accent : COLORS.textMuted} />
+      <span style={{ fontWeight: active ? 600 : 400, fontSize:13, flex:1, letterSpacing:'-0.01em' }}>{label}</span>
+      {meta && <span style={{ fontSize:11, color: COLORS.textMuted, background:COLORS.border, borderRadius:6, padding:'1px 6px', fontFamily:"'DM Mono',monospace" }}>{meta}</span>}
     </div>
   )
 }
 
-function SectionLabel({ label, onAdd }) {
+function SidebarSection({ label, onAdd, children }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'2px 10px 5px' }}>
-      <span className="section-label" style={{ padding:0 }}>{label}</span>
-      {onAdd && <button onClick={onAdd} style={{ background:'none', border:'none', padding:2, color: COLORS.textFaint, display:'flex', lineHeight:1, borderRadius:4, transition:'color 0.1s' }}
-        onMouseEnter={e=>e.currentTarget.style.color=COLORS.text} onMouseLeave={e=>e.currentTarget.style.color=COLORS.textFaint}>
-        <Icon name="plus" size={13} color="currentColor" />
-      </button>}
+    <div style={{ marginBottom:2 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'3px 10px 5px' }}>
+        <span style={{ fontSize:10, fontWeight:700, color: COLORS.textMuted, letterSpacing:'0.06em', textTransform:'uppercase' }}>{label}</span>
+        <button onClick={onAdd} style={{ background:'none', border:'none', color: COLORS.textMuted, cursor:'pointer', padding:2, borderRadius:5, display:'flex', lineHeight:1, transition:'color 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.color = COLORS.accent}
+          onMouseLeave={e => e.currentTarget.style.color = COLORS.textMuted}>
+          <Icon name="plus" size={14} color="currentColor" />
+        </button>
+      </div>
+      {children}
     </div>
   )
 }
 
 function ProjectItem({ project: p, done, total, active, onClick }) {
   return (
-    <div onClick={onClick} className={`proj-item${active?' active':''}`}>
-      <div style={{ width:7, height:7, borderRadius:2, background:p.color, flexShrink:0 }} />
-      <span style={{ flex:1, fontSize:13, fontWeight:active?600:400, color:active?COLORS.text:COLORS.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</span>
-      <span style={{ fontSize:10, color: COLORS.textFaint, fontFamily:"'DM Mono',monospace", flexShrink:0 }}>{done}/{total}</span>
+    <div onClick={onClick}
+      className={`proj-item${active ? ' nav-active' : ''}`}
+      style={{
+        display:'flex', alignItems:'center', gap:9,
+        padding:'7px 10px', borderRadius:10, cursor:'pointer', marginBottom:2,
+        border: '1px solid transparent',
+        userSelect:'none',
+      }}>
+      <div style={{ width:9, height:9, borderRadius:3, background:p.color, flexShrink:0, boxShadow:`0 0 6px ${p.color}80` }} />
+      <span style={{ flex:1, fontSize:13, fontWeight: active ? 600 : 400, color: active ? COLORS.text : COLORS.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>{p.name}</span>
+      <span style={{ fontSize:11, color: COLORS.textMuted, fontFamily:"'DM Mono',monospace", flexShrink:0 }}>{done}/{total}</span>
     </div>
   )
 }
 
 function MenuBtn({ children, onClick, danger }) {
   return (
-    <button onClick={onClick} style={{ width:'100%', textAlign:'left', background:'none', border:'none', color: danger ? COLORS.red : COLORS.textDim, padding:'7px 12px', borderRadius:7, fontSize:13, fontFamily:'inherit', transition:'background 0.1s' }}
-      onMouseEnter={e => e.currentTarget.style.background = COLORS.surfaceHover}
-      onMouseLeave={e => e.currentTarget.style.background = 'none'}>{children}</button>
+    <button onClick={onClick} style={{
+      width:'100%', textAlign:'left',
+      background:'none', border:'none',
+      color: danger ? COLORS.red : COLORS.textDim,
+      padding:'8px 12px', borderRadius:8,
+      cursor:'pointer', fontSize:13, fontWeight:400,
+      fontFamily: 'inherit', letterSpacing:'-0.01em',
+      transition:'background 0.12s',
+    }}
+    onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}
+    onMouseLeave={e => e.currentTarget.style.background=''}>{children}</button>
   )
 }
