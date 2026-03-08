@@ -14,13 +14,34 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder',
   {
     auth: {
-      detectSessionInUrl: true,  // required — reads OAuth token from URL hash on redirect
+      detectSessionInUrl: true,   // Required — reads OAuth token from URL hash on redirect
       persistSession: true,
       autoRefreshToken: true,
       storageKey: 'pulse_auth',
+      // Security: use PKCE for OAuth flows
+      flowType: 'pkce',
     },
     realtime: {
       params: { eventsPerSecond: 10 },
     },
+    global: {
+      headers: {
+        // Identify the client
+        'X-Client-Info': 'pulse-web/1.0',
+      },
+    },
   }
 )
+
+// ── Session helpers ────────────────────────────────────────────────────────────
+export async function getSession() {
+  const { data: { session }, error } = await supabase.auth.getSession()
+  if (error) return null
+  return session
+}
+
+export async function getCurrentUser() {
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error) return null
+  return user
+}

@@ -5,7 +5,7 @@ import { useData } from '../contexts/DataContext'
 import { supabase } from '../lib/supabase'
 import { NOTIFICATION_TRIGGERS, COLORS } from '../lib/constants'
 import { Toggle, Btn, Avatar, Badge, Spinner, Icon } from '../components/UI'
-import { getWorkspaceMembers, regenerateInviteCode, updateWorkspaceName, removeMember, sendWorkspaceInvite, getWorkspaceInvitations, cancelInvitation, updateMemberRole } from '../lib/db/workspace'
+import { getWorkspaceMembers, regenerateInviteCode, updateWorkspaceName, removeMember } from '../lib/db/workspace'
 
 // ── Glass primitives ──────────────────────────────────────────────────────────
 const G = {
@@ -216,276 +216,100 @@ function AccountTab({ toast }) {
 }
 
 // ── Workspace Tab ─────────────────────────────────────────────────────────────
-// ── Workspace Tab ─────────────────────────────────────────────────────────────
 function WorkspaceTab({ toast }) {
-  const { workspace, setWorkspace, notifSettings } = useData()
-  const { user }                    = useAuth()
-  const [members,    setMembers]    = useState([])
-  const [invites,    setInvites]    = useState([])
-  const [name,       setName]       = useState(workspace?.name || '')
-  const [code,       setCode]       = useState(workspace?.invite_code || '')
-  const [copying,    setCopying]    = useState(false)
-  const [saving,     setSaving]     = useState(false)
-  const [loading,    setLoading]    = useState(true)
-  const isOwner = workspace?.owner_id === user?.id || workspace?.role === 'owner'
+ const { workspace, setWorkspace } = useData()
+ const { user } = useAuth()
+ const [members, setMembers] = useState([])
+ const [name, setName] = useState(workspace?.name || '')
+ const [code, setCode] = useState(workspace?.invite_code || '')
+ const [copying, setCopying] = useState(false)
+ const [saving, setSaving] = useState(false)
+ const [loading, setLoading] = useState(true)
+ const isOwner = workspace?.owner_id === user?.id || workspace?.role === 'owner'
 
-  // Invite form state
-  const [inviteEmails,   setInviteEmails]   = useState('')
-  const [inviteRole,     setInviteRole]     = useState('user')
-  const [sendingInvites, setSendingInvites] = useState(false)
+ useEffect(() => {
+ if (workspace?.id) getWorkspaceMembers(workspace.id).then(m => { setMembers(m); setLoading(false) }).catch(() => setLoading(false))
+ }, [workspace?.id])
 
-  // Role change state
-  const [roleChanging, setRoleChanging] = useState({})
+ async function handleSaveName() {
+ if (!name.trim() || name === workspace.name) return
+ setSaving(true)
+ try { await updateWorkspaceName(workspace.id, name.trim()); setWorkspace(prev => ({ ...prev, name: name.trim() })); toast('Workspace name updated', 'success') }
+ catch (e) { toast(e.message, 'error') } finally { setSaving(false) }
+ }
+ async function handleRegenCode() {
+ if (!confirm('This will invalidate the old invite code. Continue?')) return
+ try { const c = await regenerateInviteCode(workspace.id); setCode(c); setWorkspace(prev => ({ ...prev, invite_code: c })); toast('New invite code generated', 'success') }
+ catch (e) { toast(e.message, 'error') }
+ }
+ async function handleRemoveMember(userId) {
+ if (!confirm('Remove this member?')) return
+ try { await removeMember(workspace.id, userId); setMembers(prev => prev.filter(m => m.user_id !== userId)); toast('Member removed', 'success') }
+ catch (e) { toast(e.message, 'error') }
+ }
+ function copyCode() { navigator.clipboard.writeText(code); setCopying(true); setTimeout(() => setCopying(false), 2000) }
+ const inviteUrl = `${window.location.origin}?invite=${code}`
 
-  useEffect(() => {
-    if (!workspace?.id) return
-    Promise.all([
-      getWorkspaceMembers(workspace.id),
-      getWorkspaceInvitations(workspace.id),
-    ]).then(([m, inv]) => { setMembers(m); setInvites(inv); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [workspace?.id])
+ const roleColors = { owner: COLORS.purple, pm: COLORS.blue, user: COLORS.textMuted }
+ const roleLabel = { owner: 'Owner', pm: 'PM', user: 'Member' }
 
-  async function handleSaveName() {
-    if (!name.trim() || name === workspace.name) return
-    setSaving(true)
-    try {
-      await updateWorkspaceName(workspace.id, name.trim())
-      setWorkspace(prev => ({ ...prev, name: name.trim() }))
-      toast('Workspace name updated', 'success')
-    } catch (e) { toast(e.message, 'error') } finally { setSaving(false) }
-  }
+ return (
+ <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+ <Panel>
+ <PanelHeader title="Workspace" desc="Manage your workspace identity." icon="folder" />
+ <FieldRow label="Workspace Name">
+ <div style={{ display: 'flex', gap: 8 }}>
+ <input value={name} onChange={e => setName(e.target.value)} style={{ ...G.input, flex: 1 }} disabled={!isOwner} />
+ {isOwner && <Btn onClick={handleSaveName} disabled={saving || name === workspace?.name} size="sm">{saving ? '…' : 'Save'}</Btn>}
+ </div>
+ </FieldRow>
+ </Panel>
 
-  async function handleRegenCode() {
-    if (!confirm('This will invalidate the old invite code. Continue?')) return
-    try {
-      const c = await regenerateInviteCode(workspace.id)
-      setCode(c)
-      setWorkspace(prev => ({ ...prev, invite_code: c }))
-      toast('New invite code generated', 'success')
-    } catch (e) { toast(e.message, 'error') }
-  }
+ <Panel>
+ <PanelHeader title="Invite Code" desc="Share this code with teammates to join your workspace." icon="zap" />
+ {/* Code display */}
+ <div style={{ ...G.row, padding: '18px 22px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16 }}>
+ <code style={{ fontFamily: "'DM Mono', monospace", fontSize: 28, fontWeight: 800, letterSpacing: '0.20em', color: COLORS.accent, flex: 1, lineHeight: 1 }}>
+ {code}
+ </code>
+ <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+ <Btn size="sm" onClick={copyCode} variant="secondary">{copying ? '✓ Copied' : 'Copy'}</Btn>
+ {isOwner && <Btn size="sm" onClick={handleRegenCode} variant="secondary">Regenerate</Btn>}
+ </div>
+ </div>
+ {/* Invite URL */}
+ <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+ <div style={{ ...G.input, flex: 1, fontSize: 11, color: COLORS.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '8px 12px', background: COLORS.surface }}>
+ {inviteUrl}
+ </div>
+ <Btn size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(inviteUrl); toast('Link copied!', 'success') }}>Copy Link</Btn>
+ </div>
+ </Panel>
 
-  async function handleRemoveMember(userId) {
-    if (!confirm('Remove this member from the workspace?')) return
-    try {
-      await removeMember(workspace.id, userId)
-      setMembers(prev => prev.filter(m => m.user_id !== userId))
-      toast('Member removed', 'success')
-    } catch (e) { toast(e.message, 'error') }
-  }
-
-  async function handleRoleChange(userId, newRole) {
-    setRoleChanging(p => ({ ...p, [userId]: true }))
-    try {
-      await updateMemberRole(workspace.id, userId, newRole)
-      setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role: newRole } : m))
-      toast('Role updated', 'success')
-    } catch (e) { toast(e.message, 'error') }
-    setRoleChanging(p => ({ ...p, [userId]: false }))
-  }
-
-  async function handleSendInvites() {
-    if (!inviteEmails.trim()) { toast('Enter at least one email', 'error'); return }
-
-    // Check email config
-    const apiKey    = notifSettings?.resend_api_key
-    const fromEmail = notifSettings?.from_email
-    if (!apiKey || !fromEmail) {
-      toast('Configure Resend in Notifications settings first', 'error')
-      return
-    }
-
-    const emails = inviteEmails.split(/[\s,;]+/).map(e => e.trim()).filter(e => e.includes('@'))
-    if (!emails.length) { toast('No valid email addresses found', 'error'); return }
-
-    setSendingInvites(true)
-    const { sendEmail } = await import('../lib/gmail')
-    const { buildWorkspaceInviteEmail } = await import('../lib/gmail')
-    const inviterName  = user?.user_metadata?.full_name || user?.email || 'Someone'
-    const fromName     = notifSettings?.from_name || 'Pulse'
-
-    let sent = 0, failed = 0
-    for (const email of emails) {
-      try {
-        const token     = await sendWorkspaceInvite(workspace.id, inviterName, email, inviteRole, notifSettings)
-        const inviteUrl = `${window.location.origin}?invite=${workspace?.invite_code}&token=${token}&email=${encodeURIComponent(email)}`
-        const { subject, html } = buildWorkspaceInviteEmail({ inviterName, workspaceName: workspace.name, role: inviteRole, inviteUrl })
-        await sendEmail({ apiKey, fromEmail, fromName, to: email, subject, html })
-        sent++
-      } catch (e) {
-        console.error('Invite failed for', email, e)
-        failed++
-      }
-    }
-
-    // Refresh invites list
-    getWorkspaceInvitations(workspace.id).then(setInvites).catch(() => {})
-    setSendingInvites(false)
-    setInviteEmails('')
-    if (failed === 0) toast(`Invitation${sent > 1 ? 's' : ''} sent to ${sent} ${sent > 1 ? 'people' : 'person'}`, 'success')
-    else toast(`Sent ${sent}, failed ${failed}`, sent > 0 ? 'success' : 'error')
-  }
-
-  async function handleCancelInvite(email) {
-    try {
-      await cancelInvitation(workspace.id, email)
-      setInvites(prev => prev.filter(i => i.email !== email))
-      toast('Invitation cancelled', 'success')
-    } catch (e) { toast(e.message, 'error') }
-  }
-
-  function copyCode() { navigator.clipboard.writeText(code); setCopying(true); setTimeout(() => setCopying(false), 2000) }
-  const inviteUrl = `${window.location.origin}?invite=${code}`
-
-  const roleColors = { owner: COLORS.purple, pm: COLORS.blue, user: COLORS.textMuted, member: COLORS.textMuted }
-  const roleLabel  = { owner: 'Owner', pm: 'PM', user: 'Member', member: 'Member' }
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-
-      {/* Workspace name */}
-      <Panel>
-        <PanelHeader title="Workspace" desc="Your workspace identity and display name." icon="folder" />
-        <FieldRow label="Workspace Name">
-          <div style={{ display:'flex', gap:8 }}>
-            <input value={name} onChange={e => setName(e.target.value)} style={{ ...G.input, flex:1 }} disabled={!isOwner} />
-            {isOwner && <Btn onClick={handleSaveName} disabled={saving || name === workspace?.name} size="sm">{saving ? '…' : 'Save'}</Btn>}
-          </div>
-        </FieldRow>
-      </Panel>
-
-      {/* Invite by email */}
-      {isOwner && (
-        <Panel accent={COLORS.accent}>
-          <PanelHeader title="Invite People" desc="Send email invitations directly. Recipients will receive a signup link with pre-assigned role." icon="mail" />
-
-          {/* Email input */}
-          <FieldRow label="Email Addresses" hint="Separate multiple emails with commas or spaces.">
-            <textarea
-              value={inviteEmails}
-              onChange={e => setInviteEmails(e.target.value)}
-              placeholder="alice@homzmart.com, bob@homzmart.com"
-              rows={2}
-              style={{ ...G.input, resize:'none', lineHeight:1.6 }}
-            />
-          </FieldRow>
-
-          {/* Role + Access picker */}
-          <FieldRow label="Assign Role">
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
-              {[
-                { id:'user',  label:'Member',          desc:'View & update tasks', icon:'👤' },
-                { id:'pm',    label:'Project Manager', desc:'Full project control', icon:'🗂' },
-                { id:'owner', label:'Owner',           desc:'Admin access',        icon:'⭐' },
-              ].map(r => (
-                <button key={r.id} onClick={() => setInviteRole(r.id)}
-                  style={{
-                    padding:'10px 12px', borderRadius:10, border:'none', textAlign:'left', cursor:'pointer',
-                    background: inviteRole===r.id ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.04)',
-                    outline: inviteRole===r.id ? '1.5px solid rgba(79,142,247,0.50)' : '1.5px solid rgba(255,255,255,0.07)',
-                    transition:'background 0.12s,outline 0.12s',
-                  }}>
-                  <div style={{ fontSize:14, marginBottom:5 }}>{r.icon}</div>
-                  <div style={{ fontSize:12, fontWeight:700, color: inviteRole===r.id ? COLORS.accent : COLORS.text, marginBottom:3 }}>{r.label}</div>
-                  <div style={{ fontSize:11, color: COLORS.textMuted, lineHeight:1.4 }}>{r.desc}</div>
-                </button>
-              ))}
-            </div>
-          </FieldRow>
-
-          <Btn onClick={handleSendInvites} disabled={sendingInvites || !inviteEmails.trim()}>
-            {sendingInvites ? <><Spinner size={13} /> Sending…</> : '✉ Send Invitations'}
-          </Btn>
-
-          {!notifSettings?.resend_api_key && (
-            <div style={{ marginTop:12, padding:'9px 13px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.20)', borderRadius:9, fontSize:12, color: COLORS.amber, lineHeight:1.5 }}>
-              ⚠ Configure your Resend API key in the <strong>Notifications</strong> tab to enable email sending.
-            </div>
-          )}
-        </Panel>
-      )}
-
-      {/* Pending invitations */}
-      {isOwner && invites.length > 0 && (
-        <Panel>
-          <PanelHeader title={`Pending Invitations (${invites.length})`} desc="These people have been invited but haven't accepted yet." icon="inbox" />
-          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            {invites.map(inv => (
-              <div key={inv.email} style={{ ...G.row, padding:'10px 14px', display:'flex', alignItems:'center', gap:12 }}>
-                <div style={{ width:32, height:32, borderRadius:9, background:'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>✉</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:500, color: COLORS.textDim, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{inv.email}</div>
-                  <div style={{ fontSize:11, color: COLORS.textMuted, marginTop:1 }}>
-                    Invited by {inv.invited_by} · {roleLabel[inv.role] || inv.role}
-                    {inv.expires_at && ` · Expires ${new Date(inv.expires_at).toLocaleDateString()}`}
-                  </div>
-                </div>
-                <Badge color={COLORS.amber}>Pending</Badge>
-                <Btn size="sm" variant="danger" onClick={() => handleCancelInvite(inv.email)}>Cancel</Btn>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      )}
-
-      {/* Invite code */}
-      <Panel>
-        <PanelHeader title="Invite Code" desc="Share this code for self-serve joining. Anyone with the code can join as a Member." icon="zap" />
-        <div style={{ ...G.row, padding:'16px 20px', marginBottom:12, display:'flex', alignItems:'center', gap:16 }}>
-          <code style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:800, letterSpacing:'0.22em', color: COLORS.accent, flex:1, lineHeight:1 }}>{code}</code>
-          <div style={{ display:'flex', gap:8, flexShrink:0 }}>
-            <Btn size="sm" onClick={copyCode} variant="secondary">{copying ? '✓ Copied' : 'Copy'}</Btn>
-            {isOwner && <Btn size="sm" onClick={handleRegenCode} variant="secondary">Regenerate</Btn>}
-          </div>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <div style={{ ...G.input, flex:1, fontSize:11, color: COLORS.textMuted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', padding:'8px 12px', background: COLORS.surface }}>{inviteUrl}</div>
-          <Btn size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(inviteUrl); toast('Link copied!', 'success') }}>Copy Link</Btn>
-        </div>
-      </Panel>
-
-      {/* Members list */}
-      <Panel>
-        <PanelHeader title={`Members ${!loading ? `(${members.length})` : ''}`} desc="Everyone with access to this workspace. Owners can change roles." icon="user" />
-        {loading ? (
-          <div style={{ display:'flex', justifyContent:'center', padding:24 }}><Spinner /></div>
-        ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            {members.map(m => (
-              <div key={m.user_id} style={{ ...G.row, padding:'10px 14px', display:'flex', alignItems:'center', gap:12 }}>
-                <Avatar name={m.full_name || m.email || m.user_id} size={34} />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:600 }}>{m.full_name || (m.user_id === user?.id ? 'You' : m.user_id.slice(0,8)+'…')}</div>
-                  <div style={{ fontSize:11, color: COLORS.textMuted, marginTop:1 }}>{m.email || ''}</div>
-                </div>
-                {/* Role selector for owners (can't change own role) */}
-                {isOwner && m.user_id !== user?.id ? (
-                  <select
-                    value={m.role}
-                    disabled={!!roleChanging[m.user_id]}
-                    onChange={e => handleRoleChange(m.user_id, e.target.value)}
-                    style={{ background: COLORS.surfaceHover, border:`1px solid ${COLORS.borderStrong}`, borderRadius:7, padding:'3px 8px', fontSize:11, color: COLORS.text, cursor:'pointer', fontFamily:'inherit' }}>
-                    <option value="user">Member</option>
-                    <option value="pm">PM</option>
-                    <option value="owner">Owner</option>
-                  </select>
-                ) : (
-                  <Badge color={roleColors[m.role] || COLORS.textMuted}>{roleLabel[m.role] || m.role}</Badge>
-                )}
-                {m.user_id === user?.id && <Badge color={COLORS.accent}>You</Badge>}
-                {isOwner && m.user_id !== user?.id && (
-                  <Btn size="sm" variant="danger" onClick={() => handleRemoveMember(m.user_id)}>Remove</Btn>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Panel>
-    </div>
-  )
+ <Panel>
+ <PanelHeader title={`Members ${!loading ? `(${members.length})` : ''}`} desc="Everyone with access to this workspace." icon="user" />
+ {loading ? <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}><Spinner /></div> : (
+ <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+ {members.map(m => (
+ <div key={m.user_id} style={{ ...G.row, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12, transition: 'background 0.15s' }}>
+ <Avatar name={m.full_name || m.email || m.user_id} size={34} />
+ <div style={{ flex: 1, minWidth: 0 }}>
+ <div style={{ fontSize: 13, fontWeight: 600 }}>{m.full_name || (m.user_id === user?.id ? 'You' : m.user_id.slice(0,8) + '…')}</div>
+ <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>{m.email || ''}</div>
+ </div>
+ <Badge color={roleColors[m.role] || COLORS.textMuted}>{roleLabel[m.role] || m.role}</Badge>
+ {m.user_id === user?.id && <Badge color={COLORS.accent}>You</Badge>}
+ {isOwner && m.user_id !== user?.id && <Btn size="sm" variant="danger" onClick={() => handleRemoveMember(m.user_id)}>Remove</Btn>}
+ </div>
+ ))}
+ </div>
+ )}
+ </Panel>
+ </div>
+ )
 }
 
+// ── Notifications Tab ─────────────────────────────────────────────────────────
 function NotificationsTab({ toast }) {
  const { notifSettings, updateNotifSettings } = useData()
  const [apiKey, setApiKey] = useState(notifSettings?.resend_api_key || notifSettings?.sendgrid_api_key || '')

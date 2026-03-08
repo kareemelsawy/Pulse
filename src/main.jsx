@@ -1,10 +1,24 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App'
+import App from './App.jsx'
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+// Register service worker for PWA support (enables Chrome install button)
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // SW registration failed — non-critical
+    })
+  })
+} else if ('serviceWorker' in navigator) {
+  // Also register in dev for testing
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
     <App />
-  </React.StrictMode>
+  </StrictMode>,
 )
