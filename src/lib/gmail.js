@@ -44,8 +44,8 @@ function emailShell({ badge, content, appUrl }) {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
 </head>
-<body style="margin:0;padding:0;background:#080A12;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#080A12;padding:32px 16px;">
+<body style="margin:0;padding:0;background:transparent;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:transparent;padding:32px 16px;">
     <tr><td align="center">
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
 
