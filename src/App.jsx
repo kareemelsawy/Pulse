@@ -25,6 +25,9 @@ function AuthGate({ toast }) {
     const params = new URLSearchParams(window.location.search)
     if (params.get('invite')) {
       sessionStorage.setItem('pendingInvite', params.get('invite'))
+      // Also store email token for auto-role assignment after signup
+      if (params.get('token')) sessionStorage.setItem('pendingInviteToken', params.get('token'))
+      if (params.get('email')) sessionStorage.setItem('pendingInviteEmail', params.get('email'))
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [])
