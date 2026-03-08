@@ -10,7 +10,7 @@ import { Avatar, Badge, Icon, Spinner } from '../components/UI'
 // but are NOT full workspace members. They can only see their assigned items.
 export default function GuestView({ toast }) {
   const { user, signOut } = useAuth()
-  const { isDark } = useTheme()
+  const { isDark, toggleTheme } = useTheme()
   const [myTasks,    setMyTasks]    = useState([])
   const [myMeetings, setMyMeetings] = useState([])
   const [loading,    setLoading]    = useState(true)
@@ -62,6 +62,10 @@ export default function GuestView({ toast }) {
         <div style={{ height: 16, width: 1, background: COLORS.border }} />
         <span style={{ fontSize: 12, color: COLORS.textMuted }}>Guest Access</span>
         <div style={{ flex: 1 }} />
+        <button onClick={toggleTheme} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '5px 10px', cursor: 'pointer', color: COLORS.textMuted, fontSize: 12, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}>
+          {isDark ? <Icon name="sun" size={13} color={COLORS.textMuted} /> : <Icon name="moon" size={13} color={COLORS.textMuted} />}
+          {isDark ? 'Light' : 'Dark'}
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Avatar name={name} size={28} />
           <div>
