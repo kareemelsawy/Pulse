@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { joinWorkspaceByCode } from '../lib/db/workspace'
 import { Spinner } from '../components/UI'
-import { supabase } from '../lib/supabase'
 
-// ── Exact same background as LoginPage ────────────────────────────────────────
+// ── Identical to LoginPage AppBackground ─────────────────────────────────────
 function AppBackground() {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden', background: '#000' }}>
@@ -33,7 +32,7 @@ function AppBackground() {
   )
 }
 
-// ── Left branding panel — identical to LoginPage ──────────────────────────────
+// ── Identical to LoginPage LeftPanel ──────────────────────────────────────────
 function LeftPanel() {
   return (
     <div style={{
@@ -41,7 +40,6 @@ function LeftPanel() {
       justifyContent: 'space-between',
       padding: '52px 64px', position: 'relative', zIndex: 1,
     }}>
-      {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{
           width: 34, height: 34, borderRadius: 10, flexShrink: 0,
@@ -50,10 +48,9 @@ function LeftPanel() {
           fontSize: 18, color: '#fff', fontWeight: 900,
           boxShadow: '0 4px 16px rgba(107,142,247,0.40)',
         }}>✦</div>
-        <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16, letterSpacing:'-0.03em', color:'rgba(255,255,255,0.90)' }}>PULSE</div>
+        <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 16, letterSpacing: '-0.03em', color: 'rgba(255,255,255,0.90)' }}>PULSE</div>
       </div>
 
-      {/* Headline */}
       <div>
         <h1 style={{
           fontSize: 'clamp(30px, 3.5vw, 50px)', fontWeight: 700,
@@ -61,7 +58,7 @@ function LeftPanel() {
           color: '#FFFFFF', margin: '0 0 20px',
           fontFamily: "'DM Sans', sans-serif",
         }}>
-          You've been invited<br />to a workspace.
+          You've been<br />invited to join<br />your team.
         </h1>
         <p style={{
           fontSize: 15, fontWeight: 300, lineHeight: 1.75,
@@ -69,11 +66,10 @@ function LeftPanel() {
           maxWidth: 400, margin: 0,
           fontFamily: "'DM Sans', sans-serif",
         }}>
-          Join your team on Pulse to track programs, tasks, and meetings — all in one place.
+          Track programs, tasks and meetings — all in one place built for Homzmart.
         </p>
       </div>
 
-      {/* Footer */}
       <div>
         <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.12)', marginBottom: 14 }} />
         <p style={{
@@ -86,7 +82,25 @@ function LeftPanel() {
   )
 }
 
-// ── Code input field ──────────────────────────────────────────────────────────
+// ── Identical to LoginPage GlassCard ─────────────────────────────────────────
+function GlassCard({ children }) {
+  return (
+    <div style={{
+      background: 'rgba(5,8,30,0.72)',
+      backdropFilter: 'blur(32px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+      border: '1px solid rgba(255,255,255,0.10)',
+      borderRadius: 20,
+      boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.07)',
+      padding: '40px 40px',
+      width: '100%', maxWidth: 380,
+    }}>
+      {children}
+    </div>
+  )
+}
+
+// ── Invite code input — styled like LoginPage Field ───────────────────────────
 function CodeField({ value, onChange, onKeyDown, disabled }) {
   const [focused, setFocused] = useState(false)
   return (
@@ -114,8 +128,8 @@ function CodeField({ value, onChange, onKeyDown, disabled }) {
           letterSpacing: '0.14em', textAlign: 'center',
           fontFamily: "'DM Mono', 'Fira Code', monospace",
           outline: 'none',
-          transition: 'border-color 0.15s, box-shadow 0.15s',
           boxShadow: focused ? '0 0 0 3px rgba(0,120,255,0.15)' : 'none',
+          transition: 'border-color 0.15s, box-shadow 0.15s',
           opacity: disabled ? 0.5 : 1,
         }}
       />
@@ -123,15 +137,40 @@ function CodeField({ value, onChange, onKeyDown, disabled }) {
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Identical to LoginPage PrimaryBtn ─────────────────────────────────────────
+function PrimaryBtn({ loading, onClick, disabled, children }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button onClick={onClick} disabled={disabled || loading}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        width: '100%', padding: '12px 20px', borderRadius: 10,
+        background: disabled || loading
+          ? 'rgba(0,100,255,0.3)'
+          : hover ? 'rgba(0,130,255,0.95)' : 'rgba(0,110,255,0.85)',
+        color: '#fff',
+        border: '1px solid rgba(80,180,255,0.3)',
+        fontWeight: 600, fontSize: 14, fontFamily: "'DM Sans', sans-serif",
+        cursor: disabled || loading ? 'not-allowed' : 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        transition: 'all 0.15s',
+        boxShadow: hover && !disabled && !loading
+          ? '0 8px 28px rgba(0,100,255,0.45)' : '0 4px 14px rgba(0,80,255,0.20)',
+        transform: hover && !disabled && !loading ? 'translateY(-1px)' : 'none',
+      }}>
+      {loading ? <Spinner size={16} /> : children}
+    </button>
+  )
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }) {
   const { user } = useAuth()
   const [code,    setCode]    = useState(defaultCode)
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
-  const [hover,   setHover]   = useState(false)
 
-  // Auto-join silently when a pre-filled code is available
+  // Auto-join silently when a pre-filled invite code comes in via link
   useEffect(() => {
     if (defaultCode && defaultCode.trim()) {
       setLoading(true)
@@ -151,6 +190,18 @@ export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }
     } catch (e) { setError(e.message); setLoading(false) }
   }
 
+  // Auto-joining: show full-screen spinner (same as app loading state)
+  if (loading && defaultCode && !error) return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', gap: 16 }}>
+      <AppBackground />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+        <div style={{ fontSize: 40, color: '#6B8EF7', fontWeight: 900, lineHeight: 1 }}>✦</div>
+        <Spinner size={28} />
+        <span style={{ color: 'rgba(180,200,255,0.5)', fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>Joining workspace…</span>
+      </div>
+    </div>
+  )
+
   return (
     <div style={{
       minHeight: '100vh', display: 'flex',
@@ -159,105 +210,69 @@ export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }
     }}>
       <AppBackground />
 
-      {/* Left panel */}
+      {/* Left branding panel */}
       <div className="login-left-panel" style={{ flex: '0 0 55%', display: 'flex', alignItems: 'stretch', position: 'relative', zIndex: 1 }}>
         <LeftPanel />
       </div>
 
-      {/* Right panel */}
+      {/* Right form panel */}
       <div style={{
         flex: '0 0 45%', display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '40px 24px', position: 'relative', zIndex: 1,
         borderLeft: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <div style={{
-          background: 'rgba(5,8,30,0.72)',
-          backdropFilter: 'blur(32px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          borderRadius: 20,
-          boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.07)',
-          padding: '40px 40px',
-          width: '100%', maxWidth: 380,
-        }}>
-          {/* Loading state while auto-joining */}
-          {loading && defaultCode ? (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ fontSize: 36, color: '#6B8EF7', fontWeight: 900, marginBottom: 16 }}>✦</div>
-              <Spinner size={28} />
-              <p style={{ color: 'rgba(180,200,255,0.5)', fontSize: 13, marginTop: 16 }}>Joining workspace…</p>
-              {error && (
-                <div style={{
-                  background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)',
-                  borderRadius: 10, padding: '10px 14px', marginTop: 16,
-                  fontSize: 13, color: '#FCA5A5', textAlign: 'left',
-                }}>⚠ {error}</div>
-              )}
-            </div>
-          ) : (
-            <>
-              <div style={{ marginBottom: 28 }}>
-                <h2 style={{
-                  fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em',
-                  color: '#EEF2FF', margin: '0 0 6px',
-                }}>Join your workspace</h2>
-                <p style={{ fontSize: 13, color: 'rgba(180,200,255,0.42)', margin: 0, lineHeight: 1.6 }}>
-                  Enter the invite code shared by your admin.
-                </p>
-              </div>
-
-              {error && (
-                <div style={{
-                  background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)',
-                  borderRadius: 8, padding: '10px 14px', marginBottom: 16,
-                  fontSize: 12, color: '#FCA5A5', lineHeight: 1.5,
-                }}>{error}</div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <CodeField
-                  value={code}
-                  onChange={setCode}
-                  onKeyDown={e => e.key === 'Enter' && handleJoin()}
-                  disabled={loading}
-                />
-                <div style={{ marginTop: 2 }}>
-                  <button
-                    onClick={handleJoin}
-                    disabled={loading}
-                    onMouseEnter={() => setHover(true)}
-                    onMouseLeave={() => setHover(false)}
-                    style={{
-                      width: '100%', padding: '12px 20px', borderRadius: 10,
-                      background: loading ? 'rgba(0,100,255,0.3)' : hover ? 'rgba(0,130,255,0.95)' : 'rgba(0,110,255,0.85)',
-                      color: '#fff', border: '1px solid rgba(80,180,255,0.3)',
-                      fontWeight: 600, fontSize: 14, fontFamily: "'DM Sans', sans-serif",
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      transition: 'all 0.15s',
-                      boxShadow: hover && !loading ? '0 8px 28px rgba(0,100,255,0.45)' : '0 4px 14px rgba(0,80,255,0.20)',
-                      transform: hover && !loading ? 'translateY(-1px)' : 'none',
-                    }}
-                  >
-                    {loading ? <Spinner size={16} /> : 'Join workspace →'}
-                  </button>
-                </div>
-              </div>
-
-              <p style={{ fontSize: 12, color: 'rgba(180,200,255,0.28)', textAlign: 'center', marginTop: 24, lineHeight: 1.6 }}>
-                Wrong account?{' '}
-                <button onClick={onSignOut} style={{
-                  background: 'none', border: 'none', padding: 0,
-                  color: 'rgba(130,170,255,0.65)', fontSize: 12, cursor: 'pointer',
-                  fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3,
-                }}>Sign out</button>
-                <span style={{ color: 'rgba(180,200,255,0.18)', margin: '0 6px' }}>·</span>
-                <span style={{ color: 'rgba(180,200,255,0.28)' }}>{user?.email}</span>
+        <div style={{ width: '100%', maxWidth: 380 }}>
+          <GlassCard>
+            <div style={{ marginBottom: 28 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#EEF2FF', margin: '0 0 6px' }}>
+                Join your workspace
+              </h2>
+              <p style={{ fontSize: 13, color: 'rgba(180,200,255,0.42)', margin: 0, lineHeight: 1.6 }}>
+                Enter the invite code shared by your admin.
               </p>
-            </>
-          )}
+            </div>
+
+            {error && (
+              <div style={{
+                background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)',
+                borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+                fontSize: 12, color: '#FCA5A5', lineHeight: 1.5,
+              }}>⚠ {error}</div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <CodeField
+                value={code}
+                onChange={setCode}
+                onKeyDown={e => e.key === 'Enter' && handleJoin()}
+                disabled={loading}
+              />
+              <div style={{ marginTop: 2 }}>
+                <PrimaryBtn loading={loading} onClick={handleJoin} disabled={loading}>
+                  Join workspace →
+                </PrimaryBtn>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 12, color: 'rgba(180,200,255,0.28)', textAlign: 'center', marginTop: 24, lineHeight: 1.6 }}>
+              Wrong account?{' '}
+              <button onClick={onSignOut} style={{
+                background: 'none', border: 'none', padding: 0,
+                color: 'rgba(130,170,255,0.65)', fontSize: 12, cursor: 'pointer',
+                fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3,
+              }}>Sign out</button>
+              <span style={{ color: 'rgba(180,200,255,0.18)', margin: '0 6px' }}>·</span>
+              <span style={{ color: 'rgba(180,200,255,0.28)' }}>{user?.email}</span>
+            </p>
+          </GlassCard>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .login-left-panel { display: none !important; }
+        }
+      `}</style>
     </div>
   )
 }

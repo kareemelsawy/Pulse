@@ -1,18 +1,19 @@
 import { supabase } from '../supabase'
 
 export async function getMyWorkspace(userId) {
-  // Step 1: get workspace_id and role for this user
+  // Step 1: get workspace_id (and role if column exists)
+  // Select only workspace_id first to avoid 500 if role column doesn't exist yet
   const { data: memberRows, error: memberErr } = await supabase
     .from('workspace_members')
-    .select('workspace_id, role')
+    .select('workspace_id')
     .eq('user_id', userId)
     .limit(1)
 
   if (memberErr || !memberRows?.length) return null
 
-  const { workspace_id, role } = memberRows[0]
+  const { workspace_id } = memberRows[0]
 
-  // Step 2: fetch workspace directly (avoids nested-join RLS issues)
+  // Step 2: fetch workspace
   const { data: ws, error: wsErr } = await supabase
     .from('workspaces')
     .select('*')
@@ -20,15 +21,47 @@ export async function getMyWorkspace(userId) {
     .single()
 
   if (wsErr || !ws) return null
+
+  // Step 3: try to fetch role separately (graceful fallback if column missing)
+  let role = 'member'
+  try {
+    const { data: roleRow } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('workspace_id', workspace_id)
+      .limit(1)
+      .single()
+    if (roleRow?.role) role = roleRow.role
+    // If user is the workspace owner, ensure they get admin rights
+    if (ws.owner_id === userId && role === 'member') role = 'owner'
+  } catch (_) {
+    // role column doesn't exist yet — default to owner if they own the workspace
+    if (ws.owner_id === userId) role = 'owner'
+  }
+
   return { ...ws, role }
 }
 
 export async function getWorkspaceMembers(workspaceId) {
-  const { data: memberRows, error } = await supabase
+  // Try with role column first; fall back to without if column missing
+  let memberRows = null
+  const { data: withRole, error: err1 } = await supabase
     .from('workspace_members')
     .select('user_id, role, joined_at')
     .eq('workspace_id', workspaceId)
-  if (error || !memberRows) return []
+  if (!err1) {
+    memberRows = withRole
+  } else {
+    // role column doesn't exist yet — fetch without it
+    const { data: noRole, error: err2 } = await supabase
+      .from('workspace_members')
+      .select('user_id, joined_at')
+      .eq('workspace_id', workspaceId)
+    if (err2 || !noRole) return []
+    memberRows = noRole.map(m => ({ ...m, role: 'member' }))
+  }
+  if (!memberRows) return []
 
   const { data: profileRows } = await supabase
     .from('profiles')
