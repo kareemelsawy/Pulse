@@ -39,8 +39,32 @@ export function DataProvider({ children }) {
     getMyWorkspace(user.id).then(ws => {
       if (cancelled) return
       if (!ws) {
-        setWsError('no_workspace')
-        setLoading(false)
+        // Only show workspace setup if we're confident the user has no workspace.
+        // getMyWorkspace returns null both when there's truly no membership AND
+        // when there's a transient DB/RLS error — so we do a second targeted
+        // check to distinguish between "no membership" vs "fetch failed".
+        import('../lib/supabase').then(({ supabase }) => {
+          supabase
+            .from('workspace_members')
+            .select('workspace_id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .then(({ count, error }) => {
+              if (cancelled) return
+              if (!error && count === 0) {
+                // Confirmed: user genuinely has no workspace membership
+                setWsError('no_workspace')
+              } else if (error) {
+                // DB/RLS error — don't send to invite screen, show a retry state
+                setWsError('fetch_error')
+              } else {
+                // count > 0 but getMyWorkspace failed (RLS/join issue) — retry
+                setWsError('fetch_error')
+              }
+              setLoading(false)
+            })
+        }).catch(() => {
+          if (!cancelled) { setWsError('no_workspace'); setLoading(false) }
+        })
         return
       }
       setWorkspace(ws)
@@ -53,7 +77,7 @@ export function DataProvider({ children }) {
       getNotifLogs(ws.id).then(d => { if (!cancelled) setNotifLogs(d) }).catch(() => {})
       cleanupRef.current = () => { unsubProjects(); unsubTasks(); unsubMembers() }
     }).catch(() => {
-      if (!cancelled) { setWsError('no_workspace'); setLoading(false) }
+      if (!cancelled) { setWsError('fetch_error'); setLoading(false) }
     })
 
     return () => { cancelled = true; cleanupRef.current?.() }

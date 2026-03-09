@@ -73,6 +73,29 @@ function WorkspaceGate({ toast }) {
     </div>
   )
 
+  // Transient DB/RLS error — don't redirect to invite screen, let user retry
+  if (wsError === 'fetch_error') return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.bg, gap: 16 }}>
+      <div style={{ fontSize: 40, color: C.accent, fontWeight: 900, lineHeight: 1 }}>✦</div>
+      <span style={{ color: C.textMuted, fontSize: 14, maxWidth: 320, textAlign: 'center', lineHeight: 1.6 }}>
+        Unable to load your workspace. Please check your connection and try again.
+      </span>
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          marginTop: 8, padding: '10px 24px', borderRadius: 10,
+          background: 'rgba(0,110,255,0.85)', color: '#fff',
+          border: '1px solid rgba(80,180,255,0.3)',
+          fontWeight: 600, fontSize: 14, cursor: 'pointer',
+        }}>
+        Retry
+      </button>
+      <button onClick={signOut} style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
+        Sign out
+      </button>
+    </div>
+  )
+
   if (wsError === 'no_workspace') {
     // Read pendingInvite but do NOT remove it here — WorkspaceSetup will call handleJoined on success
     const pendingInvite = sessionStorage.getItem('pendingInvite')

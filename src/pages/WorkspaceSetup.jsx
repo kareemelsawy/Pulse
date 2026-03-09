@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { joinWorkspaceByCode } from '../lib/db/workspace'
 import { Spinner } from '../components/UI'
 
-// ── Identical to LoginPage AppBackground ─────────────────────────────────────
+// ── Shared background / layout — mirrors LoginPage exactly ───────────────────
 function AppBackground() {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden', background: '#000' }}>
@@ -32,7 +32,6 @@ function AppBackground() {
   )
 }
 
-// ── Identical to LoginPage LeftPanel ──────────────────────────────────────────
 function LeftPanel() {
   return (
     <div style={{
@@ -82,8 +81,43 @@ function LeftPanel() {
   )
 }
 
-// ── Identical to LoginPage GlassCard ─────────────────────────────────────────
-function GlassCard({ children }) {
+// ── Shell — identical structure to LoginPage Shell ────────────────────────────
+function Shell({ children }) {
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex',
+      fontFamily: "'DM Sans', system-ui, sans-serif",
+      position: 'relative', color: '#EEF2FF',
+    }}>
+      <AppBackground />
+
+      {/* Left panel */}
+      <div className="login-left-panel" style={{ flex: '0 0 55%', display: 'flex', alignItems: 'stretch', position: 'relative', zIndex: 1 }}>
+        <LeftPanel />
+      </div>
+
+      {/* Right panel */}
+      <div style={{
+        flex: '0 0 45%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '40px 24px', position: 'relative', zIndex: 1,
+        borderLeft: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ width: '100%', maxWidth: 380 }}>
+          {children}
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .login-left-panel { display: none !important; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+// ── Glass card — identical to LoginPage GlassCard ─────────────────────────────
+function GlassCard({ children, style = {} }) {
   return (
     <div style={{
       background: 'rgba(5,8,30,0.72)',
@@ -94,6 +128,7 @@ function GlassCard({ children }) {
       boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.07)',
       padding: '40px 40px',
       width: '100%', maxWidth: 380,
+      ...style,
     }}>
       {children}
     </div>
@@ -137,7 +172,7 @@ function CodeField({ value, onChange, onKeyDown, disabled }) {
   )
 }
 
-// ── Identical to LoginPage PrimaryBtn ─────────────────────────────────────────
+// ── Primary button — identical to LoginPage PrimaryBtn ────────────────────────
 function PrimaryBtn({ loading, onClick, disabled, children }) {
   const [hover, setHover] = useState(false)
   return (
@@ -190,89 +225,68 @@ export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }
     } catch (e) { setError(e.message); setLoading(false) }
   }
 
-  // Auto-joining: show full-screen spinner (same as app loading state)
+  // Auto-joining via link: show full-screen spinner with same branding
   if (loading && defaultCode && !error) return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#000', gap: 16 }}>
-      <AppBackground />
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+    <Shell>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', gap: 16, minHeight: 200,
+      }}>
         <div style={{ fontSize: 40, color: '#6B8EF7', fontWeight: 900, lineHeight: 1 }}>✦</div>
         <Spinner size={28} />
-        <span style={{ color: 'rgba(180,200,255,0.5)', fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>Joining workspace…</span>
+        <span style={{ color: 'rgba(180,200,255,0.5)', fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
+          Joining workspace…
+        </span>
       </div>
-    </div>
+    </Shell>
   )
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex',
-      fontFamily: "'DM Sans', system-ui, sans-serif",
-      position: 'relative', color: '#EEF2FF',
-    }}>
-      <AppBackground />
-
-      {/* Left branding panel */}
-      <div className="login-left-panel" style={{ flex: '0 0 55%', display: 'flex', alignItems: 'stretch', position: 'relative', zIndex: 1 }}>
-        <LeftPanel />
-      </div>
-
-      {/* Right form panel */}
-      <div style={{
-        flex: '0 0 45%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '40px 24px', position: 'relative', zIndex: 1,
-        borderLeft: '1px solid rgba(255,255,255,0.06)',
-      }}>
-        <div style={{ width: '100%', maxWidth: 380 }}>
-          <GlassCard>
-            <div style={{ marginBottom: 28 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#EEF2FF', margin: '0 0 6px' }}>
-                Join your workspace
-              </h2>
-              <p style={{ fontSize: 13, color: 'rgba(180,200,255,0.42)', margin: 0, lineHeight: 1.6 }}>
-                Enter the invite code shared by your admin.
-              </p>
-            </div>
-
-            {error && (
-              <div style={{
-                background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)',
-                borderRadius: 8, padding: '10px 14px', marginBottom: 16,
-                fontSize: 12, color: '#FCA5A5', lineHeight: 1.5,
-              }}>⚠ {error}</div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <CodeField
-                value={code}
-                onChange={setCode}
-                onKeyDown={e => e.key === 'Enter' && handleJoin()}
-                disabled={loading}
-              />
-              <div style={{ marginTop: 2 }}>
-                <PrimaryBtn loading={loading} onClick={handleJoin} disabled={loading}>
-                  Join workspace →
-                </PrimaryBtn>
-              </div>
-            </div>
-
-            <p style={{ fontSize: 12, color: 'rgba(180,200,255,0.28)', textAlign: 'center', marginTop: 24, lineHeight: 1.6 }}>
-              Wrong account?{' '}
-              <button onClick={onSignOut} style={{
-                background: 'none', border: 'none', padding: 0,
-                color: 'rgba(130,170,255,0.65)', fontSize: 12, cursor: 'pointer',
-                fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3,
-              }}>Sign out</button>
-              <span style={{ color: 'rgba(180,200,255,0.18)', margin: '0 6px' }}>·</span>
-              <span style={{ color: 'rgba(180,200,255,0.28)' }}>{user?.email}</span>
-            </p>
-          </GlassCard>
+    <Shell>
+      <GlassCard>
+        <div style={{ marginBottom: 28 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#EEF2FF', margin: '0 0 6px' }}>
+            Join your workspace
+          </h2>
+          <p style={{ fontSize: 13, color: 'rgba(180,200,255,0.42)', margin: 0, lineHeight: 1.6 }}>
+            Enter the invite code shared by your admin.
+          </p>
         </div>
-      </div>
 
-      <style>{`
-        @media (max-width: 768px) {
-          .login-left-panel { display: none !important; }
-        }
-      `}</style>
-    </div>
+        {error && (
+          <div style={{
+            background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)',
+            borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+            fontSize: 12, color: '#FCA5A5', lineHeight: 1.5,
+            display: 'flex', gap: 8,
+          }}><span>⚠</span><span>{error}</span></div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <CodeField
+            value={code}
+            onChange={setCode}
+            onKeyDown={e => e.key === 'Enter' && handleJoin()}
+            disabled={loading}
+          />
+          <div style={{ marginTop: 2 }}>
+            <PrimaryBtn loading={loading} onClick={handleJoin} disabled={loading}>
+              Join workspace →
+            </PrimaryBtn>
+          </div>
+        </div>
+
+        <p style={{ fontSize: 12, color: 'rgba(180,200,255,0.28)', textAlign: 'center', marginTop: 24, lineHeight: 1.6 }}>
+          Wrong account?{' '}
+          <button onClick={onSignOut} style={{
+            background: 'none', border: 'none', padding: 0,
+            color: 'rgba(130,170,255,0.65)', fontSize: 12, cursor: 'pointer',
+            fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3,
+          }}>Sign out</button>
+          <span style={{ color: 'rgba(180,200,255,0.18)', margin: '0 6px' }}>·</span>
+          <span style={{ color: 'rgba(180,200,255,0.28)' }}>{user?.email}</span>
+        </p>
+      </GlassCard>
+    </Shell>
   )
 }
