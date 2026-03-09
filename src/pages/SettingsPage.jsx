@@ -1342,18 +1342,29 @@ export default function SettingsPage({ toast }) {
   const [tab, setTab] = useState('account')
 
   const TABS = [
-    { id: 'account',       label: 'Account',       icon: 'user'      },
+    { id: 'account',       label: 'Account',       icon: 'user'   },
     ...(isAdmin ? [{ id: 'workspace', label: 'Workspace', icon: 'folder' }] : []),
-    { id: 'notifications', label: 'Notifications', icon: 'bell'      },
+    { id: 'notifications', label: 'Notifications',  icon: 'bell'   },
+    { id: 'users',         label: 'Users',          icon: 'users'  },
     ...(isAdmin ? [
-      { id: 'users',        label: 'Users',         icon: 'users'     },
-      { id: 'integrations', label: 'Integrations',  icon: 'zap'       },
-      { id: 'data-import',  label: 'Data Import',   icon: 'list'      },
+      { id: 'integrations', label: 'Integrations',  icon: 'zap'   },
+      { id: 'data-import',  label: 'Data Import',   icon: 'list'  },
     ] : []),
   ]
 
+  // DEBUG: log to console
+  console.log('[SettingsPg] workspace=', workspace, 'isAdmin=', isAdmin, 'role=', workspace?.role, 'tabs=', TABS.map(t=>t.id))
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', minHeight: 0 }}>
+      {/* DEBUG BANNER */}
+      <div style={{ position: 'fixed', bottom: 10, right: 10, background: '#111', border: '1px solid #6B8EF7', borderRadius: 10, padding: '10px 14px', zIndex: 9999, fontSize: 11, fontFamily: 'monospace', color: '#fff', maxWidth: 320 }}>
+        <div style={{ fontWeight: 700, marginBottom: 4, color: '#6B8EF7' }}>DEBUG — Settings</div>
+        <div>role: <b style={{color:'#F9A8D4'}}>{workspace?.role || 'undefined'}</b></div>
+        <div>isAdmin: <b style={{color: isAdmin ? '#86EFAC' : '#FCA5A5'}}>{String(isAdmin)}</b></div>
+        <div>workspace: <b style={{color:'#FCD34D'}}>{workspace?.name || 'null'}</b></div>
+        <div>tabs: <b style={{color:'#7DD3FC'}}>{TABS.map(t=>t.id).join(', ')}</b></div>
+      </div>
       {/* Sidebar nav */}
       <div style={{
         width: 200, flexShrink: 0,
@@ -1401,9 +1412,9 @@ export default function SettingsPage({ toast }) {
           {tab === 'account'       && <AccountTab       toast={toast} />}
           {tab === 'workspace'     && isAdmin && <WorkspaceTab toast={toast} />}
           {tab === 'notifications' && <NotificationsTab toast={toast} />}
-          {tab === 'users'         && isAdmin && <UsersTab toast={toast} />}
+          {tab === 'users'         && <UsersTab         toast={toast} />}
           {tab === 'integrations'  && isAdmin && <IntegrationsTab toast={toast} />}
-          {tab === 'data-import'   && isAdmin && <DataImportTab toast={toast} />}
+          {tab === 'data-import'   && isAdmin && <DataImportTab  toast={toast} />}
         </div>
       </div>
     </div>
