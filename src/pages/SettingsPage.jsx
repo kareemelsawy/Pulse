@@ -1337,13 +1337,11 @@ function UsersTab({ toast }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function SettingsPage({ toast }) {
-  const { workspace, isAdmin, isPM, isBasicUser } = useData()
+  const { workspace } = useData()
   const { user } = useAuth()
-  const isOwner = isAdmin  // alias
   const [tab, setTab] = useState('account')
 
-  const role = workspace?.role || 'member'
-  const canAdmin = role === 'owner' || role === 'admin'
+  const canAdmin = workspace?.owner_id === user?.id || ['owner', 'admin'].includes(workspace?.role)
 
   const TABS = [
     { id: 'account',       label: 'Account',       icon: 'user'      },
