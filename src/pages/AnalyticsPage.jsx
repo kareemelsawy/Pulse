@@ -71,34 +71,40 @@ function displayName(raw) {
 }
 
 export default function AnalyticsPage() {
-  const { projects, tasks, members } = useData()
+  const { projects, tasks, members, isAdmin, isPM, isBasicUser, myProjects, myTasks, workspace } = useData()
+
+  // Scope data to role: admins see all, PMs see assigned programs, users see their tasks
+  const scopedProjects = isAdmin ? projects.filter(p => !p.is_pipeline) : myProjects
+  const scopedTasks    = isAdmin ? tasks : isPM
+    ? tasks.filter(t => scopedProjects.some(p => p.id === t.project_id))
+    : myTasks
 
   const stats = useMemo(() => {
     const now = new Date()
-    const done = tasks.filter(t => t.status === 'done')
-    const overdue = tasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < now)
-    const completionRate = tasks.length > 0 ? Math.round((done.length / tasks.length) * 100) : 0
+    const done = scopedTasks.filter(t => t.status === 'done')
+    const overdue = scopedTasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < now)
+    const completionRate = scopedTasks.length > 0 ? Math.round((done.length / scopedTasks.length) * 100) : 0
 
     // Tasks completed per project
-    const projectStats = projects.map(p => {
-      const pt = tasks.filter(t => t.project_id === p.id)
+    const projectStats = scopedProjects.map(p => {
+      const pt = scopedTasks.filter(t => t.project_id === p.id)
       const pd = pt.filter(t => t.status === 'done')
       return { ...p, total: pt.length, done: pd.length, rate: pt.length > 0 ? Math.round((pd.length / pt.length) * 100) : 0 }
     }).sort((a, b) => b.total - a.total)
 
     // Tasks by status (for donut)
     const statusDist = Object.entries(STATUS).map(([k, v]) => ({
-      label: v.label, value: tasks.filter(t => t.status === k).length, color: v.color
+      label: v.label, value: scopedTasks.filter(t => t.status === k).length, color: v.color
     }))
 
     // Tasks by priority
     const priorityDist = Object.entries(PRIORITY).map(([k, v]) => ({
-      label: v.label, value: tasks.filter(t => t.priority === k).length, color: v.color
+      label: v.label, value: scopedTasks.filter(t => t.priority === k).length, color: v.color
     }))
 
     // Assignee workload
     const assigneeMap = {}
-    tasks.forEach(t => {
+    scopedTasks.forEach(t => {
       if (!t.assignee_name) return
       if (!assigneeMap[t.assignee_name]) assigneeMap[t.assignee_name] = { total: 0, done: 0 }
       assigneeMap[t.assignee_name].total++
@@ -108,7 +114,7 @@ export default function AnalyticsPage() {
 
     // Tasks created over last 30 days (bucketed by week)
     const weeks = [0, 0, 0, 0]
-    tasks.forEach(t => {
+    scopedTasks.forEach(t => {
       if (!t.created_at) return
       const daysAgo = Math.floor((now - new Date(t.created_at)) / (1000 * 60 * 60 * 24))
       if (daysAgo < 7) weeks[3]++
@@ -118,20 +124,20 @@ export default function AnalyticsPage() {
     })
 
     // Average task age (days since created for non-done tasks)
-    const openTasks = tasks.filter(t => t.status !== 'done' && t.created_at)
+    const openTasks = scopedTasks.filter(t => t.status !== 'done' && t.created_at)
     const avgAge = openTasks.length > 0
       ? Math.round(openTasks.reduce((a, t) => a + (now - new Date(t.created_at)) / (1000 * 60 * 60 * 24), 0) / openTasks.length)
       : 0
 
     // Due soon (next 7 days)
-    const dueSoon = tasks.filter(t => {
+    const dueSoon = scopedTasks.filter(t => {
       if (t.status === 'done' || !t.due_date) return false
       const days = (new Date(t.due_date) - now) / (1000 * 60 * 60 * 24)
       return days >= 0 && days <= 7
     })
 
     return { done, overdue, completionRate, projectStats, statusDist, priorityDist, assigneeStats, weeks, avgAge, dueSoon }
-  }, [projects, tasks])
+  },[scopedProjects, scopedTasks])
 
   const maxProjectTotal = Math.max(...stats.projectStats.map(p => p.total), 1)
   const maxWeek = Math.max(...stats.weeks, 1)
@@ -146,7 +152,7 @@ export default function AnalyticsPage() {
 
         {/* Top KPI row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
-          <StatCard title="Total Tasks"       value={tasks.length}               sub={`across ${projects.length} projects`}    color={COLORS.accent}  icon={<Icon name="tasks" size={14} color={COLORS.textMuted} />} />
+          <StatCard title="Total Tasks"       value={scopedTasks.length}               sub={`across ${scopedProjects.length} program${scopedProjects.length !== 1 ? 's' : ''}`}    color={COLORS.accent}  icon={<Icon name="tasks" size={14} color={COLORS.textMuted} />} />
           <StatCard title="Completion Rate"   value={`${stats.completionRate}%`} sub={`${stats.done.length} tasks done`}       color={COLORS.green}   icon={<Icon name="check" size={13} />} />
           <StatCard title="Overdue"           value={stats.overdue.length}       sub="need attention"                          color={stats.overdue.length > 0 ? COLORS.red : COLORS.green} icon={<Icon name="warning" size={13} />} />
           <StatCard title="Due This Week"     value={stats.dueSoon.length}       sub="tasks approaching deadline"              color={COLORS.amber}   icon={<Icon name="clock" size={14} color={COLORS.textMuted} />} />
@@ -264,7 +270,7 @@ export default function AnalyticsPage() {
           <div style={{ background: COLORS.surfaceHover, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: `1px solid ${COLORS.borderStrong}`, borderRadius: 16, padding: '20px 22px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Unassigned Tasks</div>
             <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, marginBottom: 4 }}>
-              {tasks.filter(t => !t.assignee_name && t.status !== 'done').length}
+              {scopedTasks.filter(t => !t.assignee_name && t.status !== 'done').length}
             </div>
             <div style={{ fontSize: 12, color: COLORS.textMuted }}>open tasks with no assignee</div>
           </div>
@@ -301,7 +307,7 @@ export default function AnalyticsPage() {
           title="All Projects — Timeline"
           mode="projects"
           rows={projects.map(p => {
-            const ptasks = tasks.filter(t => t.project_id === p.id && t.due_date)
+            const ptasks = scopedTasks.filter(t => t.project_id === p.id && t.due_date)
             const dates  = ptasks.map(t => t.due_date).sort()
             const start  = ptasks.find(t => t.created_at)?.created_at?.split('T')[0] || dates[0] || null
             return { id: p.id, label: p.name, color: p.color, start, end: dates[dates.length - 1] || null }
@@ -312,7 +318,7 @@ export default function AnalyticsPage() {
         <GanttChart
           title="All Tasks — Timeline"
           mode="tasks"
-          rows={tasks.filter(t => t.due_date).map(t => ({
+          rows={scopedTasks.filter(t => t.due_date).map(t => ({
             id: t.id, label: t.title, status: t.status,
             start: t.created_at?.split('T')[0] || t.due_date,
             end: t.due_date,

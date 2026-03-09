@@ -327,7 +327,7 @@ export function NewProjectModal({ onClose, toast }) {
     <Modal onClose={onClose}>
       <h2 style={{ fontWeight: 700, fontSize: 17, marginBottom: 20, paddingBottom: 2 }}>New Project</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div><label style={lStyle}>Project Name *</label><input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Website Redesign" autoFocus onKeyDown={e => e.key === 'Enter' && handleCreate()} style={{ ...iStyle, background: COLORS.inputBg }} /></div>
+        <div><label style={lStyle}>Program Name *</label><input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Website Redesign" autoFocus onKeyDown={e => e.key === 'Enter' && handleCreate()} style={{ ...iStyle, background: COLORS.inputBg }} /></div>
         <div><label style={lStyle}>Description</label><textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What is this project about?" rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5, background: COLORS.inputBg }} /></div>
         <div>
           <label style={lStyle}>Color</label>
@@ -550,7 +550,7 @@ export function NewPipelineModal({ onClose, toast }) {
       <h2 style={{ fontWeight: 700, fontSize: 17, marginBottom: 6 }}>Add to Pipeline</h2>
       <p style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>Save a project idea. No tasks, no deadlines — just a placeholder until you're ready.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div><label style={lStyle}>Project Name *</label><input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mobile App Redesign" autoFocus onKeyDown={e => e.key === 'Enter' && handleCreate()} style={{ ...iStyle, background: COLORS.inputBg }} /></div>
+        <div><label style={lStyle}>Program Name *</label><input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mobile App Redesign" autoFocus onKeyDown={e => e.key === 'Enter' && handleCreate()} style={{ ...iStyle, background: COLORS.inputBg }} /></div>
         <div><label style={lStyle}>Description / Notes</label><textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="What's the idea?" rows={3} style={{ ...iStyle, resize: 'vertical', lineHeight: 1.5, background: COLORS.inputBg }} /></div>
         <div>
           <label style={lStyle}>Color</label>

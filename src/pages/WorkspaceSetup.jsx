@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { joinWorkspaceByCode } from '../lib/db/workspace'
 import { Spinner } from '../components/UI'
@@ -39,6 +39,17 @@ export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }
   const [error,   setError]   = useState(null)
   const [focused, setFocused] = useState(false)
 
+  // Auto-join when a code is pre-filled from an invite link
+  useEffect(() => {
+    if (defaultCode && defaultCode.trim()) {
+      setLoading(true)
+      setError(null)
+      joinWorkspaceByCode(defaultCode.trim(), user.id)
+        .then(ws => onJoined(ws))
+        .catch(e => { setError(e.message); setLoading(false) })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleJoin() {
     if (!code.trim()) { setError('Please enter an invite code.'); return }
     setError(null); setLoading(true)
@@ -47,6 +58,19 @@ export default function WorkspaceSetup({ onJoined, onSignOut, defaultCode = '' }
       onJoined(ws)
     } catch (e) { setError(e.message); setLoading(false) }
   }
+
+  // Show fullscreen spinner while auto-joining
+  if (loading && defaultCode) return (
+    <>
+      <AppBackground />
+      <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ fontSize: 40, color: '#6B8EF7', fontWeight: 900, lineHeight: 1 }}>✦</div>
+        <Spinner size={28} />
+        <span style={{ color: 'rgba(180,200,255,0.5)', fontSize: 13 }}>Joining workspace…</span>
+        {error && <div style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, padding: '10px 20px', fontSize: 13, color: '#FCA5A5' }}>⚠ {error}</div>}
+      </div>
+    </>
+  )
 
   return (
     <>
