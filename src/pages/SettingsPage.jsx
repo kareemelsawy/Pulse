@@ -1062,6 +1062,9 @@ function MemberRow({ m, currentUserId, isAdmin, onRoleChange, onRemove }) {
   )
 }
 
+function UsersTab({ toast }) {
+  const { workspace, projects, isAdmin } = useData()
+  const { user } = useAuth()
   const [members,     setMembers]     = useState([])
   const [loading,     setLoading]     = useState(true)
   const [view,        setView]        = useState('members')
