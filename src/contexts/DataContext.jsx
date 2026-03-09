@@ -122,12 +122,22 @@ export function DataProvider({ children }) {
       actionItems: actionItems || [],
       appUrl,
     })
-    const results = await Promise.allSettled(
-      attendeeEmails.map(to => sendEmail({ ...cfg, to, subject, html }))
-    )
-    const failed = results.filter(r => r.status === 'rejected')
-    if (failed.length === results.length) throw new Error(failed[0].reason?.message || 'Failed to send emails')
-    if (failed.length > 0) console.warn(`${failed.length}/${results.length} emails failed`)
+    // Send sequentially with a 600ms gap to stay under Resend's 2/sec rate limit
+    let failures = 0
+    for (let i = 0; i < attendeeEmails.length; i++) {
+      try {
+        await sendEmail({ ...cfg, to: attendeeEmails[i], subject, html })
+      } catch (e) {
+        console.warn(`Email to ${attendeeEmails[i]} failed:`, e.message)
+        failures++
+      }
+      // Wait between sends — skip delay after the last one
+      if (i < attendeeEmails.length - 1) {
+        await new Promise(res => setTimeout(res, 600))
+      }
+    }
+    if (failures === attendeeEmails.length) throw new Error('All emails failed to send. Check your Resend configuration.')
+    if (failures > 0) console.warn(`${failures}/${attendeeEmails.length} emails failed`)
   }, [notifSettings, user, emailConfig])
 
   // ─── Notifications ────────────────────────────────────────────────────────

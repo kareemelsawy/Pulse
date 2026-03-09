@@ -953,15 +953,122 @@ function DataImportTab({ toast }) {
 
 
 // ── UsersTab ──────────────────────────────────────────────────────────────────
-function UsersTab({ toast }) {
-  const { workspace, projects } = useData()
-  const { user } = useAuth()
+function RoleTag({ role }) {
+  const map = {
+    owner:  { label: 'Owner',           color: '#C084FC', icon: '👑' },
+    admin:  { label: 'Admin',           color: '#C084FC', icon: '👑' },
+    pm:     { label: 'Program Manager', color: '#6B8EF7', icon: '📋' },
+    user:   { label: 'User',            color: '#34D17A', icon: '👤' },
+    member: { label: 'User',            color: '#34D17A', icon: '👤' },
+  }
+  const r = map[role] || { label: role, color: COLORS.textMuted, icon: '👤' }
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+      background: r.color + '18', color: r.color, border: `1px solid ${r.color}33`,
+      whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4,
+    }}>
+      {r.icon} {r.label}
+    </span>
+  )
+}
+
+const ROLE_DEFS = [
+  { v: 'admin', icon: '👑', label: 'Admin',           color: '#C084FC', desc: 'Full access — manage users, all programs, settings and config.' },
+  { v: 'pm',    icon: '📋', label: 'Program Manager', color: '#6B8EF7', desc: 'Manages assigned programs and their tasks. Sees analytics for their programs.' },
+  { v: 'user',  icon: '👤', label: 'User',            color: '#34D17A', desc: 'Sees only tasks assigned to them. No pipeline or admin access.' },
+]
+
+function MemberRow({ m, currentUserId, isAdmin, onRoleChange, onRemove }) {
+  const isMe = m.user_id === currentUserId
+  const [changing, setChanging] = useState(false)
+  const displayRole = m.role === 'owner' ? 'admin' : m.role === 'member' ? 'user' : m.role
+
+  async function handleRole(e) {
+    setChanging(true)
+    await onRoleChange(m.user_id, e.target.value)
+    setChanging(false)
+  }
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 16px', borderRadius: 12,
+      background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+      transition: 'border-color 0.15s',
+    }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.borderStrong}
+      onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
+
+      {/* Avatar */}
+      <div style={{
+        width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+        background: `${(ROLE_DEFS.find(r => r.v === displayRole)?.color || '#888')}22`,
+        border: `2px solid ${(ROLE_DEFS.find(r => r.v === displayRole)?.color || '#888')}44`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 15, fontWeight: 800,
+        color: ROLE_DEFS.find(r => r.v === displayRole)?.color || '#888',
+      }}>
+        {(m.full_name || m.email || '?')[0].toUpperCase()}
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {m.full_name || m.email?.split('@')[0] || m.user_id.slice(0, 8) + '…'}
+          {isMe && <span style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 400 }}>you</span>}
+        </div>
+        {m.email && <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>{m.email}</div>}
+      </div>
+
+      {/* Role tag */}
+      <RoleTag role={m.role} />
+
+      {/* Role change dropdown — admins only, not self */}
+      {isAdmin && !isMe && m.role !== 'owner' && (
+        <select
+          value={displayRole}
+          onChange={handleRole}
+          disabled={changing}
+          style={{
+            background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+            color: COLORS.textDim, borderRadius: 8, padding: '5px 10px',
+            fontSize: 12, outline: 'none', cursor: 'pointer',
+            fontFamily: 'inherit', opacity: changing ? 0.5 : 1,
+          }}>
+          <option value="admin">Admin</option>
+          <option value="pm">Program Manager</option>
+          <option value="user">User</option>
+        </select>
+      )}
+
+      {/* Remove button — admins only, not self, not owner */}
+      {isAdmin && !isMe && m.role !== 'owner' && (
+        <button
+          onClick={() => onRemove(m.user_id)}
+          style={{
+            background: 'none', border: `1px solid ${COLORS.border}`,
+            borderRadius: 7, padding: '5px 12px',
+            color: COLORS.red, fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+            transition: 'border-color 0.15s, background 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = COLORS.red; e.currentTarget.style.background = COLORS.red + '12' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.background = 'none' }}>
+          Remove
+        </button>
+      )}
+    </div>
+  )
+}
+
   const [members,     setMembers]     = useState([])
   const [loading,     setLoading]     = useState(true)
-  const [view,        setView]        = useState('members') // 'members' | 'invite'
+  const [view,        setView]        = useState('members')
   const [inviting,    setInviting]    = useState(false)
+  const [copied,      setCopied]      = useState(false)
 
-  // Invite form
+  // Invite form state
   const [emails,      setEmails]      = useState([])
   const [emailInput,  setEmailInput]  = useState('')
   const [role,        setRole]        = useState('user')
@@ -972,35 +1079,13 @@ function UsersTab({ toast }) {
   const code        = workspace?.invite_code || ''
   const inviteUrl   = `${window.location.origin}?invite=${code}`
 
-  const ROLE_DEFS = [
-    {
-      v: 'admin',
-      icon: '👑',
-      label: 'Admin',
-      desc: 'Full dashboard access. Can add/remove users, manage all programs, settings, and technical config.',
-      color: '#C084FC',
-    },
-    {
-      v: 'pm',
-      icon: '📋',
-      label: 'Program Manager',
-      desc: 'Access to assigned programs and their tasks. Sees meetings they attended. Can view analytics & overview for their programs.',
-      color: '#6B8EF7',
-    },
-    {
-      v: 'user',
-      icon: '👤',
-      label: 'User',
-      desc: 'Sees only tasks assigned to them. Limited to their meetings, no pipeline access.',
-      color: '#34D17A',
-    },
-  ]
-
-  const roleColor = { admin: '#C084FC', pm: '#6B8EF7', user: '#34D17A', owner: '#C084FC', member: '#34D17A' }
-  const roleLabel = { admin: 'Admin', pm: 'Program Manager', user: 'User', owner: 'Admin', member: 'User' }
-
   useEffect(() => {
-    if (workspace?.id) getWorkspaceMembers(workspace.id).then(m => { setMembers(m); setLoading(false) }).catch(() => setLoading(false))
+    if (workspace?.id) {
+      setLoading(true)
+      getWorkspaceMembers(workspace.id)
+        .then(m => { setMembers(m); setLoading(false) })
+        .catch(() => setLoading(false))
+    }
   }, [workspace?.id])
 
   function addEmail() {
@@ -1016,19 +1101,16 @@ function UsersTab({ toast }) {
     if (!valid.length) { toast('Enter at least one valid email', 'error'); return }
     setInviting(true)
     try {
-      // Store invite records
       for (const email of valid) {
-        try {
-          await supabase.from('workspace_invites').upsert({
-            workspace_id: workspace.id,
-            email: email,
-            role,
-            project_ids: selProjects.length ? selProjects : null,
-            invite_code: code,
-            invited_by: user?.email,
-            created_at: new Date().toISOString(),
-          }, { onConflict: 'workspace_id,email', ignoreDuplicates: false })
-        } catch(e) { /* table may not exist */ }
+        await supabase.from('workspace_invites').upsert({
+          workspace_id: workspace.id,
+          email,
+          role,
+          project_ids: selProjects.length ? selProjects : null,
+          invite_code: code,
+          invited_by: user?.email,
+          created_at: new Date().toISOString(),
+        }, { onConflict: 'workspace_id,email', ignoreDuplicates: false }).catch(() => {})
       }
       setInviteResult({ emails: valid, url: inviteUrl })
       setEmails([])
@@ -1058,198 +1140,193 @@ function UsersTab({ toast }) {
     } catch(e) { toast(e.message, 'error') }
   }
 
+  function copyInviteUrl() {
+    navigator.clipboard.writeText(inviteUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+    toast('Invite link copied!', 'success')
+  }
+
   return (
-    <div>
-      {/* Sub-nav */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: G.panelBg, borderRadius: 10, padding: 4, width: 'fit-content' }}>
-        {[['members', '👥 Members'], ['invite', '✉ Invite User']].map(([v, l]) => (
-          <button key={v} onClick={() => setView(v)} style={{
-            padding: '6px 16px', borderRadius: 7, fontSize: 12, fontWeight: 600,
-            background: view === v ? COLORS.surface : 'none',
-            border: view === v ? `1px solid ${COLORS.border}` : '1px solid transparent',
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+      {/* ── Sub-nav ── */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: COLORS.surface, borderRadius: 12, padding: 4, width: 'fit-content', border: `1px solid ${COLORS.border}` }}>
+        {[['members', '👥  Members'], ['invite', '✉  Invite User']].map(([v, l]) => (
+          <button key={v} onClick={() => { setView(v); setInviteResult(null) }} style={{
+            padding: '7px 18px', borderRadius: 9, fontSize: 12, fontWeight: 600,
+            background: view === v ? COLORS.surfaceHover : 'transparent',
+            border: view === v ? `1px solid ${COLORS.borderStrong}` : '1px solid transparent',
             color: view === v ? COLORS.text : COLORS.textMuted,
             cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s',
           }}>{l}</button>
         ))}
       </div>
 
-      {/* Members list */}
+      {/* ── Members list ── */}
       {view === 'members' && (
-        <div>
+        <Panel accent={COLORS.accent}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <PanelHeader
+              title={loading ? 'Members' : `Members (${members.length})`}
+              desc="Manage roles and access for everyone in this workspace."
+              icon="user"
+            />
+            <Btn size="sm" onClick={() => setView('invite')}>+ Invite</Btn>
+          </div>
+
           {loading ? (
-            <div style={{ color: COLORS.textMuted, fontSize: 13 }}>Loading members…</div>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}><Spinner /></div>
+          ) : members.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 0', color: COLORS.textMuted, fontSize: 13 }}>No members found.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {members.map(m => {
-                const isMe = m.user_id === user?.id
-                const rDef = ROLE_DEFS.find(r => r.v === m.role || (m.role === 'owner' && r.v === 'admin') || (m.role === 'member' && r.v === 'user'))
-                return (
-                  <div key={m.user_id} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '12px 14px', background: G.panelBg,
-                    borderRadius: 10, border: `1px solid ${COLORS.border}`,
-                  }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                      background: `${roleColor[m.role] || '#888'}22`,
-                      border: `1px solid ${roleColor[m.role] || '#888'}44`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14, fontWeight: 700, color: roleColor[m.role] || '#888',
-                    }}>
-                      {(m.full_name || m.email || '?')[0].toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>
-                        {m.full_name || m.email || m.user_id.slice(0, 8) + '…'}
-                        {isMe && <span style={{ fontSize: 10, color: COLORS.textMuted, marginLeft: 6 }}>you</span>}
-                      </div>
-                      {m.email && <div style={{ fontSize: 11, color: COLORS.textMuted }}>{m.email}</div>}
-                    </div>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 20,
-                      background: `${roleColor[m.role] || '#888'}18`,
-                      color: roleColor[m.role] || '#888',
-                      border: `1px solid ${roleColor[m.role] || '#888'}33`,
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {rDef?.icon} {roleLabel[m.role] || m.role}
-                    </span>
-                    {!isMe && (
-                      <select
-                        value={m.role === 'owner' ? 'admin' : m.role === 'member' ? 'user' : m.role}
-                        onChange={e => handleChangeRole(m.user_id, e.target.value)}
-                        style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, color: COLORS.textDim, borderRadius: 6, padding: '4px 8px', fontSize: 11, outline: 'none', cursor: 'pointer' }}>
-                        <option value="admin">Admin</option>
-                        <option value="pm">Program Manager</option>
-                        <option value="user">User</option>
-                      </select>
-                    )}
-                    {!isMe && (
-                      <button onClick={() => handleRemove(m.user_id)} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '4px 10px', color: COLORS.red, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          <div style={{ marginTop: 16 }}>
-            <Btn onClick={() => setView('invite')} size="sm">+ Invite User →</Btn>
-          </div>
-        </div>
-      )}
-
-      {/* Invite form */}
-      {view === 'invite' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-
-          {/* Email input */}
-          <div>
-            <label style={G.label}>Email addresses</label>
-            <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '0 0 10px' }}>Add one or more emails. Press Enter or comma to add multiple.</p>
-            {emails.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                {emails.map(e => (
-                  <span key={e} style={{ display: 'flex', alignItems: 'center', gap: 6, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}44`, borderRadius: 20, padding: '3px 10px', fontSize: 12, color: COLORS.accent }}>
-                    {e}
-                    <button onClick={() => setEmails(prev => prev.filter(x => x !== e))} style={{ background: 'none', border: 'none', color: COLORS.accent, cursor: 'pointer', padding: 0, opacity: 0.7 }}>✕</button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                value={emailInput}
-                onChange={e => setEmailInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addEmail() } }}
-                placeholder="colleague@company.com"
-                style={G.input}
-              />
-              <Btn size="sm" variant="secondary" onClick={addEmail}>Add</Btn>
-            </div>
-          </div>
-
-          {/* Role selection */}
-          <div>
-            <label style={G.label}>User Role</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {ROLE_DEFS.map(r => (
-                <button key={r.v} onClick={() => setRole(r.v)} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
-                  padding: '12px 14px', borderRadius: 10, textAlign: 'left',
-                  background: role === r.v ? `${r.color}12` : G.panelBg,
-                  border: `1px solid ${role === r.v ? r.color + '55' : COLORS.border}`,
-                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s', width: '100%',
-                }}>
-                  <div style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{r.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: role === r.v ? r.color : COLORS.text }}>{r.label}</span>
-                      {role === r.v && <span style={{ fontSize: 9, fontWeight: 800, background: r.color + '22', color: r.color, borderRadius: 4, padding: '1px 6px', letterSpacing: '0.05em' }}>SELECTED</span>}
-                    </div>
-                    <div style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>{r.desc}</div>
-                  </div>
-                  <div style={{
-                    width: 16, height: 16, borderRadius: '50%', flexShrink: 0, marginTop: 2,
-                    border: `2px solid ${role === r.v ? r.color : COLORS.border}`,
-                    background: role === r.v ? r.color : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {role === r.v && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
-                  </div>
-                </button>
+              {members.map(m => (
+                <MemberRow
+                  key={m.user_id}
+                  m={m}
+                  currentUserId={user?.id}
+                  isAdmin={isAdmin}
+                  onRoleChange={handleChangeRole}
+                  onRemove={handleRemove}
+                />
               ))}
             </div>
-          </div>
+          )}
+        </Panel>
+      )}
 
-          {/* Program access (PM only) */}
-          {role === 'pm' && allProjects.length > 0 && (
-            <div>
-              <label style={G.label}>Assign Programs</label>
-              <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '0 0 10px' }}>Select which programs this PM will manage. Leave empty to assign later.</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {allProjects.map(p => (
-                  <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: G.panelBg, borderRadius: 8, border: `1px solid ${selProjects.includes(p.id) ? COLORS.accent + '55' : COLORS.border}`, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={selProjects.includes(p.id)} onChange={e => {
-                      if (e.target.checked) setSelProjects(prev => [...prev, p.id])
-                      else setSelProjects(prev => prev.filter(x => x !== p.id))
-                    }} style={{ accentColor: COLORS.accent }} />
-                    <div style={{ width: 9, height: 9, borderRadius: 3, background: p.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: COLORS.text }}>{p.name}</span>
-                  </label>
+      {/* ── Invite form ── */}
+      {view === 'invite' && (
+        <>
+          {/* Quick invite link */}
+          <Panel>
+            <PanelHeader title="Share Invite Link" desc="Anyone with this link can join your workspace." icon="zap" />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ ...G.input, flex: 1, fontSize: 12, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '9px 12px', background: COLORS.surface, cursor: 'default' }}>
+                {inviteUrl}
+              </div>
+              <Btn size="sm" onClick={copyInviteUrl}>{copied ? '✓ Copied' : 'Copy Link'}</Btn>
+            </div>
+          </Panel>
+
+          {/* Invite by email with role */}
+          <Panel accent={COLORS.accent}>
+            <PanelHeader title="Invite by Email" desc="Set a role before sharing — the link will grant that role automatically." icon="mail" />
+
+            {/* Email chips input */}
+            <FieldRow label="Email Addresses" hint="Press Enter or comma to add multiple emails.">
+              {emails.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                  {emails.map(e => (
+                    <span key={e} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}44`, borderRadius: 20, padding: '3px 10px 3px 12px', fontSize: 12, color: COLORS.accent }}>
+                      {e}
+                      <button onClick={() => setEmails(prev => prev.filter(x => x !== e))} style={{ background: 'none', border: 'none', color: COLORS.accent, cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: 14 }}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={emailInput}
+                  onChange={e => setEmailInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addEmail() } }}
+                  placeholder="colleague@homzmart.com"
+                  style={G.input}
+                />
+                <Btn size="sm" variant="secondary" onClick={addEmail}>Add</Btn>
+              </div>
+            </FieldRow>
+
+            <Divider />
+
+            {/* Role picker */}
+            <FieldRow label="Assign Role">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {ROLE_DEFS.map(r => (
+                  <button key={r.v} onClick={() => setRole(r.v)} style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '13px 16px', borderRadius: 12, textAlign: 'left', width: '100%',
+                    background: role === r.v ? `${r.color}10` : COLORS.surface,
+                    border: `1px solid ${role === r.v ? r.color + '55' : COLORS.border}`,
+                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s',
+                  }}>
+                    <span style={{ fontSize: 22, flexShrink: 0 }}>{r.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: role === r.v ? r.color : COLORS.text }}>{r.label}</span>
+                        {role === r.v && <span style={{ fontSize: 9, fontWeight: 800, background: r.color + '22', color: r.color, borderRadius: 4, padding: '1px 7px', letterSpacing: '0.06em' }}>SELECTED</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>{r.desc}</div>
+                    </div>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                      border: `2px solid ${role === r.v ? r.color : COLORS.border}`,
+                      background: role === r.v ? r.color : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.12s',
+                    }}>
+                      {role === r.v && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+                    </div>
+                  </button>
                 ))}
               </div>
+            </FieldRow>
+
+            {/* Program access for PMs */}
+            {role === 'pm' && allProjects.length > 0 && (
+              <>
+                <Divider />
+                <FieldRow label="Assign Programs" hint="Select which programs this PM will manage. Leave empty to assign later.">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {allProjects.map(p => (
+                      <label key={p.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
+                        background: selProjects.includes(p.id) ? COLORS.accent + '08' : COLORS.surface,
+                        border: `1px solid ${selProjects.includes(p.id) ? COLORS.accent + '55' : COLORS.border}`,
+                        transition: 'all 0.12s',
+                      }}>
+                        <input type="checkbox" checked={selProjects.includes(p.id)} onChange={e => {
+                          if (e.target.checked) setSelProjects(prev => [...prev, p.id])
+                          else setSelProjects(prev => prev.filter(x => x !== p.id))
+                        }} style={{ accentColor: COLORS.accent, width: 14, height: 14, flexShrink: 0 }} />
+                        <div style={{ width: 9, height: 9, borderRadius: 3, background: p.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, color: COLORS.text }}>{p.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </FieldRow>
+              </>
+            )}
+
+            {/* Result banner */}
+            {inviteResult && (
+              <>
+                <Divider />
+                <div style={{ background: COLORS.green + '10', border: `1px solid ${COLORS.green}33`, borderRadius: 12, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.green, marginBottom: 6 }}>
+                    ✓ Invite configured for {inviteResult.emails.join(', ')}
+                  </div>
+                  <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '0 0 10px', lineHeight: 1.5 }}>
+                    Share this link. They'll sign up and join automatically with the <strong style={{ color: COLORS.text }}>{ROLE_DEFS.find(r => r.v === role)?.label}</strong> role.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 9, padding: '9px 12px' }}>
+                    <span style={{ fontSize: 11, color: COLORS.textMuted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'DM Mono', monospace" }}>{inviteResult.url}</span>
+                    <Btn size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(inviteResult.url); toast('Copied!', 'success') }}>Copy</Btn>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <Btn onClick={handleInvite} disabled={inviting || (emails.length === 0 && !emailInput.trim())}>
+                {inviting ? 'Preparing…' : 'Generate Invite Link →'}
+              </Btn>
+              <Btn variant="secondary" onClick={() => setView('members')}>← Back</Btn>
             </div>
-          )}
-
-          {/* Result / invite link */}
-          {inviteResult && (
-            <div style={{ background: `${COLORS.green}12`, border: `1px solid ${COLORS.green}33`, borderRadius: 10, padding: '14px 16px' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.green, marginBottom: 8 }}>
-                ✓ Invite ready for {inviteResult.emails.join(', ')}
-              </div>
-              <p style={{ fontSize: 12, color: COLORS.textMuted, margin: '0 0 10px', lineHeight: 1.5 }}>
-                Share this link with the invitee. They'll be prompted to sign up and join automatically.
-              </p>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: G.panelBg, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '9px 12px' }}>
-                <span style={{ fontSize: 11, color: COLORS.textMuted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inviteResult.url}</span>
-                <Btn size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(inviteResult.url); toast('Link copied!', 'success') }}>Copy</Btn>
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={handleInvite} disabled={inviting || (emails.length === 0 && !emailInput.trim())}>
-              {inviting ? 'Preparing…' : `Generate Invite Link →`}
-            </Btn>
-            <Btn variant="secondary" onClick={() => setView('members')}>Back to Members</Btn>
-          </div>
-
-          <p style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.6, marginTop: -8 }}>
-            💡 The invite link includes the workspace code and role. Recipients sign up with Google or email and join automatically. To send the invite by email directly, configure Resend in Notifications settings.
-          </p>
-        </div>
+          </Panel>
+        </>
       )}
     </div>
   )
