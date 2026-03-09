@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { DataProvider, useData } from './contexts/DataContext'
-import { ThemeProvider, useTheme } from './contexts/ThemeContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { useToast } from './hooks/useToast'
 import { Toast, Spinner } from './components/UI'
 import { DARK_THEME } from './lib/constants'
@@ -13,7 +13,6 @@ import GuestView from './pages/GuestView'
 
 function AuthGate({ toast }) {
   const { user, loading: authLoading, signOut } = useAuth()
-  const { isDark } = useTheme()
   const [page, setPage] = useState('login')
 
   useEffect(() => {
@@ -22,6 +21,8 @@ function AuthGate({ toast }) {
       setPage('newpassword')
       window.history.replaceState({}, document.title, window.location.pathname)
     }
+    // Save invite code but DON'T remove it from URL yet — keep it in sessionStorage
+    // and only clear it after a successful join
     const params = new URLSearchParams(window.location.search)
     if (params.get('invite')) {
       sessionStorage.setItem('pendingInvite', params.get('invite'))
@@ -55,10 +56,11 @@ function AuthGate({ toast }) {
 function WorkspaceGate({ toast }) {
   const { workspace, loading, wsError, setWorkspace } = useData()
   const { user, signOut } = useAuth()
-  const { isDark } = useTheme()
   const C = DARK_THEME
 
   function handleJoined(ws) {
+    // Only clear pendingInvite AFTER a successful join
+    sessionStorage.removeItem('pendingInvite')
     setWorkspace(ws)
     window.location.reload()
   }
@@ -72,12 +74,9 @@ function WorkspaceGate({ toast }) {
   )
 
   if (wsError === 'no_workspace') {
+    // Read pendingInvite but do NOT remove it here — WorkspaceSetup will call handleJoined on success
     const pendingInvite = sessionStorage.getItem('pendingInvite')
-    if (pendingInvite) {
-      sessionStorage.removeItem('pendingInvite')
-      return <WorkspaceSetup onJoined={handleJoined} onSignOut={signOut} defaultCode={pendingInvite} />
-    }
-    return <WorkspaceSetup onJoined={handleJoined} onSignOut={signOut} />
+    return <WorkspaceSetup onJoined={handleJoined} onSignOut={signOut} defaultCode={pendingInvite || ''} />
   }
 
   if (!workspace) return (
