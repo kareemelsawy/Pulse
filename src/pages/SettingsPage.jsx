@@ -1342,11 +1342,14 @@ export default function SettingsPage({ toast }) {
   const isOwner = isAdmin  // alias
   const [tab, setTab] = useState('account')
 
+  const role = workspace?.role || 'member'
+  const canAdmin = role === 'owner' || role === 'admin'
+
   const TABS = [
     { id: 'account',       label: 'Account',       icon: 'user'      },
-    ...(isAdmin ? [{ id: 'workspace', label: 'Workspace', icon: 'folder' }] : []),
+    ...(canAdmin ? [{ id: 'workspace', label: 'Workspace', icon: 'folder' }] : []),
     { id: 'notifications', label: 'Notifications', icon: 'bell'      },
-    ...(isAdmin ? [
+    ...(canAdmin ? [
       { id: 'users',        label: 'Users',         icon: 'users'     },
       { id: 'integrations', label: 'Integrations',  icon: 'zap'       },
       { id: 'data-import',  label: 'Data Import',   icon: 'list'      },
@@ -1400,11 +1403,11 @@ export default function SettingsPage({ toast }) {
             {tab === 'data-import'   && 'Bulk create or update programs and tasks by uploading a CSV file.'}
           </p>
           {tab === 'account'       && <AccountTab       toast={toast} />}
-          {tab === 'workspace'     && isAdmin && <WorkspaceTab toast={toast} />}
+          {tab === 'workspace'     && canAdmin && <WorkspaceTab toast={toast} />}
           {tab === 'notifications' && <NotificationsTab toast={toast} />}
-          {tab === 'users'         && isAdmin && <UsersTab toast={toast} />}
-          {tab === 'integrations'  && isAdmin && <IntegrationsTab toast={toast} />}
-          {tab === 'data-import'   && isAdmin && <DataImportTab toast={toast} />}
+          {tab === 'users'         && canAdmin && <UsersTab toast={toast} />}
+          {tab === 'integrations'  && canAdmin && <IntegrationsTab toast={toast} />}
+          {tab === 'data-import'   && canAdmin && <DataImportTab toast={toast} />}
         </div>
       </div>
     </div>
