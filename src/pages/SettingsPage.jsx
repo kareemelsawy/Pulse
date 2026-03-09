@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
 import { supabase } from '../lib/supabase'
@@ -1063,8 +1062,9 @@ function MemberRow({ m, currentUserId, isAdmin, onRoleChange, onRemove }) {
 }
 
 function UsersTab({ toast }) {
-  const { workspace, projects, isAdmin } = useData()
+  const { workspace, projects } = useData()
   const { user } = useAuth()
+  const canAdmin = workspace?.owner_id === user?.id || ['owner', 'admin'].includes(workspace?.role)
   const [members,     setMembers]     = useState([])
   const [loading,     setLoading]     = useState(true)
   const [view,        setView]        = useState('members')
@@ -1189,7 +1189,7 @@ function UsersTab({ toast }) {
                   key={m.user_id}
                   m={m}
                   currentUserId={user?.id}
-                  isAdmin={isAdmin}
+                  isAdmin={canAdmin}
                   onRoleChange={handleChangeRole}
                   onRemove={handleRemove}
                 />
