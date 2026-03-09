@@ -1345,11 +1345,13 @@ export default function SettingsPage({ toast }) {
 
   const TABS = [
     { id: 'account',       label: 'Account',       icon: 'user'      },
-    { id: 'workspace',     label: 'Workspace',      icon: 'folder'    },
-    { id: 'notifications', label: 'Notifications',  icon: 'bell'      },
-    { id: 'users',         label: 'Users',          icon: 'user'      },
-    { id: 'integrations',  label: 'Integrations',   icon: 'zap'       },
-    { id: 'data-import',   label: 'Data Import',    icon: 'list'      },
+    ...(canAdmin ? [{ id: 'workspace', label: 'Workspace', icon: 'folder' }] : []),
+    { id: 'notifications', label: 'Notifications', icon: 'bell'      },
+    ...(canAdmin ? [
+      { id: 'users',        label: 'Users',         icon: 'users'     },
+      { id: 'integrations', label: 'Integrations',  icon: 'zap'       },
+      { id: 'data-import',  label: 'Data Import',   icon: 'list'      },
+    ] : []),
   ]
 
   return (
@@ -1399,11 +1401,11 @@ export default function SettingsPage({ toast }) {
             {tab === 'data-import'   && 'Bulk create or update programs and tasks by uploading a CSV file.'}
           </p>
           {tab === 'account'       && <AccountTab       toast={toast} />}
-          {tab === 'workspace'     && <WorkspaceTab     toast={toast} />}
+          {tab === 'workspace'     && canAdmin && <WorkspaceTab toast={toast} />}
           {tab === 'notifications' && <NotificationsTab toast={toast} />}
-          {tab === 'users'         && <UsersTab         toast={toast} />}
-          {tab === 'integrations'  && <IntegrationsTab  toast={toast} />}
-          {tab === 'data-import'   && <DataImportTab    toast={toast} />}
+          {tab === 'users'         && canAdmin && <UsersTab toast={toast} />}
+          {tab === 'integrations'  && canAdmin && <IntegrationsTab toast={toast} />}
+          {tab === 'data-import'   && canAdmin && <DataImportTab toast={toast} />}
         </div>
       </div>
     </div>
