@@ -1,19 +1,19 @@
 import { supabase } from '../supabase'
 
 export async function getMyWorkspace(userId) {
-  // Step 1: get workspace_id (and role if column exists)
-  // Select only workspace_id first to avoid 500 if role column doesn't exist yet
-  const { data: memberRows, error: memberErr } = await supabase
+  // Single query: get workspace_id + role together
+  const { data: memberRow, error: memberErr } = await supabase
     .from('workspace_members')
-    .select('workspace_id')
+    .select('workspace_id, role')
     .eq('user_id', userId)
     .limit(1)
+    .maybeSingle()
 
-  if (memberErr || !memberRows?.length) return null
+  if (memberErr || !memberRow) return null
 
-  const { workspace_id } = memberRows[0]
+  const { workspace_id, role: rawRole } = memberRow
 
-  // Step 2: fetch workspace
+  // Fetch workspace details
   const { data: ws, error: wsErr } = await supabase
     .from('workspaces')
     .select('*')
@@ -22,23 +22,8 @@ export async function getMyWorkspace(userId) {
 
   if (wsErr || !ws) return null
 
-  // Step 3: try to fetch role separately (graceful fallback if column missing)
-  let role = 'member'
-  try {
-    const { data: roleRow } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('workspace_id', workspace_id)
-      .limit(1)
-      .single()
-    if (roleRow?.role) role = roleRow.role
-    // If user is the workspace owner, ensure they get admin rights
-    if (ws.owner_id === userId && role === 'member') role = 'owner'
-  } catch (_) {
-    // role column doesn't exist yet — default to owner if they own the workspace
-    if (ws.owner_id === userId) role = 'owner'
-  }
+  // Determine final role — owner always gets full access
+  const role = ws.owner_id === userId ? 'owner' : (rawRole || 'member')
 
   return { ...ws, role }
 }

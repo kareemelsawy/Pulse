@@ -1062,9 +1062,8 @@ function MemberRow({ m, currentUserId, isAdmin, onRoleChange, onRemove }) {
 }
 
 function UsersTab({ toast }) {
-  const { workspace, projects } = useData()
+  const { workspace, projects, isAdmin } = useData()
   const { user } = useAuth()
-  const canAdmin = workspace?.owner_id === user?.id || ['owner', 'admin'].includes(workspace?.role)
   const [members,     setMembers]     = useState([])
   const [loading,     setLoading]     = useState(true)
   const [view,        setView]        = useState('members')
@@ -1189,7 +1188,7 @@ function UsersTab({ toast }) {
                   key={m.user_id}
                   m={m}
                   currentUserId={user?.id}
-                  isAdmin={canAdmin}
+                  isAdmin={isAdmin}
                   onRoleChange={handleChangeRole}
                   onRemove={handleRemove}
                 />
@@ -1337,17 +1336,16 @@ function UsersTab({ toast }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function SettingsPage({ toast }) {
-  const { workspace } = useData()
+  const { workspace, isAdmin, isPM, isBasicUser } = useData()
   const { user } = useAuth()
+  const isOwner = isAdmin
   const [tab, setTab] = useState('account')
-
-  const canAdmin = workspace?.owner_id === user?.id || ['owner', 'admin'].includes(workspace?.role)
 
   const TABS = [
     { id: 'account',       label: 'Account',       icon: 'user'      },
-    ...(canAdmin ? [{ id: 'workspace', label: 'Workspace', icon: 'folder' }] : []),
+    ...(isAdmin ? [{ id: 'workspace', label: 'Workspace', icon: 'folder' }] : []),
     { id: 'notifications', label: 'Notifications', icon: 'bell'      },
-    ...(canAdmin ? [
+    ...(isAdmin ? [
       { id: 'users',        label: 'Users',         icon: 'users'     },
       { id: 'integrations', label: 'Integrations',  icon: 'zap'       },
       { id: 'data-import',  label: 'Data Import',   icon: 'list'      },
@@ -1401,11 +1399,11 @@ export default function SettingsPage({ toast }) {
             {tab === 'data-import'   && 'Bulk create or update programs and tasks by uploading a CSV file.'}
           </p>
           {tab === 'account'       && <AccountTab       toast={toast} />}
-          {tab === 'workspace'     && canAdmin && <WorkspaceTab toast={toast} />}
+          {tab === 'workspace'     && isAdmin && <WorkspaceTab toast={toast} />}
           {tab === 'notifications' && <NotificationsTab toast={toast} />}
-          {tab === 'users'         && canAdmin && <UsersTab toast={toast} />}
-          {tab === 'integrations'  && canAdmin && <IntegrationsTab toast={toast} />}
-          {tab === 'data-import'   && canAdmin && <DataImportTab toast={toast} />}
+          {tab === 'users'         && isAdmin && <UsersTab toast={toast} />}
+          {tab === 'integrations'  && isAdmin && <IntegrationsTab toast={toast} />}
+          {tab === 'data-import'   && isAdmin && <DataImportTab toast={toast} />}
         </div>
       </div>
     </div>
