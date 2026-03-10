@@ -74,11 +74,12 @@ export default function AppShell({ toast }) {
   // ── Overdue task count ───────────────────────────────────────────────────
   const overdueCount = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]
+    const userEmail = user?.email?.toLowerCase()
     const scopedTasks = isAdmin
       ? tasks
       : isPM
         ? tasks.filter(t => myProjects.some(p => p.id === t.project_id))
-        : tasks.filter(t => t.assignee_email === user?.email)
+        : tasks.filter(t => t.assignee_email?.toLowerCase() === userEmail)
     return scopedTasks.filter(t =>
       t.status !== 'done' &&
       t.due_date &&
@@ -363,12 +364,13 @@ function ProjectItem({ project: p, done, total, active, onClick }) {
 function OverdueTasksModal({ tasks, projects, workspace, user, isPM, myProjects, onClose, toast }) {
   const isAdmin = workspace?.owner_id === user?.id || ['owner','admin'].includes(workspace?.role)
   const today = new Date().toISOString().split('T')[0]
+  const userEmail = user?.email?.toLowerCase()
   // Scope overdue tasks by role: admins see all, PMs see their projects, users see their own
   const scopedTasks = isAdmin
     ? tasks
     : isPM
       ? tasks.filter(t => myProjects?.some(p => p.id === t.project_id))
-      : tasks.filter(t => t.assignee_email === user?.email)
+      : tasks.filter(t => t.assignee_email?.toLowerCase() === userEmail)
   const overdueTasks = scopedTasks.filter(t => t.status !== 'done' && t.due_date && t.due_date < today)
   const [selectedTask, setSelectedTask] = useState(null)
 

@@ -247,7 +247,7 @@ export function DataProvider({ children }) {
 
   // ─── Derived ──────────────────────────────────────────────────────────────
   const getProjectTasks = useCallback((projectId) => tasks.filter(t => t.project_id === projectId), [tasks])
-  const myTasks = tasks.filter(t => t.status !== 'done' && t.assignee_email === user?.email).sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
+  const myTasks = tasks.filter(t => t.status !== 'done' && t.assignee_email?.toLowerCase() === user?.email?.toLowerCase()).sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
 
   // ─── Role helpers ─────────────────────────────────────────────────────────
   // Roles: 'owner'/'admin' → full access | 'pm' → program manager | 'member'/'user' → basic user

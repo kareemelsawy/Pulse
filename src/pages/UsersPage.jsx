@@ -59,7 +59,7 @@ function RoleTag({ role }) {
   )
 }
 
-function MemberRow({ m, currentUserId, isAdmin, onRoleChange, onRemove }) {
+function MemberRow({ m, currentUserId, isAdmin, allProjects, onRoleChange, onRemove }) {
   const isMe = m.user_id === currentUserId
   const [changing, setChanging] = useState(false)
 
@@ -69,42 +69,81 @@ function MemberRow({ m, currentUserId, isAdmin, onRoleChange, onRemove }) {
     setChanging(false)
   }
 
+  const assignedProjects = m.role === 'pm' && m.project_ids?.length
+    ? allProjects.filter(p => m.project_ids.includes(p.id))
+    : []
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 14,
-      padding: '12px 14px', borderRadius: 12,
+      borderRadius: 12,
       background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+      overflow: 'hidden',
     }}>
-      <Avatar name={m.full_name || m.email} size={36} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {m.full_name || m.email} {isMe && <span style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 400 }}>(you)</span>}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '12px 14px',
+      }}>
+        <Avatar name={m.full_name || m.email} size={36} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {m.full_name || m.email} {isMe && <span style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 400 }}>(you)</span>}
+          </div>
+          <div style={{ fontSize: 11, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email}</div>
         </div>
-        <div style={{ fontSize: 11, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email}</div>
+
+        {isAdmin && !isMe && m.role !== 'owner' ? (
+          <select value={m.role} onChange={handleRole} disabled={changing} style={{
+            background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+            color: COLORS.textDim, borderRadius: 8, padding: '5px 10px',
+            fontSize: 12, outline: 'none', cursor: 'pointer',
+            fontFamily: 'inherit', opacity: changing ? 0.5 : 1,
+          }}>
+            <option value="admin">Admin</option>
+            <option value="pm">Program Manager</option>
+            <option value="user">User</option>
+          </select>
+        ) : (
+          <RoleTag role={m.role} />
+        )}
+
+        {isAdmin && !isMe && m.role !== 'owner' && (
+          <button onClick={() => onRemove(m.user_id)} style={{
+            background: 'none', border: `1px solid ${COLORS.border}`,
+            borderRadius: 7, padding: '5px 12px',
+            color: COLORS.red, fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+          }}>Remove</button>
+        )}
       </div>
 
-      {isAdmin && !isMe && m.role !== 'owner' ? (
-        <select value={m.role} onChange={handleRole} disabled={changing} style={{
-          background: COLORS.surface, border: `1px solid ${COLORS.border}`,
-          color: COLORS.textDim, borderRadius: 8, padding: '5px 10px',
-          fontSize: 12, outline: 'none', cursor: 'pointer',
-          fontFamily: 'inherit', opacity: changing ? 0.5 : 1,
+      {/* Assigned projects row — only shown for PMs */}
+      {m.role === 'pm' && (
+        <div style={{
+          borderTop: `1px solid ${COLORS.border}`,
+          padding: '8px 14px',
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+          background: 'rgba(107,142,247,0.04)',
         }}>
-          <option value="admin">Admin</option>
-          <option value="pm">Program Manager</option>
-          <option value="user">User</option>
-        </select>
-      ) : (
-        <RoleTag role={m.role} />
-      )}
-
-      {isAdmin && !isMe && m.role !== 'owner' && (
-        <button onClick={() => onRemove(m.user_id)} style={{
-          background: 'none', border: `1px solid ${COLORS.border}`,
-          borderRadius: 7, padding: '5px 12px',
-          color: COLORS.red, fontSize: 11, fontWeight: 600,
-          cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-        }}>Remove</button>
+          <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '0.05em', textTransform: 'uppercase', flexShrink: 0 }}>
+            Programs:
+          </span>
+          {assignedProjects.length > 0 ? (
+            assignedProjects.map(p => (
+              <span key={p.id} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 11, fontWeight: 600,
+                background: p.color + '18', color: p.color,
+                border: `1px solid ${p.color}44`,
+                borderRadius: 20, padding: '2px 9px',
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.color, flexShrink: 0, display: 'inline-block' }} />
+                {p.name}
+              </span>
+            ))
+          ) : (
+            <span style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: 'italic' }}>No programs assigned</span>
+          )}
+        </div>
       )}
     </div>
   )
@@ -355,7 +394,7 @@ export default function UsersPage({ toast }) {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {members.map(m => (
-                  <MemberRow key={m.user_id} m={m} currentUserId={user?.id} isAdmin={isAdmin} onRoleChange={handleChangeRole} onRemove={handleRemove} />
+                  <MemberRow key={m.user_id} m={m} currentUserId={user?.id} isAdmin={isAdmin} allProjects={allProjects} onRoleChange={handleChangeRole} onRemove={handleRemove} />
                 ))}
               </div>
             )}
