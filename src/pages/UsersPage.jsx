@@ -160,14 +160,17 @@ export default function UsersPage({ toast }) {
     if (!workspace?.id) return
     setLoadingInvites(true)
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('workspace_invites')
         .select('*')
         .eq('workspace_id', workspace.id)
         .is('accepted_at', null)
         .order('created_at', { ascending: false })
+      if (error) throw error
       setPendingInvites(data || [])
-    } catch (_) {}
+    } catch (e) {
+      toast(e.message, 'error')
+    }
     setLoadingInvites(false)
   }, [workspace?.id])
 

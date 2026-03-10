@@ -83,16 +83,33 @@ export async function joinWorkspaceByCode(code, userId) {
     .single()
   if (existing) return { ...ws, role: existing.role }
 
-  // Look up pending invite to get assigned role
-  const { data: invite } = await supabase
-    .from('workspace_invites')
-    .select('role, project_ids')
-    .eq('workspace_id', ws.id)
-    .eq('invite_code', trimmedCode)
-    .is('accepted_at', null)
-    .limit(1)
-    .maybeSingle()
-    .catch(() => ({ data: null }))
+  // Look up pending invite — first try email match, then fall back to code-only
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const userEmail = authUser?.email
+
+  let invite = null
+  if (userEmail) {
+    const { data: emailInvite } = await supabase
+      .from('workspace_invites')
+      .select('role, project_ids, id')
+      .eq('workspace_id', ws.id)
+      .eq('email', userEmail)
+      .is('accepted_at', null)
+      .maybeSingle()
+    if (emailInvite) invite = emailInvite
+  }
+
+  if (!invite) {
+    const { data: codeInvite } = await supabase
+      .from('workspace_invites')
+      .select('role, project_ids, id')
+      .eq('workspace_id', ws.id)
+      .eq('invite_code', trimmedCode)
+      .is('accepted_at', null)
+      .limit(1)
+      .maybeSingle()
+    if (codeInvite) invite = codeInvite
+  }
 
   const assignedRole    = invite?.role || 'member'
   const assignedProjects = invite?.project_ids || null
@@ -109,12 +126,11 @@ export async function joinWorkspaceByCode(code, userId) {
   if (joinErr) throw new Error(joinErr.message)
 
   // Mark invite as accepted
-  if (invite) {
+  if (invite?.id) {
     await supabase
       .from('workspace_invites')
-      .update({ accepted_at: new Date().toISOString() })
-      .eq('workspace_id', ws.id)
-      .eq('invite_code', trimmedCode)
+      .update({ accepted_at: new Date().toISOString(), status: 'accepted' })
+      .eq('id', invite.id)
       .catch(() => {})
   }
 
