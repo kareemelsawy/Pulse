@@ -1,3 +1,4 @@
+// v2 - users module added
 import { useState, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
@@ -92,9 +93,12 @@ export default function AppShell({ toast }) {
           width:56, height:56, borderRadius:16,
           background:'linear-gradient(135deg,#6B8EF7,#C084FC)',
           display:'flex', alignItems:'center', justifyContent:'center',
-          fontSize:28, color:'#fff', fontWeight:900,
           boxShadow:'0 8px 32px rgba(107,142,247,0.45)',
-        }}>✦</div>
+        }}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="32" height="32">
+            <path d="M 256,90 C 242,180 180,242 90,256 C 180,270 242,332 256,422 C 270,332 332,270 422,256 C 332,242 270,180 256,90 Z" fill="#ffffff"/>
+          </svg>
+        </div>
         <Spinner size={24} />
       </div>
     </>
@@ -109,9 +113,12 @@ export default function AppShell({ toast }) {
             width:34, height:34, borderRadius:10, flexShrink:0,
             background:'linear-gradient(135deg,#6B8EF7,#C084FC)',
             display:'flex', alignItems:'center', justifyContent:'center',
-            fontSize:18, color:'#fff', fontWeight:900,
             boxShadow:'0 4px 16px rgba(107,142,247,0.40)',
-          }}>✦</div>
+          }}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20" height="20">
+              <path d="M 256,90 C 242,180 180,242 90,256 C 180,270 242,332 256,422 C 270,332 332,270 422,256 C 332,242 270,180 256,90 Z" fill="#ffffff"/>
+            </svg>
+          </div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16, letterSpacing:'-0.03em', color: COLORS.text }}>PULSE</div>
           </div>

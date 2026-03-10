@@ -1,3 +1,4 @@
+// v2 - standalone users page
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useData } from '../contexts/DataContext'
@@ -185,15 +186,17 @@ export default function UsersPage({ toast }) {
     setInviting(true)
     try {
       for (const email of valid) {
-        await supabase.from('workspace_invites').upsert({
-          workspace_id: workspace.id,
-          email,
-          role,
-          project_ids: selProjects.length ? selProjects : null,
-          invite_code: code,
-          invited_by: user?.email,
-          created_at: new Date().toISOString(),
-        }, { onConflict: 'workspace_id,email', ignoreDuplicates: false }).catch(() => {})
+        try {
+          await supabase.from('workspace_invites').upsert({
+            workspace_id: workspace.id,
+            email,
+            role,
+            project_ids: selProjects.length ? selProjects : null,
+            invite_code: code,
+            invited_by: user?.email,
+            created_at: new Date().toISOString(),
+          }, { onConflict: 'workspace_id,email', ignoreDuplicates: false })
+        } catch (_) {}
       }
       setInviteResult({ emails: valid, url: inviteUrl })
       setEmails([])

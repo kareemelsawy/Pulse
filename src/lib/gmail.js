@@ -53,7 +53,7 @@ function emailShell({ badge, content, appUrl }) {
         <tr><td style="background:linear-gradient(135deg,#6B8EF7,#C084FC);border-radius:14px 14px 0 0;padding:18px 24px;">
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr>
-              <td><span style="font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.5px;">&#9672; Pulse</span></td>
+              <td><table cellpadding="0" cellspacing="0"><tr><td style="vertical-align:middle;padding-right:9px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="26" height="26" style="display:block;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.25));"><rect width="512" height="512" rx="115" ry="115" fill="rgba(255,255,255,0.22)"/><path d="M 256,90 C 242,180 180,242 90,256 C 180,270 242,332 256,422 C 270,332 332,270 422,256 C 332,242 270,180 256,90 Z" fill="#ffffff"/></svg></td><td style="vertical-align:middle;"><span style="font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.5px;">Pulse</span></td></tr></table></td>
               ${badge ? `<td align="right"><span style="background:rgba(255,255,255,0.20);color:#fff;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:0.04em;">${badge}</span></td>` : '<td></td>'}
             </tr>
           </table>
@@ -66,7 +66,7 @@ function emailShell({ badge, content, appUrl }) {
           <!-- Footer -->
           <div style="margin-top:28px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.09);">
             <a href="${appUrl || '#'}" style="display:inline-block;background:rgba(107,142,247,0.18);color:#6B8EF7;text-decoration:none;padding:8px 18px;border-radius:8px;font-weight:600;font-size:12px;border:1px solid rgba(107,142,247,0.28);">Open Pulse &#8594;</a>
-            <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:12px 0 0;">Sent by &#9672; Pulse &nbsp;&middot;&nbsp; You're receiving this because you're part of this workspace.</p>
+            <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:12px 0 0;">Sent by Pulse &nbsp;&middot;&nbsp; You're receiving this because you're part of this workspace.</p>
           </div>
         </td></tr>
 
