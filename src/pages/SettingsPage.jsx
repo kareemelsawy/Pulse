@@ -1384,6 +1384,15 @@ export default function SettingsPage({ toast }) {
 
       {/* Content */}
       <div style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', minWidth: 0 }}>
+        {/* DEBUG BANNER — remove after fix confirmed */}
+        <div style={{ background: '#1a1a2e', border: '1px solid #f59e0b', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 12, fontFamily: 'monospace', color: '#f59e0b', lineHeight: 1.8 }}>
+          <strong>🛠 Debug Info</strong><br/>
+          user.id: {user?.id || 'null'}<br/>
+          workspace.owner_id: {workspace?.owner_id || 'null'}<br/>
+          workspace.role: {workspace?.role || 'null'}<br/>
+          isAdmin: {String(isAdmin)}<br/>
+          match: {String(workspace?.owner_id === user?.id)}
+        </div>
         <div style={{ maxWidth: 640 }}>
           <h1 style={{ fontWeight: 700, fontSize: 20, letterSpacing: '-0.02em', marginBottom: 4 }}>
             {TABS.find(t => t.id === tab)?.label}
