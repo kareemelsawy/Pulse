@@ -157,13 +157,27 @@ export default function InvitePage({ inviteCode, prefillEmail = '', onSignOut })
     if (pw.length < 6) { setErr('Password must be at least 6 characters.'); return }
     if (pw !== pw2) { setErr('Passwords do not match.'); return }
     setErr(null); setLoading(true)
-    const { error: e } = await supabase.auth.signUp({
+    const { data, error: e } = await supabase.auth.signUp({
       email: email.trim(),
       password: pw,
       options: { data: { full_name: name.trim() } },
     })
-    if (e) { setErr(e.message); setLoading(false) }
-    else { setDone(true); setLoading(false) }
+    if (e) { setErr(e.message); setLoading(false); return }
+
+    // If Supabase returned a session, they're already signed in — no confirmation needed
+    if (data?.session) return // AuthContext picks up the session, app loads normally
+
+    // No session means email confirmation is enabled in Supabase dashboard.
+    // Sign them in directly anyway since they proved ownership via the invite link.
+    const { error: loginErr } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: pw,
+    })
+    if (loginErr) {
+      // If auto sign-in fails (e.g. Supabase requires confirmation), show the confirmation screen
+      setDone(true)
+    }
+    setLoading(false)
   }
 
   // ── Email confirmation sent ───────────────────────────────────────────────
