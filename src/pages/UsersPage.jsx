@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 import { COLORS } from '../lib/constants'
 import { Avatar, Btn, Spinner } from '../components/UI'
 import { getWorkspaceMembers, removeMember } from '../lib/db/workspace'
-import { sendEmail } from '../lib/gmail'
+// buildInviteEmailHtml is defined locally below
 
 const G = {
   panel: {
@@ -111,7 +111,7 @@ function MemberRow({ m, currentUserId, isAdmin, onRoleChange, onRemove }) {
 }
 
 export default function UsersPage({ toast }) {
-  const { workspace, projects, notifSettings: ctxNotifSettings } = useData()
+  const { workspace, projects, notifSettings: ctxNotifSettings, sendRawEmail } = useData()
   const { user } = useAuth()
 
   const isAdmin = workspace?.owner_id === user?.id ||
@@ -208,7 +208,7 @@ export default function UsersPage({ toast }) {
         if (insertError) throw new Error(`DB error: ${insertError.message}`)
 
         // Send email if configured
-        if (emailConfigured) {
+        if (sendRawEmail) {
           try {
             const roleLabel   = ROLE_DEFS.find(r => r.v === role)?.label || role
             const inviterName = user?.user_metadata?.full_name || user?.email || 'Your admin'
@@ -217,16 +217,12 @@ export default function UsersPage({ toast }) {
               workspaceName: workspace?.name || 'Pulse',
               roleLabel, inviteUrl,
             })
-            await sendEmail({
-              apiKey:         notifSettings?.resend_api_key || notifSettings?.sendgrid_api_key,
-              functionSecret: notifSettings?.function_secret,
-              fromEmail:      notifSettings?.from_email || notifSettings?.sendgrid_from_email,
-              fromName:       notifSettings?.from_name || 'Pulse',
-              to:             email,
-              subject:        `You've been invited to ${workspace?.name || 'Pulse'}`,
+            const sent = await sendRawEmail({
+              to:      email,
+              subject: `You've been invited to ${workspace?.name || 'Pulse'}`,
               html,
             })
-            emailsSent++
+            if (sent) emailsSent++
           } catch (emailErr) {
             toast(`Invite saved but email failed: ${emailErr.message}`, 'error')
           }
@@ -250,7 +246,7 @@ export default function UsersPage({ toast }) {
   }
 
   async function handleResendInvite(inv) {
-    if (!emailConfigured) { toast('Email not configured — go to Settings → Integrations', 'error'); return }
+    if (!sendRawEmail) { toast('Email not configured — go to Settings → Integrations', 'error'); return }
     try {
       const roleLabel   = ROLE_DEFS.find(r => r.v === inv.role)?.label || inv.role
       const inviterName = user?.user_metadata?.full_name || user?.email || 'Your admin'
@@ -259,13 +255,9 @@ export default function UsersPage({ toast }) {
         workspaceName: workspace?.name || 'Pulse',
         roleLabel, inviteUrl,
       })
-      await sendEmail({
-        apiKey:         notifSettings?.resend_api_key || notifSettings?.sendgrid_api_key,
-        functionSecret: notifSettings?.function_secret,
-        fromEmail:      notifSettings?.from_email || notifSettings?.sendgrid_from_email,
-        fromName:       notifSettings?.from_name || 'Pulse',
-        to:             inv.email,
-        subject:        `You've been invited to ${workspace?.name || 'Pulse'}`,
+      await sendRawEmail({
+        to:      inv.email,
+        subject: `You've been invited to ${workspace?.name || 'Pulse'}`,
         html,
       })
       toast(`Invite resent to ${inv.email}`, 'success')
