@@ -1275,7 +1275,6 @@ function UsersTab({ toast }) {
       toast('Role updated', 'success')
     } catch(e) { toast(e.message, 'error') }
   }
-  }
 
   function copyInviteUrl() {
     navigator.clipboard.writeText(inviteUrl)
