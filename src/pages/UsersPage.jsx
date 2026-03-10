@@ -111,7 +111,7 @@ function MemberRow({ m, currentUserId, isAdmin, onRoleChange, onRemove }) {
 }
 
 export default function UsersPage({ toast }) {
-  const { workspace, projects, notifSettings } = useData()
+  const { workspace, projects, notifSettings: ctxNotifSettings } = useData()
   const { user } = useAuth()
 
   const isAdmin = workspace?.owner_id === user?.id ||
@@ -130,6 +130,18 @@ export default function UsersPage({ toast }) {
   const [selProjects,    setSelProjects]    = useState([])
   const [inviteResult,   setInviteResult]   = useState(null)
   const [cancellingId,   setCancellingId]   = useState(null)
+  const [localNotifSettings, setLocalNotifSettings] = useState(null)
+
+  // Use context value if available, otherwise fetch directly
+  const notifSettings = ctxNotifSettings || localNotifSettings
+
+  useEffect(() => {
+    if (!workspace?.id) return
+    if (ctxNotifSettings) return // already have it from context
+    supabase.from('notif_settings').select('*').eq('workspace_id', workspace.id).single()
+      .then(({ data }) => { if (data) setLocalNotifSettings(data) })
+      .catch(() => {})
+  }, [workspace?.id, ctxNotifSettings])
 
   const allProjects    = projects?.filter(p => !p.is_pipeline) || []
   const code           = workspace?.invite_code || ''
