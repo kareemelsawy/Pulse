@@ -274,17 +274,34 @@ function Shell({ children }) {
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
-export default function LoginPage({ onGoSignup, onGoReset }) {
-  const [email, setEmail] = useState('')
+export default function LoginPage({ onGoSignup, onGoReset, pendingInvite }) {
+  const [mode,     setMode]     = useState('login')   // 'login' | 'signup'
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [name,     setName]     = useState('')
+  const [pw2,      setPw2]      = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
+  const [signupDone, setSignupDone] = useState(false)
+
+  // If arriving via invite link, lead with signup
+  const isInvite = !!pendingInvite
 
   async function login() {
     if (!email || !password) { setError('Please enter your email and password.'); return }
     setError(null); setLoading(true)
     const { error: e } = await supabase.auth.signInWithPassword({ email, password })
     if (e) { setError(e.message); setLoading(false) }
+  }
+
+  async function signup() {
+    if (!name.trim()) { setError('Enter your name.'); return }
+    if (!email) { setError('Enter your email.'); return }
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
+    if (password !== pw2) { setError('Passwords do not match.'); return }
+    setError(null); setLoading(true)
+    const { error: e } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() } } })
+    if (e) { setError(e.message); setLoading(false) } else { setSignupDone(true); setLoading(false) }
   }
 
   async function google() {
@@ -295,53 +312,98 @@ export default function LoginPage({ onGoSignup, onGoReset }) {
     if (e) setError(e.message)
   }
 
+  // After email signup — show confirmation screen
+  if (signupDone) return (
+    <Shell>
+      <GlassCard style={{ textAlign: 'center', padding: '52px 40px' }}>
+        <div style={{ fontSize: 48, marginBottom: 18, animation: 'checkBounce 0.5s ease' }}>✉</div>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#EEF2FF', marginBottom: 8, letterSpacing: '-0.02em' }}>Check your inbox</h2>
+        <p style={{ color: 'rgba(180,200,255,0.42)', fontSize: 13, marginBottom: pendingInvite ? 16 : 28, lineHeight: 1.7 }}>
+          We sent a confirmation to <strong style={{ color: 'rgba(200,220,255,0.7)' }}>{email}</strong>. Click it to activate your account and you'll land straight in your workspace.
+        </p>
+        {pendingInvite && (
+          <div style={{ background: 'rgba(107,142,247,0.10)', border: '1px solid rgba(107,142,247,0.22)', borderRadius: 10, padding: '10px 14px', marginBottom: 24, fontSize: 12, color: 'rgba(180,200,255,0.65)', lineHeight: 1.6, textAlign: 'left' }}>
+            🔑 Your invite code <strong style={{ color: '#EEF2FF', fontFamily: 'monospace', letterSpacing: '0.1em' }}>{pendingInvite}</strong> is saved — you'll join the workspace automatically after confirming.
+          </div>
+        )}
+        <PrimaryBtn onClick={() => { setSignupDone(false); setMode('login') }}>Back to sign in</PrimaryBtn>
+      </GlassCard>
+    </Shell>
+  )
+
   return (
     <Shell>
       <GlassCard>
-        <div style={{ marginBottom: 28 }}>
-          <h2 style={{
-            fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em',
-            color: '#EEF2FF', margin: '0 0 6px',
-          }}>Welcome back</h2>
-          <p style={{ fontSize: 13, color: 'rgba(180,200,255,0.42)', margin: 0, lineHeight: 1.6 }}>
-            Sign in to your Pulse workspace
+
+        {/* Invite banner */}
+        {isInvite && (
+          <div style={{ background: 'rgba(107,142,247,0.10)', border: '1px solid rgba(107,142,247,0.25)', borderRadius: 12, padding: '12px 16px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ fontSize: 20, flexShrink: 0 }}>✉</div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(107,142,247,0.9)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>Workspace Invite</div>
+              <div style={{ fontSize: 12, color: 'rgba(180,200,255,0.55)', lineHeight: 1.5 }}>
+                {mode === 'login' ? 'Sign in to join — or create a new account below.' : 'Create your account to join the workspace.'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Heading */}
+        <div style={{ marginBottom: 22 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#EEF2FF', margin: '0 0 4px' }}>
+            {mode === 'signup' ? 'Create account' : 'Welcome back'}
+          </h2>
+          <p style={{ fontSize: 13, color: 'rgba(180,200,255,0.42)', margin: 0, lineHeight: 1.5 }}>
+            {mode === 'signup' ? 'Fill in your details to get started.' : 'Sign in to your Pulse workspace.'}
           </p>
         </div>
 
         {configError && (
-          <div style={{
-            background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.22)',
-            borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#FCD34D', lineHeight: 1.5,
-          }}>{configError}</div>
+          <div style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.22)', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 12, color: '#FCD34D', lineHeight: 1.5 }}>{configError}</div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <ErrMsg msg={error} />
-          <GhostBtn onClick={google}><GoogleIcon /> Continue with Google</GhostBtn>
+
+          {/* Google — always first */}
+          <GhostBtn onClick={google}><GoogleIcon /> {mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}</GhostBtn>
           <Divider />
-          <Field label="Work email" type="email" value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="you@homzmart.com" autoFocus
-            onKeyDown={e => e.key === 'Enter' && login()} />
+
+          {/* Signup-only fields */}
+          {mode === 'signup' && (
+            <Field label="Full name" value={name} onChange={e => setName(e.target.value)} placeholder="Your name" autoFocus onKeyDown={e => e.key === 'Enter' && signup()} />
+          )}
+
+          <Field label="Work email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@homzmart.com" autoFocus={mode === 'login'} onKeyDown={e => e.key === 'Enter' && (mode === 'signup' ? signup() : login())} />
+
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(180,200,255,0.38)' }}>Password</label>
-              <Lnk onClick={onGoReset}>Forgot password?</Lnk>
-            </div>
-            <Field type="password" value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              onKeyDown={e => e.key === 'Enter' && login()} />
+            {mode === 'login' && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(180,200,255,0.38)' }}>Password</label>
+                <Lnk onClick={onGoReset}>Forgot password?</Lnk>
+              </div>
+            )}
+            {mode !== 'login' && <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'rgba(180,200,255,0.38)', display: 'block', marginBottom: 6 }}>Password</label>}
+            <Field type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'} onKeyDown={e => e.key === 'Enter' && (mode === 'signup' ? signup() : login())} />
           </div>
-          <div style={{ marginTop: 2 }}>
-            <PrimaryBtn loading={loading} onClick={login} disabled={loading || !!configError}>
-              Sign in
+
+          {mode === 'signup' && (
+            <Field label="Confirm password" type="password" value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Same as above" onKeyDown={e => e.key === 'Enter' && signup()} />
+          )}
+
+          <div style={{ marginTop: 4 }}>
+            <PrimaryBtn loading={loading} onClick={mode === 'signup' ? signup : login} disabled={loading || !!configError}>
+              {mode === 'signup' ? 'Create account →' : 'Sign in →'}
             </PrimaryBtn>
           </div>
         </div>
 
-        <p style={{ fontSize: 12, color: 'rgba(180,200,255,0.28)', textAlign: 'center', marginTop: 24, lineHeight: 1.6 }}>
-          No account? <Lnk onClick={onGoSignup}>Create one</Lnk>
+        {/* Toggle between login and signup */}
+        <p style={{ fontSize: 12, color: 'rgba(180,200,255,0.28)', textAlign: 'center', marginTop: 20, lineHeight: 1.6 }}>
+          {mode === 'login'
+            ? <><span>No account? </span><Lnk onClick={() => { setMode('signup'); setError(null) }}>Create one</Lnk></>
+            : <><span>Already have an account? </span><Lnk onClick={() => { setMode('login'); setError(null) }}>Sign in</Lnk></>
+          }
         </p>
       </GlassCard>
     </Shell>
@@ -349,7 +411,7 @@ export default function LoginPage({ onGoSignup, onGoReset }) {
 }
 
 // ── Signup ────────────────────────────────────────────────────────────────────
-export function SignupPage({ onGoLogin }) {
+export function SignupPage({ onGoLogin, pendingInvite }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
@@ -374,8 +436,13 @@ export function SignupPage({ onGoLogin }) {
         <div style={{ fontSize: 48, marginBottom: 18, animation: 'checkBounce 0.5s ease' }}>✉</div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: '#EEF2FF', marginBottom: 8, letterSpacing: '-0.02em' }}>Check your inbox</h2>
         <p style={{ color: 'rgba(180,200,255,0.42)', fontSize: 13, marginBottom: 28, lineHeight: 1.7 }}>
-          We sent a confirmation to <strong style={{ color: 'rgba(200,220,255,0.7)' }}>{email}</strong>. Open it to activate your account.
+          We sent a confirmation to <strong style={{ color: 'rgba(200,220,255,0.7)' }}>{email}</strong>. Click the link in that email to activate your account — then you'll be taken straight into your workspace.
         </p>
+        {pendingInvite && (
+          <div style={{ background: 'rgba(107,142,247,0.10)', border: '1px solid rgba(107,142,247,0.22)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontSize: 12, color: 'rgba(180,200,255,0.7)', lineHeight: 1.6 }}>
+            🔑 Your invite code <strong style={{ color: '#EEF2FF', fontFamily: 'monospace', letterSpacing: '0.1em' }}>{pendingInvite}</strong> is saved — you'll join the workspace automatically after confirming.
+          </div>
+        )}
         <PrimaryBtn onClick={onGoLogin}>Back to sign in</PrimaryBtn>
       </GlassCard>
     </Shell>
@@ -385,8 +452,20 @@ export function SignupPage({ onGoLogin }) {
     <Shell>
       <GlassCard>
         <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#EEF2FF', margin: '0 0 6px' }}>Create account</h2>
-          <p style={{ fontSize: 13, color: 'rgba(180,200,255,0.42)', margin: 0 }}>Start managing programs with your team</p>
+          {pendingInvite ? (
+            <>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(107,142,247,0.12)', border: '1px solid rgba(107,142,247,0.25)', borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 700, color: 'rgba(107,142,247,0.9)', letterSpacing: '0.04em', marginBottom: 12 }}>
+                ✉ WORKSPACE INVITE
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#EEF2FF', margin: '0 0 6px' }}>Create your account</h2>
+              <p style={{ fontSize: 13, color: 'rgba(180,200,255,0.42)', margin: 0 }}>You'll join the workspace automatically after signing up.</p>
+            </>
+          ) : (
+            <>
+              <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#EEF2FF', margin: '0 0 6px' }}>Create account</h2>
+              <p style={{ fontSize: 13, color: 'rgba(180,200,255,0.42)', margin: 0 }}>Start managing programs with your team</p>
+            </>
+          )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <ErrMsg msg={err} />
@@ -395,7 +474,7 @@ export function SignupPage({ onGoLogin }) {
           <Field label="Password" type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="At least 6 characters" onKeyDown={e => e.key === 'Enter' && go()} />
           <Field label="Confirm password" type="password" value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Same as above" onKeyDown={e => e.key === 'Enter' && go()} />
           <div style={{ marginTop: 2 }}>
-            <PrimaryBtn loading={loading} onClick={go} disabled={loading}>Create account</PrimaryBtn>
+            <PrimaryBtn loading={loading} onClick={go} disabled={loading}>Create account →</PrimaryBtn>
           </div>
         </div>
         <p style={{ fontSize: 12, color: 'rgba(180,200,255,0.28)', textAlign: 'center', marginTop: 22 }}>

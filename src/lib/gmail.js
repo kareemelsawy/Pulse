@@ -133,7 +133,8 @@ export function buildDueSoonEmail({ task, projectName, appUrl }) {
 }
 
 // ─── Guest task invite email ──────────────────────────────────────────────────
-export function buildGuestInviteEmail({ assigneeName, assignerName, taskTitle, projectName, appUrl }) {
+export function buildGuestInviteEmail({ assigneeName, assignerName, taskTitle, projectName, appUrl, inviteCode }) {
+  const joinUrl = inviteCode ? `${appUrl}?invite=${inviteCode}` : appUrl
   const content = `
     <p style="color:rgba(200,210,240,0.75);font-size:13px;margin:0 0 4px;">You've been assigned a task</p>
     <h2 style="color:#F0F4FF;font-size:18px;margin:0 0 20px;font-weight:700;line-height:1.3;">${taskTitle}</h2>
@@ -144,9 +145,9 @@ export function buildGuestInviteEmail({ assigneeName, assignerName, taskTitle, p
     </table>
 
     <div style="margin-top:20px;">
-      <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#6B8EF7,#C084FC);color:#fff;text-decoration:none;padding:11px 26px;border-radius:9px;font-weight:700;font-size:13px;">View Your Tasks &#8594;</a>
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#6B8EF7,#C084FC);color:#fff;text-decoration:none;padding:11px 26px;border-radius:9px;font-weight:700;font-size:13px;">View Your Tasks &#8594;</a>
     </div>
-    <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:12px 0 0;">Sign in with your Google account to view and update your tasks.</p>
+    <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:12px 0 0;">New to Pulse? You can sign up with Google or create an account — it only takes a moment.</p>
   `
 
   const html = emailShell({ content, appUrl })
@@ -154,7 +155,7 @@ export function buildGuestInviteEmail({ assigneeName, assignerName, taskTitle, p
 }
 
 // ─── Meeting minutes email ────────────────────────────────────────────────────
-export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate, projectName, attendeeList, summary, actionItems, appUrl }) {
+export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate, projectName, attendeeList, summary, actionItems, appUrl, inviteCode }) {
   const priorityColor = { high: '#F87171', medium: '#FBBF24', low: '#34D17A' }
 
   const actionsHtml = actionItems?.length ? `
@@ -199,6 +200,7 @@ export function buildMeetingInviteEmail({ inviterName, meetingTitle, meetingDate
     ${actionsHtml}
   `
 
-  const html = emailShell({ badge: 'Meeting Minutes', content, appUrl })
+  const joinUrl = inviteCode ? `${appUrl}?invite=${inviteCode}` : appUrl
+  const html = emailShell({ badge: 'Meeting Minutes', content, appUrl: joinUrl })
   return { subject: `Meeting minutes: ${meetingTitle}`, html }
 }

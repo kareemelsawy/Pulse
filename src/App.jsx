@@ -6,13 +6,14 @@ import { useToast } from './hooks/useToast'
 import { Toast, Spinner } from './components/UI'
 import { DARK_THEME } from './lib/constants'
 import ErrorBoundary from './components/ErrorBoundary'
-import LoginPage, { SignupPage, ResetPage, NewPasswordPage } from './pages/LoginPage'
+import LoginPage, { ResetPage, NewPasswordPage } from './pages/LoginPage'
 import WorkspaceSetup from './pages/WorkspaceSetup'
 import AppShell from './pages/AppShell'
 import GuestView from './pages/GuestView'
 
 function AuthGate({ toast }) {
   const { user, loading: authLoading, signOut } = useAuth()
+  const pendingInviteOnLoad = sessionStorage.getItem('pendingInvite') || localStorage.getItem('pendingInvite')
   const [page, setPage] = useState('login')
 
   useEffect(() => {
@@ -23,7 +24,9 @@ function AuthGate({ toast }) {
     }
     const params = new URLSearchParams(window.location.search)
     if (params.get('invite')) {
-      sessionStorage.setItem('pendingInvite', params.get('invite'))
+      const inviteCode = params.get('invite')
+      sessionStorage.setItem('pendingInvite', inviteCode)
+      localStorage.setItem('pendingInvite', inviteCode)
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [])
@@ -39,9 +42,8 @@ function AuthGate({ toast }) {
 
   if (page === 'newpassword') return <NewPasswordPage onGoLogin={() => setPage('login')} />
   if (!user) {
-    if (page === 'signup') return <SignupPage onGoLogin={() => setPage('login')} />
-    if (page === 'reset')  return <ResetPage  onGoLogin={() => setPage('login')} />
-    return <LoginPage onGoSignup={() => setPage('signup')} onGoReset={() => setPage('reset')} />
+    if (page === 'reset') return <ResetPage onGoLogin={() => setPage('login')} />
+    return <LoginPage onGoReset={() => setPage('reset')} pendingInvite={pendingInviteOnLoad} />
   }
 
   return (
@@ -80,6 +82,7 @@ function WorkspaceGate({ toast }) {
 
   function handleJoined(ws) {
     sessionStorage.removeItem('pendingInvite')
+    localStorage.removeItem('pendingInvite')
     if (ws.pending_approval) {
       setPendingApproval({ workspaceName: ws.name })
       return
@@ -114,8 +117,9 @@ function WorkspaceGate({ toast }) {
   )
 
   if (wsError === 'no_workspace') {
-    const pendingInvite = sessionStorage.getItem('pendingInvite')
-    return <WorkspaceSetup onJoined={handleJoined} onSignOut={signOut} defaultCode={pendingInvite || ''} />
+    // Check both storages — localStorage survives cross-tab email confirmation redirects
+    const pendingInvite = sessionStorage.getItem('pendingInvite') || localStorage.getItem('pendingInvite') || ''
+    return <WorkspaceSetup onJoined={handleJoined} onSignOut={signOut} defaultCode={pendingInvite} />
   }
 
   if (!workspace) return (

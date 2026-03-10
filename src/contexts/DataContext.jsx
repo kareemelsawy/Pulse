@@ -129,6 +129,7 @@ export function DataProvider({ children }) {
       inviterName: actorName, meetingTitle: meeting.title, meetingDate,
       projectName, attendeeList: attendeeEmails.join(', '),
       summary: meeting.summary || '', actionItems: actionItems || [], appUrl,
+      inviteCode: workspace?.invite_code || '',
     })
     for (const to of attendeeEmails) {
       enqueueEmail({ ...cfg, to, subject, html })
@@ -203,6 +204,7 @@ export function DataProvider({ children }) {
             taskTitle: task.title,
             projectName: project?.name || '',
             appUrl,
+            inviteCode: workspace?.invite_code || '',
           })
           enqueueEmail({ ...emailConfig(), to: data.assignee_email, subject, html })
           logGuestInvitation(workspace.id, data.assignee_email, task.title, task.id).catch(() => {})

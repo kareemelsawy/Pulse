@@ -67,12 +67,36 @@ export async function getWorkspaceMembers(workspaceId) {
 export async function joinWorkspaceByCode(code, userId) {
   const trimmedCode = code.toUpperCase().trim()
 
-  const { data: ws, error } = await supabase
+  // Primary lookup: by workspace invite_code
+  let ws = null
+  const { data: wsDirect, error: wsErr } = await supabase
     .from('workspaces')
     .select('id, name')
     .eq('invite_code', trimmedCode)
-    .single()
-  if (error || !ws) throw new Error('Invalid invite code. Please check and try again.')
+    .maybeSingle()
+
+  if (wsDirect) {
+    ws = wsDirect
+  } else {
+    // RLS may block the workspaces table for unauthenticated/non-member users.
+    // Fall back: look up workspace via workspace_invites (invite_code is stored there too)
+    const { data: inviteRow } = await supabase
+      .from('workspace_invites')
+      .select('workspace_id')
+      .eq('invite_code', trimmedCode)
+      .limit(1)
+      .maybeSingle()
+    if (inviteRow?.workspace_id) {
+      const { data: wsViaInvite } = await supabase
+        .from('workspaces')
+        .select('id, name')
+        .eq('id', inviteRow.workspace_id)
+        .maybeSingle()
+      if (wsViaInvite) ws = wsViaInvite
+    }
+  }
+
+  if (!ws) throw new Error('Invalid invite code. Please check and try again.')
 
   // Check if already a member
   const { data: existing } = await supabase
