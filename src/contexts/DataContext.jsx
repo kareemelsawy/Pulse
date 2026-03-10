@@ -255,11 +255,20 @@ export function DataProvider({ children }) {
   const isAdmin     = userRole === 'owner' || userRole === 'admin' || workspace?.owner_id === user?.id
   const isPM        = !isAdmin && (userRole === 'pm')
   const isBasicUser = !isAdmin && !isPM
+  // Get current user's assigned project_ids from their member record
+  const myMemberRecord = members.find(m => m.user_id === user?.id)
+  const myProjectIds   = myMemberRecord?.project_ids || null
   // Projects/tasks the user has access to based on role
   const myProjects  = isAdmin
     ? projects.filter(p => !p.is_pipeline)
     : isPM
-      ? projects.filter(p => !p.is_pipeline && tasks.some(t => t.project_id === p.id && (t.assignee_email === user?.email || p.pm_email === user?.email)))
+      ? projects.filter(p =>
+          !p.is_pipeline && (
+            (myProjectIds && myProjectIds.includes(p.id)) ||
+            p.pm_email === user?.email ||
+            tasks.some(t => t.project_id === p.id && t.assignee_email === user?.email)
+          )
+        )
       : projects.filter(p => !p.is_pipeline && tasks.some(t => t.project_id === p.id && t.assignee_email === user?.email))
 
   // ─── Due-tomorrow reminder scheduler ─────────────────────────────────────

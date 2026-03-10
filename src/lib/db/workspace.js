@@ -33,7 +33,7 @@ export async function getWorkspaceMembers(workspaceId) {
   let memberRows = null
   const { data: withRole, error: err1 } = await supabase
     .from('workspace_members')
-    .select('user_id, role, joined_at')
+    .select('user_id, role, joined_at, project_ids')
     .eq('workspace_id', workspaceId)
   if (!err1) {
     memberRows = withRole
