@@ -1268,10 +1268,13 @@ function UsersTab({ toast }) {
 
   async function handleChangeRole(userId, newRole) {
     try {
-      await supabase.from('workspace_members').update({ role: newRole }).eq('workspace_id', workspace.id).eq('user_id', userId)
-      setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role: newRole } : m))
+      const updateData = { role: newRole }
+      if (newRole !== 'pm') updateData.project_ids = null
+      await supabase.from('workspace_members').update(updateData).eq('workspace_id', workspace.id).eq('user_id', userId)
+      setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role: newRole, ...(newRole !== 'pm' ? { project_ids: null } : {}) } : m))
       toast('Role updated', 'success')
     } catch(e) { toast(e.message, 'error') }
+  }
   }
 
   function copyInviteUrl() {

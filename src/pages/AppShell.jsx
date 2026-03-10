@@ -74,12 +74,17 @@ export default function AppShell({ toast }) {
   // ── Overdue task count ───────────────────────────────────────────────────
   const overdueCount = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]
-    return tasks.filter(t =>
+    const scopedTasks = isAdmin
+      ? tasks
+      : isPM
+        ? tasks.filter(t => myProjects.some(p => p.id === t.project_id))
+        : tasks.filter(t => t.assignee_email === user?.email)
+    return scopedTasks.filter(t =>
       t.status !== 'done' &&
       t.due_date &&
       t.due_date < today
     ).length
-  }, [tasks])
+  }, [tasks, isAdmin, isPM, myProjects, user?.email])
 
   function go(v)          { setActiveProjectId(null); setView(v); setMobileMenuOpen(false) }
   function openProject(p) { setActiveProjectId(p.id); setView('project'); setMobileMenuOpen(false) }
@@ -130,7 +135,7 @@ export default function AppShell({ toast }) {
         <NavItem icon="grid"          label="Overview"   active={view==='overview'}   onClick={openOverview} />
         {(isAdmin || isPM) && <NavItem icon="barChart" label="Analytics" active={view==='analytics'} onClick={() => go('analytics')} />}
         <NavItem icon="messageCircle" label="Meetings"   active={view==='meetings'}   onClick={() => go('meetings')} />
-        <NavItem icon="users"         label="Users"      active={view==='users'}      onClick={() => go('users')} />
+        {(isAdmin || isPM) && <NavItem icon="users"    label="Users"      active={view==='users'}      onClick={() => go('users')} />}
       </nav>
 
       {/* Projects */}
@@ -289,7 +294,7 @@ export default function AppShell({ toast }) {
 
       {newProjectOpen  && <NewProjectModal  onClose={() => setNewProjectOpen(false)}  toast={toast} />}
       {newPipelineOpen && <NewPipelineModal onClose={() => setNewPipelineOpen(false)} toast={toast} />}
-      {overdueModalOpen && <OverdueTasksModal tasks={tasks} projects={projects} workspace={workspace} user={user} onClose={() => setOverdueModalOpen(false)} toast={toast} />}
+      {overdueModalOpen && <OverdueTasksModal tasks={tasks} projects={projects} workspace={workspace} user={user} isPM={isPM} myProjects={myProjects} onClose={() => setOverdueModalOpen(false)} toast={toast} />}
 
       <style>{`
         @media (max-width: 768px) {
@@ -355,10 +360,16 @@ function ProjectItem({ project: p, done, total, active, onClick }) {
 }
 
 // ── Overdue Tasks Modal ───────────────────────────────────────────────────────
-function OverdueTasksModal({ tasks, projects, workspace, user, onClose, toast }) {
+function OverdueTasksModal({ tasks, projects, workspace, user, isPM, myProjects, onClose, toast }) {
   const isAdmin = workspace?.owner_id === user?.id || ['owner','admin'].includes(workspace?.role)
   const today = new Date().toISOString().split('T')[0]
-  const overdueTasks = tasks.filter(t => t.status !== 'done' && t.due_date && t.due_date < today)
+  // Scope overdue tasks by role: admins see all, PMs see their projects, users see their own
+  const scopedTasks = isAdmin
+    ? tasks
+    : isPM
+      ? tasks.filter(t => myProjects?.some(p => p.id === t.project_id))
+      : tasks.filter(t => t.assignee_email === user?.email)
+  const overdueTasks = scopedTasks.filter(t => t.status !== 'done' && t.due_date && t.due_date < today)
   const [selectedTask, setSelectedTask] = useState(null)
 
   const grouped = overdueTasks.reduce((acc, t) => {
@@ -434,7 +445,7 @@ function OverdueTasksModal({ tasks, projects, workspace, user, onClose, toast })
         <TaskModal
           task={selectedTask}
           projectId={selectedTask.project_id}
-          isAdmin={isAdmin}
+          isAdmin={isAdmin || isPM}
           onClose={() => setSelectedTask(null)}
           toast={toast}
         />

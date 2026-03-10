@@ -10,9 +10,13 @@ import { STATUS, PRIORITY } from '../lib/constants'
 
 // ─── Global Meetings Page ─────────────────────────────────────────────────────
 export default function GlobalMeetingsPage({ toast }) {
-  const { projects, members: ctxMembers, workspace, addTask, sendMeetingInvites, isAdmin, isPM, isBasicUser } = useData()
+  const { projects, members: ctxMembers, workspace, addTask, sendMeetingInvites, isAdmin, isPM, isBasicUser, myProjects } = useData()
   const { user } = useAuth()
-  const activeProjects = projects.filter(p => !p.is_pipeline)
+  const activeProjects = isAdmin
+    ? projects.filter(p => !p.is_pipeline)
+    : isPM
+      ? myProjects
+      : projects.filter(p => !p.is_pipeline)
 
   const [allMeetings,  setAllMeetings]  = useState([])
   const [loading,      setLoading]      = useState(true)
@@ -53,8 +57,8 @@ export default function GlobalMeetingsPage({ toast }) {
   }
 
   const filtered = allMeetings.filter(m => {
-    // Role-based filter: non-admins only see meetings they attended
-    if (!isAdmin && user?.email) {
+    // Role-based filter: basic users only see meetings they attended; PMs see all within their projects
+    if (isBasicUser && user?.email) {
       const attendeeList = (m.attendees || '').split(',').map(e => e.trim().toLowerCase())
       if (!attendeeList.includes(user.email.toLowerCase()) && m.created_by !== user?.id) return false
     }

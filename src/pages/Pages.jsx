@@ -18,7 +18,9 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName, toast }) 
   const firstName  = (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there').split(' ')[0]
   const myEmail    = user?.email
   // Scope stats: admins see workspace-wide, others see only their own tasks
-  const scopedTasks    = isAdmin ? tasks : myTasks
+  const scopedTasks    = isAdmin ? tasks : isPM
+    ? tasks.filter(t => myProjects.some(p => p.id === t.project_id))
+    : myTasks
   const scopedProjects = isAdmin ? projects.filter(p => !p.is_pipeline) : myProjects
   const byStatus   = Object.keys(STATUS).map(s => ({ s, count: scopedTasks.filter(t => t.status === s).length }))
   const overdue    = scopedTasks.filter(t => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date())
@@ -137,7 +139,7 @@ export function HomePage({ onOpenProject, onNewProject, workspaceName, toast }) 
         <TaskModal
           task={selectedTask}
           projectId={selectedTask.project_id}
-          isAdmin={isAdmin}
+          isAdmin={isAdmin || isPM}
           onClose={() => setSelectedTask(null)}
           toast={toast}
         />
@@ -228,7 +230,7 @@ export function ProjectView({ project, toast }) {
         {mainTab === 'meetings' && <MeetingsTab project={project} toast={toast} />}
       </div>
 
-      {taskModal && <TaskModal task={taskModal === 'new' ? null : taskModal} projectId={project.id} isAdmin={isAdmin} onClose={() => setTaskModal(null)} toast={toast} />}
+      {taskModal && <TaskModal task={taskModal === 'new' ? null : taskModal} projectId={project.id} isAdmin={isAdmin || isPM} onClose={() => setTaskModal(null)} toast={toast} />}
       {editProjOpen && (
         <EditProjectModal project={project} isAdmin={isAdmin}
           onSave={async d => { await editProject(project.id, d); setEditProjOpen(false); toast('Project updated', 'success') }}

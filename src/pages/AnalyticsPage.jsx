@@ -306,7 +306,7 @@ export default function AnalyticsPage() {
         <GanttChart
           title="All Projects — Timeline"
           mode="projects"
-          rows={projects.map(p => {
+          rows={scopedProjects.map(p => {
             const ptasks = scopedTasks.filter(t => t.project_id === p.id && t.due_date)
             const dates  = ptasks.map(t => t.due_date).sort()
             const start  = ptasks.find(t => t.created_at)?.created_at?.split('T')[0] || dates[0] || null

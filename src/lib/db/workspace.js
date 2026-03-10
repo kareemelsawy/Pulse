@@ -60,7 +60,7 @@ export async function getWorkspaceMembers(workspaceId) {
     const isCurrentUser = currentUser?.id === m.user_id
     const full_name = profile?.full_name || (isCurrentUser ? currentUser?.user_metadata?.full_name : null) || null
     const email = profile?.email || (isCurrentUser ? currentUser?.email : null) || null
-    return { user_id: m.user_id, role: m.role, joined_at: m.joined_at, full_name, email }
+    return { user_id: m.user_id, role: m.role, joined_at: m.joined_at, project_ids: m.project_ids || null, full_name, email }
   })
 }
 
