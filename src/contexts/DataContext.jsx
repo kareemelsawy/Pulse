@@ -142,6 +142,8 @@ export function DataProvider({ children }) {
     const recipients = new Set()
     if (notifSettings.notify_assignee && task.assignee_email) recipients.add(task.assignee_email)
     if (notifSettings.extra_emails) notifSettings.extra_emails.split(',').map(e => e.trim()).filter(Boolean).forEach(e => recipients.add(e))
+    // Don't notify the person who triggered the action
+    if (user?.email) recipients.delete(user.email)
     if (!recipients.size) return
     let cfg
     try { cfg = emailConfig() } catch(e) { return }
@@ -292,16 +294,11 @@ export function DataProvider({ children }) {
     dueTomorrow.forEach(task => {
       const project = projects.find(p => p.id === task.project_id)
       const { subject, html } = buildDueSoonEmail({ task, projectName: project?.name || '', appUrl })
-      sendEmail({ ...cfg, to: task.assignee_email, subject, html })
-        .then(() => {
-          alreadySent.add(task.id)
-          localStorage.setItem(sentKey, JSON.stringify([...alreadySent]))
-          insertNotifLog(workspace.id, { trigger_type: 'due_soon', task_id: task.id, recipient: task.assignee_email, subject, status: 'success' }).catch(() => {})
-        })
-        .catch(err => {
-          console.warn('Due-soon email failed:', err.message)
-          insertNotifLog(workspace.id, { trigger_type: 'due_soon', task_id: task.id, recipient: task.assignee_email, subject, status: 'failed' }).catch(() => {})
-        })
+      // Use queue to respect 1/sec rate limit
+      enqueueEmail({ ...cfg, to: task.assignee_email, subject, html })
+      alreadySent.add(task.id)
+      localStorage.setItem(sentKey, JSON.stringify([...alreadySent]))
+      insertNotifLog(workspace.id, { trigger_type: 'due_soon', task_id: task.id, recipient: task.assignee_email, subject, status: 'queued' }).catch(() => {})
     })
   }, [tasks, notifSettings, workspace, projects])
 

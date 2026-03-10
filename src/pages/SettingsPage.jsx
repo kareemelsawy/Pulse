@@ -1216,18 +1216,20 @@ function UsersTab({ toast }) {
     const assignedRole = approveRole[inv.id] || 'user'
     setApprovingId(inv.id)
     try {
-      // Look up the user by email to get their user_id
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('user_id')
-        .eq('email', inv.email)
-        .maybeSingle()
-      if (!profile?.user_id) throw new Error('User account not found — they may not have signed up yet.')
+      // Look up the user by email — try both possible table names
+      let userId = null
+      const { data: p1 } = await supabase.from('profiles').select('id').eq('email', inv.email).maybeSingle()
+      if (p1?.id) { userId = p1.id }
+      if (!userId) {
+        const { data: p2 } = await supabase.from('user_profiles').select('user_id').eq('email', inv.email).maybeSingle()
+        if (p2?.user_id) userId = p2.user_id
+      }
+      if (!userId) throw new Error('User account not found — they may not have signed up yet.')
 
       // Add to workspace_members
       const { error: memberErr } = await supabase.from('workspace_members').insert({
         workspace_id: workspace.id,
-        user_id:      profile.user_id,
+        user_id:      userId,
         role:         assignedRole,
       })
       if (memberErr) throw new Error(memberErr.message)
@@ -1279,8 +1281,10 @@ function UsersTab({ toast }) {
 
   const TABS = [
     { v: 'members', l: `👥  Members${members.length ? ` (${members.length})` : ''}` },
-    { v: 'pending', l: pendingInvites.length ? `⏳  Pending (${pendingInvites.length})` : '⏳  Pending' },
-    { v: 'invite',  l: '✉  Invite User' },
+    ...(isAdmin ? [
+      { v: 'pending', l: pendingInvites.length ? `⏳  Pending (${pendingInvites.length})` : '⏳  Pending' },
+      { v: 'invite',  l: '✉  Invite User' },
+    ] : []),
   ]
 
   return (

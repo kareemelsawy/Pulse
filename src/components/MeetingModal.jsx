@@ -147,6 +147,7 @@ export default function MeetingModal({ project, workspace, user, members, meetin
   const [existTasks, setExistTasks] = useState([])
   const [loadingT,   setLoadingT]   = useState(isEdit)
   const [saving,     setSaving]     = useState(false)
+  const newTaskCount = taskRows.filter(r => r.title.trim()).length
 
   useEffect(() => {
     if (isEdit) {

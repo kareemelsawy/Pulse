@@ -188,6 +188,9 @@ export async function updateWorkspaceName(workspaceId, name) {
 }
 
 export async function removeMember(workspaceId, userId) {
+  // Prevent removing the workspace owner
+  const { data: ws } = await supabase.from('workspaces').select('owner_id').eq('id', workspaceId).maybeSingle()
+  if (ws?.owner_id === userId) throw new Error('Cannot remove the workspace owner.')
   const { error } = await supabase.from('workspace_members').delete()
     .eq('workspace_id', workspaceId).eq('user_id', userId)
   if (error) throw error
