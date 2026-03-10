@@ -39,10 +39,6 @@ export function DataProvider({ children }) {
     getMyWorkspace(user.id).then(ws => {
       if (cancelled) return
       if (!ws) {
-        // Only show workspace setup if we're confident the user has no workspace.
-        // getMyWorkspace returns null both when there's truly no membership AND
-        // when there's a transient DB/RLS error — so we do a second targeted
-        // check to distinguish between "no membership" vs "fetch failed".
         import('../lib/supabase').then(({ supabase }) => {
           supabase
             .from('workspace_members')
@@ -51,13 +47,10 @@ export function DataProvider({ children }) {
             .then(({ count, error }) => {
               if (cancelled) return
               if (!error && count === 0) {
-                // Confirmed: user genuinely has no workspace membership
                 setWsError('no_workspace')
               } else if (error) {
-                // DB/RLS error — don't send to invite screen, show a retry state
                 setWsError('fetch_error')
               } else {
-                // count > 0 but getMyWorkspace failed (RLS/join issue) — retry
                 setWsError('fetch_error')
               }
               setLoading(false)
