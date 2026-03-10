@@ -1351,7 +1351,17 @@ export default function SettingsPage({ toast }) {
   ]
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', minHeight: 0 }}>
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* DEBUG BANNER — always visible regardless of role */}
+      <div style={{ background: '#f59e0b', padding: '10px 20px', fontSize: 12, fontFamily: 'monospace', color: '#000', lineHeight: 1.8, flexShrink: 0 }}>
+        <strong>🛠 DEBUG:</strong> &nbsp;
+        user.id: <strong>{user?.id || 'NULL'}</strong> &nbsp;|&nbsp;
+        workspace.owner_id: <strong>{workspace?.owner_id || 'NULL'}</strong> &nbsp;|&nbsp;
+        workspace.role: <strong>{workspace?.role || 'NULL'}</strong> &nbsp;|&nbsp;
+        isAdmin: <strong>{String(isAdmin)}</strong> &nbsp;|&nbsp;
+        id match: <strong>{String(workspace?.owner_id === user?.id)}</strong>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', minHeight: 0 }}>
       {/* Sidebar nav */}
       <div style={{
         width: 200, flexShrink: 0,
@@ -1412,6 +1422,7 @@ export default function SettingsPage({ toast }) {
           {tab === 'integrations'  && <IntegrationsTab  toast={toast} />}
           {tab === 'data-import'   && <DataImportTab    toast={toast} />}
         </div>
+      </div>
       </div>
     </div>
   )
