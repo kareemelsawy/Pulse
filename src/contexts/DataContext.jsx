@@ -22,99 +22,42 @@ export function DataProvider({ children }) {
   const [notifLogs,    setNotifLogs]    = useState([])
   const [loading,      setLoading]      = useState(true)
   const [wsError,      setWsError]      = useState(null)
-  const [wsPending,    setWsPending]    = useState(null) // { workspaceName } if pending_approval
   const cleanupRef = useRef(null)
 
   useEffect(() => {
     if (!authReady) return
     if (!user) {
       setWorkspace(null); setProjects([]); setTasks([])
-      setLoading(false); setWsError(null); setWsPending(null)
+      setLoading(false); setWsError(null)
       return
     }
 
     let cancelled = false
     setLoading(true)
     setWsError(null)
-    setWsPending(null)
 
     getMyWorkspace(user.id).then(ws => {
       if (cancelled) return
       if (!ws) {
+        // Only show workspace setup if we're confident the user has no workspace.
+        // getMyWorkspace returns null both when there's truly no membership AND
+        // when there's a transient DB/RLS error — so we do a second targeted
+        // check to distinguish between "no membership" vs "fetch failed".
         import('../lib/supabase').then(({ supabase }) => {
           supabase
             .from('workspace_members')
             .select('workspace_id', { count: 'exact', head: true })
             .eq('user_id', user.id)
-            .then(async ({ count, error }) => {
+            .then(({ count, error }) => {
               if (cancelled) return
               if (!error && count === 0) {
-                // Check if user has a pending_approval request
-                try {
-                  const { data: pendingInvite } = await supabase
-                    .from('workspace_invites')
-                    .select('workspace_id, status')
-                    .eq('email', user.email)
-                    .eq('status', 'pending_approval')
-                    .maybeSingle()
-                  if (pendingInvite?.workspace_id) {
-                    const { data: wsData } = await supabase
-                      .from('workspaces')
-                      .select('name')
-                      .eq('id', pendingInvite.workspace_id)
-                      .maybeSingle()
-
-                    // Send confirmation email once — check sent_signup_email flag
-                    if (!pendingInvite.sent_signup_email) {
-                      try {
-                        const { data: ns } = await supabase
-                          .from('notif_settings')
-                          .select('resend_api_key, sendgrid_api_key, from_email, from_name, function_secret')
-                          .eq('workspace_id', pendingInvite.workspace_id)
-                          .maybeSingle()
-                        const apiKey = ns?.resend_api_key || ns?.sendgrid_api_key
-                        if (apiKey && ns?.from_email) {
-                          const workspaceName = wsData?.name || 'Pulse'
-                          const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;background:#0D0F14;">
-<table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;"><tr><td align="center">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
-  <tr><td style="background:linear-gradient(135deg,#6B8EF7,#C084FC);border-radius:14px 14px 0 0;padding:18px 24px;">
-    <span style="font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.5px;">✦ Pulse</span>
-  </td></tr>
-  <tr><td style="background:#111420;border:1px solid rgba(255,255,255,0.09);border-top:none;border-radius:0 0 14px 14px;padding:28px 24px;">
-    <h2 style="color:#F0F4FF;font-size:20px;font-weight:800;margin:0 0 12px;">Signup received ✓</h2>
-    <p style="color:rgba(200,210,240,0.75);font-size:14px;line-height:1.7;margin:0 0 18px;">
-      Hi <strong style="color:#F0F4FF;">${user.email}</strong>,<br><br>
-      Your signup for <strong style="color:#F0F4FF;">${workspaceName}</strong> was successful. Your account is currently being reviewed by the workspace admin.<br><br>
-      You'll receive access once they approve your request — no further action needed from your end.
-    </p>
-    <div style="background:#0E1019;border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
-      <div style="color:rgba(200,210,240,0.40);font-size:11px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Status</div>
-      <div style="color:#FBBF24;font-size:13px;font-weight:700;">⏳ Pending admin approval</div>
-    </div>
-    <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:0;">Sent by Pulse · ${workspaceName}</p>
-  </td></tr>
-</table></td></tr></table></body></html>`
-                          const { sendEmail: _sendEmail } = await import('../lib/gmail')
-                          await _sendEmail({ apiKey, fromEmail: ns.from_email, fromName: ns.from_name || 'Pulse', functionSecret: ns.function_secret, to: user.email, subject: `Your ${workspaceName} signup is being reviewed`, html })
-                          // Mark email as sent
-                          await supabase.from('workspace_invites').update({ sent_signup_email: true }).eq('workspace_id', pendingInvite.workspace_id).eq('email', user.email).eq('status', 'pending_approval')
-                        }
-                      } catch(emailErr) { console.warn('Signup confirmation email failed:', emailErr.message) }
-                    }
-
-                    if (!cancelled) {
-                      setWsPending({ workspaceName: wsData?.name || 'Pulse' })
-                      setLoading(false)
-                      return
-                    }
-                  }
-                } catch(_) {}
+                // Confirmed: user genuinely has no workspace membership
                 setWsError('no_workspace')
               } else if (error) {
+                // DB/RLS error — don't send to invite screen, show a retry state
                 setWsError('fetch_error')
               } else {
+                // count > 0 but getMyWorkspace failed (RLS/join issue) — retry
                 setWsError('fetch_error')
               }
               setLoading(false)
@@ -371,7 +314,7 @@ export function DataProvider({ children }) {
 
   return (
     <DataContext.Provider value={{
-      workspace, projects, tasks, members, notifSettings, notifLogs, loading, wsError, wsPending,
+      workspace, projects, tasks, members, notifSettings, notifLogs, loading, wsError,
       setWorkspace,
       addProject, editProject, removeProject, importProjects,
       addTask, editTask, removeTask, importTasks,
