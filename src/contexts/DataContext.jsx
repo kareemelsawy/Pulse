@@ -38,8 +38,6 @@ export function DataProvider({ children }) {
 
     getMyWorkspace(user.id).then(ws => {
       if (cancelled) return
-      console.log('[Pulse Debug] getMyWorkspace result:', JSON.stringify(ws))
-      console.log('[Pulse Debug] user.id:', user.id)
       if (!ws) {
         // Only show workspace setup if we're confident the user has no workspace.
         // getMyWorkspace returns null both when there's truly no membership AND
@@ -261,9 +259,8 @@ export function DataProvider({ children }) {
   // Roles: 'owner'/'admin' → full access | 'pm' → program manager | 'member'/'user' → basic user
   const userRole    = workspace?.role || 'member'
   const isAdmin     = userRole === 'owner' || userRole === 'admin' || workspace?.owner_id === user?.id
-  const isPM        = !isAdmin && userRole === 'pm'
+  const isPM        = !isAdmin && (userRole === 'pm')
   const isBasicUser = !isAdmin && !isPM
-  console.log('[Pulse Debug] workspace?.role:', workspace?.role, '| workspace?.owner_id:', workspace?.owner_id, '| user?.id:', user?.id, '| isAdmin:', isAdmin)
   // Projects/tasks the user has access to based on role
   const myProjects  = isAdmin
     ? projects.filter(p => !p.is_pipeline)

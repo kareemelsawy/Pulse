@@ -1343,25 +1343,17 @@ export default function SettingsPage({ toast }) {
 
   const TABS = [
     { id: 'account',       label: 'Account',       icon: 'user'   },
-    { id: 'workspace',     label: 'Workspace',     icon: 'folder' },
-    { id: 'notifications', label: 'Notifications', icon: 'bell'   },
-    { id: 'users',         label: 'Users',         icon: 'users'  },
-    { id: 'integrations',  label: 'Integrations',  icon: 'zap'    },
-    { id: 'data-import',   label: 'Data Import',   icon: 'list'   },
+    ...(isAdmin ? [{ id: 'workspace', label: 'Workspace', icon: 'folder' }] : []),
+    { id: 'notifications', label: 'Notifications',  icon: 'bell'   },
+    { id: 'users',         label: 'Users',          icon: 'users'  },
+    ...(isAdmin ? [
+      { id: 'integrations', label: 'Integrations',  icon: 'zap'   },
+      { id: 'data-import',  label: 'Data Import',   icon: 'list'  },
+    ] : []),
   ]
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      {/* DEBUG BANNER — always visible regardless of role */}
-      <div style={{ background: '#f59e0b', padding: '10px 20px', fontSize: 12, fontFamily: 'monospace', color: '#000', lineHeight: 1.8, flexShrink: 0 }}>
-        <strong>🛠 DEBUG:</strong> &nbsp;
-        user.id: <strong>{user?.id || 'NULL'}</strong> &nbsp;|&nbsp;
-        workspace.owner_id: <strong>{workspace?.owner_id || 'NULL'}</strong> &nbsp;|&nbsp;
-        workspace.role: <strong>{workspace?.role || 'NULL'}</strong> &nbsp;|&nbsp;
-        isAdmin: <strong>{String(isAdmin)}</strong> &nbsp;|&nbsp;
-        id match: <strong>{String(workspace?.owner_id === user?.id)}</strong>
-      </div>
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', minHeight: 0 }}>
+    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', minHeight: 0 }}>
       {/* Sidebar nav */}
       <div style={{
         width: 200, flexShrink: 0,
@@ -1394,15 +1386,6 @@ export default function SettingsPage({ toast }) {
 
       {/* Content */}
       <div style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', minWidth: 0 }}>
-        {/* DEBUG BANNER — remove after fix confirmed */}
-        <div style={{ background: '#1a1a2e', border: '1px solid #f59e0b', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 12, fontFamily: 'monospace', color: '#f59e0b', lineHeight: 1.8 }}>
-          <strong>🛠 Debug Info</strong><br/>
-          user.id: {user?.id || 'null'}<br/>
-          workspace.owner_id: {workspace?.owner_id || 'null'}<br/>
-          workspace.role: {workspace?.role || 'null'}<br/>
-          isAdmin: {String(isAdmin)}<br/>
-          match: {String(workspace?.owner_id === user?.id)}
-        </div>
         <div style={{ maxWidth: 640 }}>
           <h1 style={{ fontWeight: 700, fontSize: 20, letterSpacing: '-0.02em', marginBottom: 4 }}>
             {TABS.find(t => t.id === tab)?.label}
@@ -1416,13 +1399,12 @@ export default function SettingsPage({ toast }) {
             {tab === 'data-import'   && 'Bulk create or update programs and tasks by uploading a CSV file.'}
           </p>
           {tab === 'account'       && <AccountTab       toast={toast} />}
-          {tab === 'workspace'     && <WorkspaceTab     toast={toast} />}
+          {tab === 'workspace'     && isAdmin && <WorkspaceTab toast={toast} />}
           {tab === 'notifications' && <NotificationsTab toast={toast} />}
           {tab === 'users'         && <UsersTab         toast={toast} />}
-          {tab === 'integrations'  && <IntegrationsTab  toast={toast} />}
-          {tab === 'data-import'   && <DataImportTab    toast={toast} />}
+          {tab === 'integrations'  && isAdmin && <IntegrationsTab toast={toast} />}
+          {tab === 'data-import'   && isAdmin && <DataImportTab  toast={toast} />}
         </div>
-      </div>
       </div>
     </div>
   )
