@@ -1120,6 +1120,8 @@ function UsersTab({ toast }) {
   function buildInviteHtml(email, roleLabel) {
     const inviterName = user?.user_metadata?.full_name || user?.email || 'Your admin'
     const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="26" height="26" style="display:block;"><rect width="512" height="512" rx="115" ry="115" fill="rgba(255,255,255,0.22)"/><path d="M 256,90 C 242,180 180,242 90,256 C 180,270 242,332 256,422 C 270,332 332,270 422,256 C 332,242 270,180 256,90 Z" fill="#ffffff"/></svg>`
+    // Append email to URL so InvitePage can pre-fill it
+    const joinUrl = `${inviteUrl}&email=${encodeURIComponent(email)}`
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="color-scheme" content="dark"></head>
 <body style="margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;"><tr><td align="center">
@@ -1134,8 +1136,7 @@ function UsersTab({ toast }) {
     </tr></table>
   </td></tr>
   <tr><td style="background:#111420;border:1px solid rgba(255,255,255,0.09);border-top:none;border-radius:0 0 14px 14px;padding:26px 24px;">
-    <p style="color:rgba(200,210,240,0.75);font-size:13px;margin:0 0 4px;"><strong style="color:#F0F4FF;">${inviterName}</strong> invited you to join</p>
-    <h2 style="color:#F0F4FF;font-size:22px;margin:0 0 20px;font-weight:800;">${workspace?.name || 'Pulse'}</h2>
+    <p style="color:rgba(200,210,240,0.75);font-size:13px;margin:0 0 20px;"><strong style="color:#F0F4FF;">${inviterName}</strong> invited you to join Pulse</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#0E1019;border:1px solid rgba(255,255,255,0.09);border-radius:10px;overflow:hidden;margin-bottom:22px;">
       <tr>
         <td style="padding:10px 14px;color:rgba(200,210,240,0.40);font-size:11px;font-weight:700;text-transform:uppercase;white-space:nowrap;width:100px;border-bottom:1px solid rgba(255,255,255,0.09);">Your Role</td>
@@ -1147,11 +1148,11 @@ function UsersTab({ toast }) {
       </tr>
     </table>
     <div style="text-align:center;margin-bottom:22px;">
-      <a href="${inviteUrl}" style="display:inline-block;background:linear-gradient(135deg,#6B8EF7,#C084FC);color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:14px;">Accept Invitation →</a>
+      <a href="${joinUrl}" style="display:inline-block;background:linear-gradient(135deg,#6B8EF7,#C084FC);color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:14px;">Accept Invitation →</a>
     </div>
-    <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:0;text-align:center;word-break:break-all;">${inviteUrl}</p>
+    <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:0;text-align:center;word-break:break-all;">${joinUrl}</p>
     <div style="margin-top:28px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.09);">
-      <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:0;">Sent by Pulse · ${inviterName} invited you to ${workspace?.name || 'Pulse'}.</p>
+      <p style="color:rgba(200,210,240,0.40);font-size:11px;margin:0;">Sent by Pulse · ${inviterName} invited you.</p>
     </div>
   </td></tr>
 </table></td></tr></table></body></html>`

@@ -15,6 +15,7 @@ import GuestView from './pages/GuestView'
 function AuthGate({ toast }) {
   const { user, loading: authLoading, signOut } = useAuth()
   const pendingInviteOnLoad = sessionStorage.getItem('pendingInvite') || localStorage.getItem('pendingInvite')
+  const pendingInviteEmail  = sessionStorage.getItem('pendingInviteEmail') || localStorage.getItem('pendingInviteEmail') || ''
   const [page, setPage] = useState('login')
   const [inviteWorkspaceName, setInviteWorkspaceName] = useState('')
 
@@ -29,6 +30,12 @@ function AuthGate({ toast }) {
       const inviteCode = params.get('invite')
       sessionStorage.setItem('pendingInvite', inviteCode)
       localStorage.setItem('pendingInvite', inviteCode)
+      // Also save the pre-filled email if present
+      const inviteEmail = params.get('email')
+      if (inviteEmail) {
+        sessionStorage.setItem('pendingInviteEmail', inviteEmail)
+        localStorage.setItem('pendingInviteEmail', inviteEmail)
+      }
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [])
@@ -49,7 +56,7 @@ function AuthGate({ toast }) {
     if (pendingInviteOnLoad) return (
       <InvitePage
         inviteCode={pendingInviteOnLoad}
-        workspaceName={inviteWorkspaceName}
+        prefillEmail={pendingInviteEmail}
         onSignOut={signOut}
       />
     )
@@ -93,6 +100,8 @@ function WorkspaceGate({ toast }) {
   function handleJoined(ws) {
     sessionStorage.removeItem('pendingInvite')
     localStorage.removeItem('pendingInvite')
+    sessionStorage.removeItem('pendingInviteEmail')
+    localStorage.removeItem('pendingInviteEmail')
     if (ws.pending_approval) {
       setPendingApproval({ workspaceName: ws.name })
       return

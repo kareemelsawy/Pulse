@@ -133,9 +133,9 @@ function Divider() {
 }
 
 // ── Main InvitePage ───────────────────────────────────────────────────────────
-export default function InvitePage({ inviteCode, workspaceName, onSignOut }) {
+export default function InvitePage({ inviteCode, prefillEmail = '', onSignOut }) {
   const [name,    setName]    = useState('')
-  const [email,   setEmail]   = useState('')
+  const [email,   setEmail]   = useState(prefillEmail)
   const [pw,      setPw]      = useState('')
   const [pw2,     setPw2]     = useState('')
   const [loading, setLoading] = useState(false)
@@ -180,9 +180,7 @@ export default function InvitePage({ inviteCode, workspaceName, onSignOut }) {
           <br />Click it to activate — then you'll land straight in your workspace.
         </p>
         <div style={{ background: 'rgba(107,142,247,0.10)', border: '1px solid rgba(107,142,247,0.20)', borderRadius: 10, padding: '10px 16px', fontSize: 12, color: 'rgba(180,200,255,0.55)', lineHeight: 1.6 }}>
-          Your invite code is saved. You'll join{' '}
-          <strong style={{ color: '#EEF2FF' }}>{workspaceName || 'the workspace'}</strong>{' '}
-          automatically after confirming your email.
+          Your invite code is saved — you'll join the workspace automatically after confirming your email.
         </div>
       </GlassCard>
     </Shell>
@@ -193,13 +191,7 @@ export default function InvitePage({ inviteCode, workspaceName, onSignOut }) {
     <Shell>
       <GlassCard>
 
-        {/* Workspace pill */}
-        {workspaceName && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(107,142,247,0.12)', border: '1px solid rgba(107,142,247,0.25)', borderRadius: 20, padding: '5px 12px', marginBottom: 20 }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#6B8EF7', flexShrink: 0 }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(107,142,247,0.9)', letterSpacing: '0.02em' }}>{workspaceName}</span>
-          </div>
-        )}
+
 
         <div style={{ marginBottom: 24 }}>
           <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#EEF2FF', margin: '0 0 6px' }}>
