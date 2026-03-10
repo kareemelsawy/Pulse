@@ -1105,7 +1105,11 @@ function UsersTab({ toast }) {
     try {
       for (const email of valid) {
         try {
-          await supabase.from('workspace_invites').upsert({
+          await supabase.from('workspace_invites')
+            .delete()
+            .eq('workspace_id', workspace.id)
+            .eq('email', email)
+          await supabase.from('workspace_invites').insert({
             workspace_id: workspace.id,
             email,
             role,
@@ -1113,7 +1117,7 @@ function UsersTab({ toast }) {
             invite_code: code,
             invited_by: user?.email,
             created_at: new Date().toISOString(),
-          }, { onConflict: 'workspace_id,email', ignoreDuplicates: false })
+          })
         } catch (_) {}
       }
       setInviteResult({ emails: valid, url: inviteUrl })
