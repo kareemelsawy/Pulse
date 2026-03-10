@@ -192,21 +192,25 @@ export default function MeetingModal({ project, workspace, user, members, meetin
         saved = await createMeeting(meetingProject.id, workspace.id, user.id, fields)
       }
 
-      // Create tasks — each in its chosen project
+      // Create tasks — each independently so one failure never blocks the rest
       for (const r of validTaskRows) {
-        const member = members.find(m => m.user_id === r.assigneeId)
-        const assignee_name  = member?.full_name || member?.email || r.assigneeEmail || ''
-        const assignee_email = member?.email || r.assigneeEmail || ''
-        const taskProjectId  = r.projectId || meetingProject.id
-        await addTask(taskProjectId, {
-          title: r.title.trim(),
-          status: 'new',
-          priority: r.priority,
-          assignee_name,
-          assignee_email,
-          due_date: r.due_date || null,
-          meeting_id: saved.id,
-        })
+        try {
+          const member = members.find(m => m.user_id === r.assigneeId)
+          const assignee_name  = member?.full_name || member?.email || r.assigneeEmail || ''
+          const assignee_email = member?.email || r.assigneeEmail || ''
+          const taskProjectId  = r.projectId || meetingProject.id
+          await addTask(taskProjectId, {
+            title: r.title.trim(),
+            status: 'new',
+            priority: r.priority,
+            assignee_name,
+            assignee_email,
+            due_date: r.due_date || null,
+            meeting_id: saved.id,
+          })
+        } catch(taskErr) {
+          console.warn('Task creation failed:', taskErr.message)
+        }
       }
 
       // Send meeting minutes — await and surface errors

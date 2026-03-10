@@ -85,6 +85,24 @@ export function DataProvider({ children }) {
 
   // ─── Low-level email sender ───────────────────────────────────────────────
   // ─── Helper: build SendGrid config from notifSettings ────────────────────
+  const emailQueue = useRef([])
+  const emailQueueRunning = useRef(false)
+
+  const enqueueEmail = useCallback((emailArgs) => {
+    emailQueue.current.push(emailArgs)
+    if (emailQueueRunning.current) return
+    emailQueueRunning.current = true
+    const drain = async () => {
+      while (emailQueue.current.length > 0) {
+        const args = emailQueue.current.shift()
+        try { await sendEmail(args) } catch(e) { console.warn('Email send failed:', e.message) }
+        if (emailQueue.current.length > 0) await new Promise(r => setTimeout(r, 1100))
+      }
+      emailQueueRunning.current = false
+    }
+    drain()
+  }, [])
+
   const emailConfig = useCallback(() => {
     const key = notifSettings?.resend_api_key || notifSettings?.sendgrid_api_key
     if (!key) throw new Error('Resend not configured — go to Settings → Notifications')
@@ -94,53 +112,37 @@ export function DataProvider({ children }) {
     return { apiKey: key, fromEmail, fromName, functionSecret }
   }, [notifSettings])
 
-  // ─── Low-level email sender ───────────────────────────────────────────────
+  // ─── Low-level email sender (queued) ─────────────────────────────────────
   const sendRawEmail = useCallback(async ({ to, subject, html }) => {
     if (!notifSettings?.resend_api_key && !notifSettings?.sendgrid_api_key) return false
     try {
-      await sendEmail({ ...emailConfig(), to, subject, html })
+      const cfg = emailConfig()
+      enqueueEmail({ ...cfg, to, subject, html })
       return true
     } catch(e) { console.warn('Email send failed:', e.message); return false }
-  }, [notifSettings, emailConfig])
+  }, [notifSettings, emailConfig, enqueueEmail])
 
-  // ─── Send meeting minutes to all attendee emails ──────────────────────────
+  // ─── Send meeting minutes to all attendee emails (queued) ─────────────────
   const sendMeetingInvites = useCallback(async ({ meeting, projectName, attendeeEmails, actionItems }) => {
-    const cfg = emailConfig()
     if (!attendeeEmails?.length) return
+    let cfg
+    try { cfg = emailConfig() } catch(e) { return }
     const appUrl = window.location.origin
     const actorName = user?.user_metadata?.full_name || user?.email || 'Someone'
     const meetingDate = meeting.meeting_date
       ? new Date(meeting.meeting_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       : 'TBD'
     const { subject, html } = buildMeetingInviteEmail({
-      inviterName: actorName,
-      meetingTitle: meeting.title,
-      meetingDate,
-      projectName,
-      attendeeList: attendeeEmails.join(', '),
-      summary: meeting.summary || '',
-      actionItems: actionItems || [],
-      appUrl,
+      inviterName: actorName, meetingTitle: meeting.title, meetingDate,
+      projectName, attendeeList: attendeeEmails.join(', '),
+      summary: meeting.summary || '', actionItems: actionItems || [], appUrl,
     })
-    // Send sequentially with a 600ms gap to stay under Resend's 2/sec rate limit
-    let failures = 0
-    for (let i = 0; i < attendeeEmails.length; i++) {
-      try {
-        await sendEmail({ ...cfg, to: attendeeEmails[i], subject, html })
-      } catch (e) {
-        console.warn(`Email to ${attendeeEmails[i]} failed:`, e.message)
-        failures++
-      }
-      // Wait between sends — skip delay after the last one
-      if (i < attendeeEmails.length - 1) {
-        await new Promise(res => setTimeout(res, 600))
-      }
+    for (const to of attendeeEmails) {
+      enqueueEmail({ ...cfg, to, subject, html })
     }
-    if (failures === attendeeEmails.length) throw new Error('All emails failed to send. Check your Resend configuration.')
-    if (failures > 0) console.warn(`${failures}/${attendeeEmails.length} emails failed`)
-  }, [notifSettings, user, emailConfig])
+  }, [notifSettings, user, emailConfig, enqueueEmail])
 
-  // ─── Notifications ────────────────────────────────────────────────────────
+  // ─── Notifications (queued) ───────────────────────────────────────────────
   const sendNotification = useCallback(async ({ trigger, task, projectName, actorName, extraInfo }) => {
     if (!notifSettings?.resend_api_key && !notifSettings?.sendgrid_api_key) return
     if (!notifSettings?.enabled_triggers?.[trigger]) return
@@ -148,19 +150,16 @@ export function DataProvider({ children }) {
     if (notifSettings.notify_assignee && task.assignee_email) recipients.add(task.assignee_email)
     if (notifSettings.extra_emails) notifSettings.extra_emails.split(',').map(e => e.trim()).filter(Boolean).forEach(e => recipients.add(e))
     if (!recipients.size) return
-    const cfg = emailConfig()
+    let cfg
+    try { cfg = emailConfig() } catch(e) { return }
     const appUrl = window.location.origin
     const { subject, html } = buildNotificationEmail({ trigger, task, projectName, actorName, extraInfo, appUrl })
-    let successes = 0, failures = 0
-    await Promise.all([...recipients].map(async to => {
-      let status = 'success'
-      try { await sendEmail({ ...cfg, to, subject, html }); successes++ }
-      catch (e) { console.warn('Email send failed:', e.message); failures++; status = 'failed' }
-      insertNotifLog(workspace.id, { trigger_type: trigger, task_id: task.id, recipient: to, subject, status }).catch(() => {})
-    }))
-    setNotifLogs(prev => [{ trigger_type: trigger, task_id: task.id, recipient: [...recipients].join(', '), subject, status: failures ? 'partial' : 'success', id: Date.now(), created_at: new Date().toISOString() }, ...prev].slice(0, 50))
-    return { successes, failures }
-  }, [notifSettings, workspace, emailConfig])
+    for (const to of [...recipients]) {
+      enqueueEmail({ ...cfg, to, subject, html })
+      insertNotifLog(workspace.id, { trigger_type: trigger, task_id: task.id, recipient: to, subject, status: 'queued' }).catch(() => {})
+    }
+    setNotifLogs(prev => [{ trigger_type: trigger, task_id: task.id, recipient: [...recipients].join(', '), subject, status: 'queued', id: Date.now(), created_at: new Date().toISOString() }, ...prev].slice(0, 50))
+  }, [notifSettings, workspace, emailConfig, enqueueEmail])
 
   // ─── Projects ─────────────────────────────────────────────────────────────
   const addProject = useCallback(async (data) => {
@@ -188,37 +187,35 @@ export function DataProvider({ children }) {
   }, [workspace, user])
 
   // ─── Tasks ────────────────────────────────────────────────────────────────
+  // ─── Tasks ────────────────────────────────────────────────────────────────
   const addTask = useCallback(async (projectId, data) => {
     const task = await createTask({ projectId, workspaceId: workspace.id, userId: user.id, ...data, status: 'new' })
     setTasks(prev => [...prev, task])
     const project = projects.find(p => p.id === projectId)
     const actorName = user.user_metadata?.full_name || user.email || 'Someone'
-    // Notify extra_emails recipients about the new task
+    // Queue notifications — never await, never block the caller
     sendNotification({ trigger: 'new_task', task, projectName: project?.name, actorName })
     if (data.assignee_email) {
-      // Case-insensitive check for workspace membership
-      const isWorkspaceMember = members.some(
-        m => m.email?.toLowerCase() === data.assignee_email?.toLowerCase()
-      )
+      const isWorkspaceMember = members.some(m => m.email?.toLowerCase() === data.assignee_email?.toLowerCase())
       if (isWorkspaceMember) {
-        // Workspace member — send task_assigned notification to their email
         sendNotification({ trigger: 'task_assigned', task, projectName: project?.name, actorName })
       } else {
-        // Not a workspace member — treat as guest, send invite email
-        const appUrl = window.location.origin
-        const { subject, html } = buildGuestInviteEmail({
-          assigneeName: data.assignee_name || data.assignee_email,
-          assignerName: actorName,
-          taskTitle: task.title,
-          projectName: project?.name || '',
-          appUrl,
-        })
-        sendEmail({ ...emailConfig(), to: data.assignee_email, subject, html }).catch(() => {})
-        logGuestInvitation(workspace.id, data.assignee_email, task.title, task.id).catch(() => {})
+        try {
+          const appUrl = window.location.origin
+          const { subject, html } = buildGuestInviteEmail({
+            assigneeName: data.assignee_name || data.assignee_email,
+            assignerName: actorName,
+            taskTitle: task.title,
+            projectName: project?.name || '',
+            appUrl,
+          })
+          enqueueEmail({ ...emailConfig(), to: data.assignee_email, subject, html })
+          logGuestInvitation(workspace.id, data.assignee_email, task.title, task.id).catch(() => {})
+        } catch(_) {}
       }
     }
     return task
-  }, [workspace, user, projects, members, notifSettings, sendNotification])
+  }, [workspace, user, projects, members, notifSettings, sendNotification, enqueueEmail, emailConfig])
 
   const editTask = useCallback(async (id, data, oldTask) => {
     await updateTask(id, data)
