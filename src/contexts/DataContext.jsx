@@ -258,8 +258,8 @@ export function DataProvider({ children }) {
   // ─── Role helpers ─────────────────────────────────────────────────────────
   // Roles: 'owner'/'admin' → full access | 'pm' → program manager | 'member'/'user' → basic user
   const userRole    = workspace?.role || 'member'
-  const isAdmin     = userRole === 'owner' || userRole === 'admin'
-  const isPM        = userRole === 'pm'
+  const isAdmin     = userRole === 'owner' || userRole === 'admin' || workspace?.owner_id === user?.id
+  const isPM        = !isAdmin && userRole === 'pm'
   const isBasicUser = !isAdmin && !isPM
   // Projects/tasks the user has access to based on role
   const myProjects  = isAdmin
