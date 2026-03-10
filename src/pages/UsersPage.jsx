@@ -179,21 +179,21 @@ export default function UsersPage({ toast }) {
     try {
       for (const email of valid) {
         // Save to DB — delete existing then insert fresh
-        try {
-          await supabase.from('workspace_invites')
-            .delete()
-            .eq('workspace_id', workspace.id)
-            .eq('email', email)
-          await supabase.from('workspace_invites').insert({
-            workspace_id: workspace.id,
-            email,
-            role,
-            project_ids: selProjects.length ? selProjects : null,
-            invite_code: code,
-            invited_by: user?.email,
-            created_at: new Date().toISOString(),
-          })
-        } catch (_) {}
+        await supabase.from('workspace_invites')
+          .delete()
+          .eq('workspace_id', workspace.id)
+          .eq('email', email)
+
+        const { error: insertError } = await supabase.from('workspace_invites').insert({
+          workspace_id: workspace.id,
+          email,
+          role,
+          project_ids: selProjects.length ? selProjects : null,
+          invite_code: code,
+          invited_by: user?.email,
+          created_at: new Date().toISOString(),
+        })
+        if (insertError) throw new Error(`DB error: ${insertError.message}`)
 
         // Send email if configured
         if (emailConfigured) {
@@ -215,7 +215,9 @@ export default function UsersPage({ toast }) {
               html,
             })
             emailsSent++
-          } catch (_) {}
+          } catch (emailErr) {
+            toast(`Invite saved but email failed: ${emailErr.message}`, 'error')
+          }
         }
       }
 
@@ -223,9 +225,9 @@ export default function UsersPage({ toast }) {
       setEmails([])
       setEmailInput('')
       toast(
-        emailConfigured
+        emailsSent > 0
           ? `Invite email sent to ${valid.length} recipient${valid.length > 1 ? 's' : ''}`
-          : `Invite link ready — copy and share it manually`,
+          : `Invite saved — copy and share the link manually`,
         'success'
       )
     } catch (e) {
