@@ -172,11 +172,12 @@ export async function joinWorkspaceByCode(code, userId) {
   if (joinErr) throw new Error(joinErr.message)
 
   if (invite?.id) {
-    await supabase
-      .from('workspace_invites')
-      .update({ accepted_at: new Date().toISOString(), status: 'accepted' })
-      .eq('id', invite.id)
-      .catch(() => {})
+    try {
+      await supabase
+        .from('workspace_invites')
+        .update({ accepted_at: new Date().toISOString(), status: 'accepted' })
+        .eq('id', invite.id)
+    } catch (_) {}
   }
 
   return { ...ws, role: assignedRole }
