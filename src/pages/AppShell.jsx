@@ -10,6 +10,7 @@ import DocsPage from './DocsPage'
 import GlobalMeetingsPage from './GlobalMeetingsPage'
 import SettingsPage from './SettingsPage'
 import AnalyticsPage from './AnalyticsPage'
+import UsersPage from './UsersPage'
 
 // ── Same gradient background as login ────────────────────────────────────────
 function AppBackground() {
@@ -122,6 +123,7 @@ export default function AppShell({ toast }) {
         <NavItem icon="grid"          label="Overview"   active={view==='overview'}   onClick={openOverview} />
         {(isAdmin || isPM) && <NavItem icon="barChart" label="Analytics" active={view==='analytics'} onClick={() => go('analytics')} />}
         <NavItem icon="messageCircle" label="Meetings"   active={view==='meetings'}   onClick={() => go('meetings')} />
+        <NavItem icon="users"         label="Users"      active={view==='users'}      onClick={() => go('users')} />
       </nav>
 
       {/* Projects */}
@@ -274,6 +276,7 @@ export default function AppShell({ toast }) {
           {view === 'pipeline'  && <PipelineView onConvertToProject={() => setView('overview')} toast={toast} />}
           {view === 'meetings'  && <GlobalMeetingsPage toast={toast} />}
           {view === 'docs'      && <DocsPage />}
+          {view === 'users'     && <UsersPage toast={toast} />}
         </main>
       </div>
 
