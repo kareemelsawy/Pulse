@@ -53,17 +53,44 @@ function AuthGate({ toast }) {
   )
 }
 
+function PendingApprovalScreen({ user, signOut, workspaceName }) {
+  const C = DARK_THEME
+  return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.bg, gap: 16, padding: 24 }}>
+      <div style={{ fontSize: 48, lineHeight: 1 }}>⏳</div>
+      <h2 style={{ color: C.text, fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', textAlign: 'center' }}>
+        Waiting for approval
+      </h2>
+      <p style={{ color: C.textMuted, fontSize: 14, maxWidth: 340, textAlign: 'center', lineHeight: 1.7, margin: 0 }}>
+        Your request to join <strong style={{ color: C.text }}>{workspaceName}</strong> has been sent to the workspace admin. You'll get access once they approve your account.
+      </p>
+      <div style={{ marginTop: 8, background: 'rgba(107,142,247,0.08)', border: '1px solid rgba(107,142,247,0.20)', borderRadius: 10, padding: '10px 18px', fontSize: 12, color: C.textMuted }}>
+        Signed in as <strong style={{ color: C.text }}>{user?.email}</strong>
+      </div>
+      <button onClick={signOut} style={{ background: 'none', border: 'none', color: C.textMuted, fontSize: 12, cursor: 'pointer', textDecoration: 'underline', marginTop: 8 }}>
+        Sign out
+      </button>
+    </div>
+  )
+}
+
 function WorkspaceGate({ toast }) {
   const { workspace, loading, wsError, setWorkspace } = useData()
   const { user, signOut } = useAuth()
   const C = DARK_THEME
+  const [pendingApproval, setPendingApproval] = useState(null)
 
   function handleJoined(ws) {
-    // Only clear pendingInvite AFTER a successful join
     sessionStorage.removeItem('pendingInvite')
+    if (ws.pending_approval) {
+      setPendingApproval({ workspaceName: ws.name })
+      return
+    }
     setWorkspace(ws)
     window.location.reload()
   }
+
+  if (pendingApproval) return <PendingApprovalScreen user={user} signOut={signOut} workspaceName={pendingApproval.workspaceName} />
 
   if (loading) return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: C.bg, gap: 16 }}>

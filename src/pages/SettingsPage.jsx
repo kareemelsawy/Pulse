@@ -1072,6 +1072,8 @@ function UsersTab({ toast }) {
   const [inviting,       setInviting]       = useState(false)
   const [copied,         setCopied]         = useState(false)
   const [cancellingId,   setCancellingId]   = useState(null)
+  const [approvingId,    setApprovingId]    = useState(null)
+  const [approveRole,    setApproveRole]    = useState({})
   const [emails,         setEmails]         = useState([])
   const [emailInput,     setEmailInput]     = useState('')
   const [role,           setRole]           = useState('user')
@@ -1210,6 +1212,48 @@ function UsersTab({ toast }) {
     setCancellingId(null)
   }
 
+  async function handleApprove(inv) {
+    const assignedRole = approveRole[inv.id] || 'user'
+    setApprovingId(inv.id)
+    try {
+      // Look up the user by email to get their user_id
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('user_id')
+        .eq('email', inv.email)
+        .maybeSingle()
+      if (!profile?.user_id) throw new Error('User account not found — they may not have signed up yet.')
+
+      // Add to workspace_members
+      const { error: memberErr } = await supabase.from('workspace_members').insert({
+        workspace_id: workspace.id,
+        user_id:      profile.user_id,
+        role:         assignedRole,
+      })
+      if (memberErr) throw new Error(memberErr.message)
+
+      // Mark invite as accepted
+      await supabase.from('workspace_invites')
+        .update({ accepted_at: new Date().toISOString(), status: 'accepted', role: assignedRole })
+        .eq('id', inv.id)
+
+      setPendingInvites(prev => prev.filter(i => i.id !== inv.id))
+      toast(`${inv.email} approved as ${assignedRole}`, 'success')
+    } catch(e) {
+      toast(e.message, 'error')
+    }
+    setApprovingId(null)
+  }
+
+  async function handleReject(id) {
+    if (!confirm('Reject and remove this request?')) return
+    setCancellingId(id)
+    const { error } = await supabase.from('workspace_invites').delete().eq('id', id)
+    if (error) toast(error.message, 'error')
+    else { setPendingInvites(prev => prev.filter(i => i.id !== id)); toast('Request rejected', 'success') }
+    setCancellingId(null)
+  }
+
   async function handleRemove(userId) {
     if (!confirm('Remove this member from the workspace?')) return
     try {
@@ -1274,28 +1318,66 @@ function UsersTab({ toast }) {
       {view === 'pending' && (
         <Panel accent={COLORS.accent}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <PanelHeader title="Pending Invitations" desc="Users who have been invited but haven't joined yet." icon="mail" />
+            <PanelHeader title="Pending" desc="Access requests awaiting approval, and sent invites not yet accepted." icon="mail" />
             <Btn size="sm" variant="secondary" onClick={loadPending}>↻ Refresh</Btn>
           </div>
           {loadingInvites ? <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}><Spinner /></div>
-          : pendingInvites.length === 0 ? <div style={{ textAlign: 'center', padding: '32px 0', color: COLORS.textMuted, fontSize: 13 }}>No pending invitations.</div>
+          : pendingInvites.length === 0 ? <div style={{ textAlign: 'center', padding: '32px 0', color: COLORS.textMuted, fontSize: 13 }}>No pending items.</div>
           : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {pendingInvites.map(inv => {
+                const isApprovalRequest = inv.status === 'pending_approval'
                 const rd = ROLE_DEFS.find(r => r.v === inv.role) || { label: inv.role || 'User', color: '#34D17A', icon: '👤' }
                 const dt = inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'
+                const selectedRole = approveRole[inv.id] || 'user'
                 return (
-                  <div key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, background: COLORS.surface, border: `1px solid ${COLORS.border}` }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: COLORS.surfaceHover, border: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: COLORS.textMuted }}>✉</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.email}</div>
-                      <div style={{ fontSize: 11, color: COLORS.textMuted }}>Invited {dt}{inv.invited_by ? ` by ${inv.invited_by}` : ''}</div>
+                  <div key={inv.id} style={{ borderRadius: 12, background: COLORS.surface, border: `1px solid ${isApprovalRequest ? 'rgba(251,191,36,0.35)' : COLORS.border}`, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px' }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: COLORS.surfaceHover, border: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: COLORS.textMuted }}>
+                        {isApprovalRequest ? '🔔' : '✉'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.email}</div>
+                        <div style={{ fontSize: 11, color: COLORS.textMuted }}>
+                          {isApprovalRequest ? `Requested access on ${dt}` : `Invited ${dt}${inv.invited_by ? ` by ${inv.invited_by}` : ''}`}
+                        </div>
+                      </div>
+                      {!isApprovalRequest && (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: rd.color + '18', color: rd.color, border: `1px solid ${rd.color}33`, whiteSpace: 'nowrap' }}>{rd.icon} {rd.label}</span>
+                      )}
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: isApprovalRequest ? '#FBBF2418' : '#6B8EF718', color: isApprovalRequest ? '#FBBF24' : COLORS.accent, border: `1px solid ${isApprovalRequest ? '#FBBF2433' : COLORS.accent + '33'}`, whiteSpace: 'nowrap' }}>
+                        {isApprovalRequest ? '🔔 Needs Approval' : '⏳ Pending'}
+                      </span>
+                      {isAdmin && !isApprovalRequest && (
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          <button onClick={() => handleResend(inv)} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 600, color: COLORS.accent, cursor: 'pointer', fontFamily: 'inherit' }}>Resend</button>
+                          <button onClick={() => handleCancelInvite(inv.id)} disabled={cancellingId === inv.id} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 600, color: COLORS.red, cursor: 'pointer', fontFamily: 'inherit', opacity: cancellingId === inv.id ? 0.5 : 1 }}>Cancel</button>
+                        </div>
+                      )}
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: rd.color + '18', color: rd.color, border: `1px solid ${rd.color}33`, whiteSpace: 'nowrap' }}>{rd.icon} {rd.label}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: '#FBBF2418', color: '#FBBF24', border: '1px solid #FBBF2433', whiteSpace: 'nowrap' }}>⏳ Pending</span>
-                    {isAdmin && (
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        <button onClick={() => handleResend(inv)} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 600, color: COLORS.accent, cursor: 'pointer', fontFamily: 'inherit' }}>Resend</button>
-                        <button onClick={() => handleCancelInvite(inv.id)} disabled={cancellingId === inv.id} style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '5px 10px', fontSize: 11, fontWeight: 600, color: COLORS.red, cursor: 'pointer', fontFamily: 'inherit', opacity: cancellingId === inv.id ? 0.5 : 1 }}>Cancel</button>
+                    {isAdmin && isApprovalRequest && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderTop: '1px solid rgba(251,191,36,0.15)', background: 'rgba(251,191,36,0.04)' }}>
+                        <span style={{ fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>Assign role:</span>
+                        <select
+                          value={selectedRole}
+                          onChange={e => setApproveRole(prev => ({ ...prev, [inv.id]: e.target.value }))}
+                          style={{ ...G.input, flex: 1, fontSize: 12, padding: '5px 10px', height: 'auto' }}
+                        >
+                          {ROLE_DEFS.map(r => <option key={r.v} value={r.v}>{r.icon} {r.label}</option>)}
+                        </select>
+                        <button
+                          onClick={() => handleApprove(inv)}
+                          disabled={approvingId === inv.id}
+                          style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', border: 'none', borderRadius: 7, padding: '6px 14px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', opacity: approvingId === inv.id ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                        >
+                          {approvingId === inv.id ? '…' : '✓ Approve'}
+                        </button>
+                        <button
+                          onClick={() => handleReject(inv.id)}
+                          disabled={cancellingId === inv.id}
+                          style={{ background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 7, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: COLORS.red, cursor: 'pointer', fontFamily: 'inherit', opacity: cancellingId === inv.id ? 0.5 : 1 }}
+                        >
+                          Reject
+                        </button>
                       </div>
                     )}
                   </div>

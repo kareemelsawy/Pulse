@@ -102,7 +102,7 @@ export async function joinWorkspaceByCode(code, userId) {
   if (!invite) {
     const { data: codeInvite } = await supabase
       .from('workspace_invites')
-      .select('role, project_ids, id')
+      .select('role, project_ids, id, status')
       .eq('workspace_id', ws.id)
       .eq('invite_code', trimmedCode)
       .is('accepted_at', null)
@@ -111,10 +111,32 @@ export async function joinWorkspaceByCode(code, userId) {
     if (codeInvite) invite = codeInvite
   }
 
-  const assignedRole    = invite?.role || 'member'
+  // No pre-approved invite for this email — put in pending_approval queue
+  if (!invite) {
+    const { data: alreadyPending } = await supabase
+      .from('workspace_invites')
+      .select('id')
+      .eq('workspace_id', ws.id)
+      .eq('email', userEmail)
+      .eq('status', 'pending_approval')
+      .maybeSingle()
+    if (!alreadyPending) {
+      await supabase.from('workspace_invites').insert({
+        workspace_id: ws.id,
+        email:        userEmail,
+        role:         'user',
+        invite_code:  trimmedCode,
+        status:       'pending_approval',
+        created_at:   new Date().toISOString(),
+      })
+    }
+    // Return special flag — UI will show awaiting approval screen
+    return { ...ws, role: null, pending_approval: true }
+  }
+
+  const assignedRole     = invite?.role || 'member'
   const assignedProjects = invite?.project_ids || null
 
-  // Insert member with role from invite (or default 'member')
   const { error: joinErr } = await supabase
     .from('workspace_members')
     .insert({
@@ -125,7 +147,6 @@ export async function joinWorkspaceByCode(code, userId) {
     })
   if (joinErr) throw new Error(joinErr.message)
 
-  // Mark invite as accepted
   if (invite?.id) {
     await supabase
       .from('workspace_invites')
