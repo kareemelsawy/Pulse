@@ -6,7 +6,8 @@ import { useToast } from './hooks/useToast'
 import { Toast, Spinner } from './components/UI'
 import { DARK_THEME } from './lib/constants'
 import ErrorBoundary from './components/ErrorBoundary'
-import LoginPage, { ResetPage, NewPasswordPage } from './pages/LoginPage'
+import LoginPage, { SignupPage, ResetPage, NewPasswordPage } from './pages/LoginPage'
+import InvitePage from './pages/InvitePage'
 import WorkspaceSetup from './pages/WorkspaceSetup'
 import AppShell from './pages/AppShell'
 import GuestView from './pages/GuestView'
@@ -15,6 +16,7 @@ function AuthGate({ toast }) {
   const { user, loading: authLoading, signOut } = useAuth()
   const pendingInviteOnLoad = sessionStorage.getItem('pendingInvite') || localStorage.getItem('pendingInvite')
   const [page, setPage] = useState('login')
+  const [inviteWorkspaceName, setInviteWorkspaceName] = useState('')
 
   useEffect(() => {
     const hash = window.location.hash
@@ -42,8 +44,16 @@ function AuthGate({ toast }) {
 
   if (page === 'newpassword') return <NewPasswordPage onGoLogin={() => setPage('login')} />
   if (!user) {
-    if (page === 'reset') return <ResetPage onGoLogin={() => setPage('login')} />
-    return <LoginPage onGoReset={() => setPage('reset')} pendingInvite={pendingInviteOnLoad} />
+    if (page === 'reset')  return <ResetPage  onGoLogin={() => setPage('login')} />
+    if (page === 'signup') return <SignupPage onGoLogin={() => setPage('login')} />
+    if (pendingInviteOnLoad) return (
+      <InvitePage
+        inviteCode={pendingInviteOnLoad}
+        workspaceName={inviteWorkspaceName}
+        onSignOut={signOut}
+      />
+    )
+    return <LoginPage onGoSignup={() => setPage('signup')} onGoReset={() => setPage('reset')} />
   }
 
   return (
