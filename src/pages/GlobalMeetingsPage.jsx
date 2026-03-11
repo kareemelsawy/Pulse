@@ -22,7 +22,7 @@ export default function GlobalMeetingsPage({ toast }) {
   const [loading,      setLoading]      = useState(true)
   const [modalOpen,    setModalOpen]    = useState(false)
   const [editing,      setEditing]      = useState(null)
-  const [filterProj,   setFilterProj]   = useState('all')
+  const [filterProjs,  setFilterProjs]  = useState(null) // null = all selected
   const [searchQ,      setSearchQ]      = useState('')
 
   // Load meetings from all projects
@@ -56,13 +56,33 @@ export default function GlobalMeetingsPage({ toast }) {
     } catch(e) { toast?.(e.message, 'error') }
   }
 
+  // null = all selected; Set of ids = specific selection
+  const allSelected = filterProjs === null
+  function toggleProject(id) {
+    if (allSelected) {
+      // Deselect all others, select only this one
+      setFilterProjs(new Set([id]))
+    } else {
+      const next = new Set(filterProjs)
+      if (next.has(id)) {
+        next.delete(id)
+        // If nothing left selected, revert to all
+        setFilterProjs(next.size === 0 ? null : next)
+      } else {
+        next.add(id)
+        // If all projects are now selected, revert to null (all)
+        setFilterProjs(next.size === activeProjects.length ? null : next)
+      }
+    }
+  }
+
   const filtered = allMeetings.filter(m => {
     // Role-based filter: basic users only see meetings they attended; PMs see all within their projects
     if (isBasicUser && user?.email) {
       const attendeeList = (m.attendees || '').split(',').map(e => e.trim().toLowerCase())
       if (!attendeeList.includes(user.email.toLowerCase()) && m.created_by !== user?.id) return false
     }
-    if (filterProj !== 'all' && m.project_id !== filterProj) return false
+    if (!allSelected && !filterProjs.has(m.project_id)) return false
     if (searchQ && !m.title.toLowerCase().includes(searchQ.toLowerCase())) return false
     return true
   })
@@ -99,13 +119,21 @@ export default function GlobalMeetingsPage({ toast }) {
       {/* Filter bar */}
       <div style={{ padding: '8px 22px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', gap: 8, alignItems: 'center', background: COLORS.surface, flexShrink: 0, overflowX: 'auto' }}>
         <span style={{ fontSize: 12, color: COLORS.textMuted, flexShrink: 0 }}>Project:</span>
-        {[{ id: 'all', name: 'All Projects', color: COLORS.textMuted }, ...activeProjects].map(p => (
-          <button key={p.id} onClick={() => setFilterProj(p.id)}
-            style={{ padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${filterProj === p.id ? (p.color || COLORS.accent) : COLORS.border}`, background: filterProj === p.id ? (p.color || COLORS.accent) + '18' : 'none', color: filterProj === p.id ? (p.color || COLORS.accent) : COLORS.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, transition: 'background 0.15s, border-color 0.15s, opacity 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {p.id !== 'all' && <div style={{ width: 7, height: 7, borderRadius: '50%', background: p.color }} />}
-            {p.name}
-          </button>
-        ))}
+        {/* All button */}
+        <button onClick={() => setFilterProjs(null)}
+          style={{ padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${allSelected ? COLORS.accent : COLORS.border}`, background: allSelected ? COLORS.accent + '18' : 'none', color: allSelected ? COLORS.accent : COLORS.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, transition: 'background 0.15s, border-color 0.15s' }}>
+          All
+        </button>
+        {activeProjects.map(p => {
+          const selected = allSelected || filterProjs.has(p.id)
+          return (
+            <button key={p.id} onClick={() => toggleProject(p.id)}
+              style={{ padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${selected ? p.color : COLORS.border}`, background: selected ? p.color + '18' : 'none', color: selected ? p.color : COLORS.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, transition: 'background 0.15s, border-color 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: selected ? p.color : COLORS.textMuted, transition: 'background 0.15s' }} />
+              {p.name}
+            </button>
+          )
+        })}
         <span style={{ marginLeft: 'auto', fontSize: 12, color: COLORS.textMuted, flexShrink: 0 }}>{filtered.length} meeting{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
